@@ -1,0 +1,192 @@
+name: Analyze Whisper AO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/analyze-whisper-ao.yml"
+      - "scripts/**"
+      - "requirements-analysis.txt"
+      - "requirements-asr.txt"
+      - "samples/whisper-ao/source/whisper-ao.mp3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: whisper-ao-analysis
+  cancel-in-progress: false
+
+jobs:
+  acoustic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg and analysis dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-analysis.txt
+
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/analyze_audio.py scripts/asr_compare.py
+          test -s samples/whisper-ao/source/whisper-ao.mp3
+          sha256sum samples/whisper-ao/source/whisper-ao.mp3
+          ffprobe -v error -show_entries format=duration,size -of json samples/whisper-ao/source/whisper-ao.mp3
+
+      - name: Full acoustic analysis
+        run: |
+          set -euo pipefail
+          mkdir -p analysis/whisper-ao/acoustic-auto
+          python scripts/analyze_audio.py             samples/whisper-ao/source/whisper-ao.mp3             --out analysis/whisper-ao/acoustic-auto
+
+      - name: Reviewed-boundary comparison
+        run: |
+          set -euo pipefail
+          mkdir -p analysis/whisper-ao/acoustic-reviewed
+          python scripts/analyze_audio.py             samples/whisper-ao/source/whisper-ao.mp3             --out analysis/whisper-ao/acoustic-reviewed             --skip-pitch             --boundaries 21.7,77.5
+
+      - name: Record tool versions
+        run: |
+          set -euo pipefail
+          {
+            python --version
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            python -m pip freeze
+          } > analysis/whisper-ao/acoustic-auto/tool-versions.txt
+          cp analysis/whisper-ao/acoustic-auto/tool-versions.txt analysis/whisper-ao/acoustic-reviewed/tool-versions.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analysis-acoustic
+          path: analysis/whisper-ao
+          if-no-files-found: error
+          retention-days: 14
+
+  asr-small:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg and ASR dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-asr.txt
+
+      - name: ASR small — auto and forced English
+        run: |
+          set -euo pipefail
+          mkdir -p analysis/whisper-ao/asr-small-full
+          python scripts/asr_compare.py             samples/whisper-ao/source/whisper-ao.mp3             --out analysis/whisper-ao/asr-small-full             --model small             --modes auto,en             --device cpu             --compute-type int8
+          {
+            python --version
+            ffmpeg -version | head -1
+            python -m pip freeze
+          } > analysis/whisper-ao/asr-small-full/tool-versions.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analysis-asr-small
+          path: analysis/whisper-ao
+          if-no-files-found: error
+          retention-days: 14
+
+  asr-medium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg and ASR dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-asr.txt
+
+      - name: ASR medium — auto and forced English
+        run: |
+          set -euo pipefail
+          mkdir -p analysis/whisper-ao/asr-medium-full
+          python scripts/asr_compare.py             samples/whisper-ao/source/whisper-ao.mp3             --out analysis/whisper-ao/asr-medium-full             --model medium             --modes auto,en             --device cpu             --compute-type int8
+          {
+            python --version
+            ffmpeg -version | head -1
+            python -m pip freeze
+          } > analysis/whisper-ao/asr-medium-full/tool-versions.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analysis-asr-medium
+          path: analysis/whisper-ao
+          if-no-files-found: error
+          retention-days: 14
+
+  commit-results:
+    if: always()
+    needs: [acoustic, asr-small, asr-medium]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: analysis-*
+          path: analysis
+          merge-multiple: true
+
+      - name: Record Actions run
+        run: |
+          set -euo pipefail
+          mkdir -p analysis/whisper-ao
+          cat > analysis/whisper-ao/ACTION_RUN.md <<EOF
+          # Analysis Actions run
+
+          - run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - source commit: ${GITHUB_SHA}
+          - acoustic: ${{ needs.acoustic.result }}
+          - asr-small: ${{ needs.asr-small.result }}
+          - asr-medium: ${{ needs.asr-medium.result }}
+          EOF
+
+      - name: Commit available results
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          git add analysis/whisper-ao
+          if git diff --cached --quiet; then
+            echo "No analysis changes to commit"
+            exit 0
+          fi
+          git commit -m "Add Whisper AO Actions analysis results"
+          git push origin HEAD:main
