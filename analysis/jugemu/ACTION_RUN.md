@@ -1,7 +1,7 @@
 # Jugemu analysis Actions run
 
-- run: https://github.com/2rwa/tmp-music/actions/runs/37028301317
-- source commit: 921e8a89545082dacc05b677f71eac087cdcfed5
+- run: https://github.com/2rwa/tmp-music/actions/runs/37028472463
+- source commit: 784f3555e633c5bc7ab66570c6bc503fe33ab197
 - acoustic: success
 - asr-small: success
 - asr-medium: success
