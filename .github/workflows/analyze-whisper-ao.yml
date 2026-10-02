@@ -165,7 +165,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: analysis-*
-          path: analysis
+          path: analysis/whisper-ao
           merge-multiple: true
 
       - name: Record Actions run

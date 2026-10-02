@@ -1,0 +1,56 @@
+name: Recover Whisper AO artifacts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/recover-whisper-ao-artifacts.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync main
+        run: git pull --rebase origin main
+
+      - name: Download successful Run 5 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 37028301049
+          github-token: ${{ github.token }}
+          pattern: analysis-*
+          path: analysis/whisper-ao
+          merge-multiple: true
+
+      - name: Verify recovered result set
+        run: |
+          set -euo pipefail
+          test -s analysis/whisper-ao/acoustic-auto/metadata.json
+          test -s analysis/whisper-ao/acoustic-auto/pitch-summary.json
+          test -s analysis/whisper-ao/acoustic-auto/spectrogram.png
+          test -s analysis/whisper-ao/asr-small-full/metrics.json
+          test -s analysis/whisper-ao/asr-medium-full/metrics.json
+          find analysis/whisper-ao -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+
+      - name: Commit recovered results
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add analysis/whisper-ao
+          if git diff --cached --quiet; then
+            echo "No recovery changes to commit"
+            exit 0
+          fi
+          git commit -m "Recover Whisper AO analysis artifacts"
+          git push origin HEAD:main
