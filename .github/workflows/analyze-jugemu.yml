@@ -1,4 +1,5 @@
 name: Analyze Jugemu
+# Source is staged through bridge before production runs.
 
 on:
   workflow_dispatch:
