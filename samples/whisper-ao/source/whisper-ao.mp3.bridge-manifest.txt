@@ -1,0 +1,3 @@
+source=dropbox:tmp-music-whisper-ao-20261002.mp3
+size_bytes=4992093
+sha256=91f021f6906873c3e4ff4d72a82d2a3cc27faa1c312de98d6b7eee7352e9394b
