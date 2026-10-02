@@ -1,0 +1,138 @@
+name: Analyze Jugemu
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/analyze-jugemu.yml"
+      - "samples/jugemu/source/jugemu.mp3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jugemu-analysis
+  cancel-in-progress: false
+
+jobs:
+  acoustic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install analysis dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-analysis.txt
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/analyze_audio.py scripts/repetition_analysis.py scripts/asr_compare.py
+          test -s samples/jugemu/source/jugemu.mp3
+          sha256sum samples/jugemu/source/jugemu.mp3
+      - name: Full acoustic analysis
+        run: |
+          mkdir -p analysis/jugemu/acoustic
+          python scripts/analyze_audio.py samples/jugemu/source/jugemu.mp3 --out analysis/jugemu/acoustic
+      - name: Repetition analysis
+        run: |
+          mkdir -p analysis/jugemu/repetition
+          python scripts/repetition_analysis.py samples/jugemu/source/jugemu.mp3 --out analysis/jugemu/repetition --template-start 12 --template-end 34
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jugemu-acoustic
+          path: analysis/jugemu
+          retention-days: 14
+
+  asr-small:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ASR dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-asr.txt
+      - name: Whisper small auto/ja
+        run: |
+          mkdir -p analysis/jugemu/asr-small
+          python scripts/asr_compare.py samples/jugemu/source/jugemu.mp3 --out analysis/jugemu/asr-small --model small --modes auto,ja --device cpu --compute-type int8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jugemu-asr-small
+          path: analysis/jugemu
+          retention-days: 14
+
+  asr-medium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ASR dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-asr.txt
+      - name: Whisper medium auto/ja
+        run: |
+          mkdir -p analysis/jugemu/asr-medium
+          python scripts/asr_compare.py samples/jugemu/source/jugemu.mp3 --out analysis/jugemu/asr-medium --model medium --modes auto,ja --device cpu --compute-type int8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jugemu-asr-medium
+          path: analysis/jugemu
+          retention-days: 14
+
+  commit-results:
+    if: always()
+    needs: [acoustic, asr-small, asr-medium]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync branch before generating results
+        run: git pull --rebase origin main
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jugemu-*
+          path: analysis
+          merge-multiple: true
+      - name: Record run
+        run: |
+          mkdir -p analysis/jugemu
+          cat > analysis/jugemu/ACTION_RUN.md <<EOF
+          # Jugemu analysis Actions run
+
+          - run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - source commit: ${GITHUB_SHA}
+          - acoustic: ${{ needs.acoustic.result }}
+          - asr-small: ${{ needs.asr-small.result }}
+          - asr-medium: ${{ needs.asr-medium.result }}
+          EOF
+      - name: Commit results
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add analysis/jugemu
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Add Jugemu Actions analysis results"
+          git push origin HEAD:main
