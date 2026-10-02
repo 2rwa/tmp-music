@@ -1,0 +1,56 @@
+name: Recover Jugemu artifacts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/recover-jugemu-artifacts.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync main
+        run: git pull --rebase origin main
+
+      - name: Download successful Run 2 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 37028472463
+          github-token: ${{ github.token }}
+          pattern: jugemu-*
+          path: analysis/jugemu
+          merge-multiple: true
+
+      - name: Verify recovered result set
+        run: |
+          set -euo pipefail
+          test -s analysis/jugemu/acoustic/metadata.json
+          test -s analysis/jugemu/acoustic/pitch-summary.json
+          test -s analysis/jugemu/repetition/repetition.json
+          test -s analysis/jugemu/asr-small/metrics.json
+          test -s analysis/jugemu/asr-medium/metrics.json
+          find analysis/jugemu -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+
+      - name: Commit recovered results
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add analysis/jugemu
+          if git diff --cached --quiet; then
+            echo "No recovery changes to commit"
+            exit 0
+          fi
+          git commit -m "Recover Jugemu analysis artifacts"
+          git push origin HEAD:main
