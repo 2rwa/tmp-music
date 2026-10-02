@@ -292,3 +292,13 @@ For every Actions run:
 5. only then write a human-readable conclusion.
 
 This follows the workspace Build → Test → Fix rule: measure first, do cheap checks before expensive work, and keep diagnostics that can catch regressions.
+
+## Saved implementation
+
+The programs used to reproduce the current measurements are saved in:
+
+- `scripts/analyze_audio.py` — ffprobe/ID3, silence/active-end detection, FFT/STFT-derived features, candidate section boundaries, reviewed-section summaries, pYIN F0 and 12-TET distance, diagnostic plots.
+- `scripts/asr_compare.py` — faster-whisper in auto/forced-English modes, extraction of the embedded `USLT::eng` lyrics, word/character edit metrics, and alignment TSV.
+- `requirements-analysis.txt` and `requirements-asr.txt` — dependencies.
+
+See `scripts/README.md` for exact commands. A local smoke test against Whisper AO passed for the non-pitch path using reviewed boundaries `21.7,77.5`; full pYIN and ASR are intended for Actions because they are the slower stages.
