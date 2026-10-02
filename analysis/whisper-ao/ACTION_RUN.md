@@ -1,7 +1,7 @@
 # Analysis Actions run
 
-- run: https://github.com/2rwa/tmp-music/actions/runs/37026834205
-- source commit: 59008a76b2c579725e965efa745a45c2d01c5f4e
+- run: https://github.com/2rwa/tmp-music/actions/runs/37028301049
+- source commit: 921e8a89545082dacc05b677f71eac087cdcfed5
 - acoustic: success
 - asr-small: success
 - asr-medium: success
