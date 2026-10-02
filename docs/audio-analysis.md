@@ -302,3 +302,11 @@ The programs used to reproduce the current measurements are saved in:
 - `requirements-analysis.txt` and `requirements-asr.txt` — dependencies.
 
 See `scripts/README.md` for exact commands. A local smoke test against Whisper AO passed for the non-pitch path using reviewed boundaries `21.7,77.5`; full pYIN and ASR are intended for Actions because they are the slower stages.
+
+## ASR compatibility note (2026-10-02)
+
+PyAV 19 removed the `metadata_errors` argument from `av.open()`, while `faster-whisper 1.2.1` still passes it in `decode_audio`. The first Actions run therefore failed in both small and medium ASR jobs with:
+
+`TypeError: open() got an unexpected keyword argument 'metadata_errors'`
+
+`requirements-asr.txt` pins `av<19` until faster-whisper releases a compatible decoder path.
