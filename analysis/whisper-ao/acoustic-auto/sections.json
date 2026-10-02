@@ -1,0 +1,81 @@
+{
+  "candidate_boundaries": [
+    {
+      "time_s": 130.208,
+      "novelty": 18.42977145520293
+    },
+    {
+      "time_s": 91.328,
+      "novelty": 16.65587768932419
+    },
+    {
+      "time_s": 3.552,
+      "novelty": 16.231780382869978
+    },
+    {
+      "time_s": 17.088,
+      "novelty": 15.727627742401713
+    },
+    {
+      "time_s": 152.16,
+      "novelty": 11.79037913066312
+    },
+    {
+      "time_s": 103.68,
+      "novelty": 10.589033071431595
+    },
+    {
+      "time_s": 142.464,
+      "novelty": 10.527506760714239
+    },
+    {
+      "time_s": 81.888,
+      "novelty": 10.256227334396103
+    }
+  ],
+  "selected_boundaries_s": [
+    0.0,
+    91.328,
+    130.208,
+    155.712
+  ],
+  "selected_boundary_source": "automatic-top-novelty",
+  "sections": [
+    {
+      "start_s": 0.0,
+      "end_s": 91.328,
+      "duration_s": 91.328,
+      "spectral_centroid_hz_mean": 2435.290349510799,
+      "spectral_flatness_mean": 0.04702507704496384,
+      "onset_density_per_s": 5.693763139453399,
+      "energy_lt_300_ratio": 0.431793749332428,
+      "energy_300_1000_ratio": 0.40734705328941345,
+      "energy_1000_4000_ratio": 0.13326700031757355,
+      "energy_ge_4000_ratio": 0.027592284604907036
+    },
+    {
+      "start_s": 91.328,
+      "end_s": 130.208,
+      "duration_s": 38.879999999999995,
+      "spectral_centroid_hz_mean": 2165.9631913160983,
+      "spectral_flatness_mean": 0.02462472766637802,
+      "onset_density_per_s": 6.09567901234568,
+      "energy_lt_300_ratio": 0.2301657497882843,
+      "energy_300_1000_ratio": 0.6774817109107971,
+      "energy_1000_4000_ratio": 0.07766534388065338,
+      "energy_ge_4000_ratio": 0.014687180519104004
+    },
+    {
+      "start_s": 130.208,
+      "end_s": 155.712,
+      "duration_s": 25.50399999999999,
+      "spectral_centroid_hz_mean": 2043.3512989789065,
+      "spectral_flatness_mean": 0.028441477566957474,
+      "onset_density_per_s": 5.1756587202007545,
+      "energy_lt_300_ratio": 0.21119646728038788,
+      "energy_300_1000_ratio": 0.720048189163208,
+      "energy_1000_4000_ratio": 0.054458778351545334,
+      "energy_ge_4000_ratio": 0.014296584762632847
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "sha256": "91f021f6906873c3e4ff4d72a82d2a3cc27faa1c312de98d6b7eee7352e9394b",
+  "size_bytes": 4992093,
+  "decoded_duration_s": 207.0,
+  "active_end_s": 155.712,
+  "trailing_silence_s": 51.28800000000001,
+  "ffprobe": {
+    "format": {
+      "duration": "207.024000",
+      "size": "4992093",
+      "bit_rate": "192908",
+      "tags": {
+        "title": "Whisper AO",
+        "artist": "unhurriedmusicteacher6093",
+        "encoder": "Lavf58.76.100",
+        "comment": "made with suno; created=2025-03-11T00:53:09.298680+00:00; id=02502e60-67c4-44e1-8ff3-b9d458bc599c",
+        "lyrics-eng": "I press my ear to the waves,\nListening for a voice that fades.\nTides come, tides go,\nUnspoken words drift below.\nMidnight sea, carry my heart,\nLike the wind, like a dream torn apart.\nLove and longing, joy and sorrow,\nAll dissolve into AO.\nMoonlight shivers on the tide,\nMemories lost in the rise and fall.\nFingers reach, but touch the void,\nEchoes slipping far beyond.\nShadows dance, whisper and fade,\nWaves return, then slip away.\nLove that lingers, love unknown,\nStill drifts upon AO.\nMist hides the distant shore,\nYet your voice lingers more.\nTears sink into the deep,\nDreams scatter on the breeze.\nA final glance, a love once whole,\nNow sleeps in AO’s hold."
+      }
+    }
+  }
+}

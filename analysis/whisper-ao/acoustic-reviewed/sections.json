@@ -1,0 +1,81 @@
+{
+  "candidate_boundaries": [
+    {
+      "time_s": 130.208,
+      "novelty": 18.42977145520293
+    },
+    {
+      "time_s": 91.328,
+      "novelty": 16.65587768932419
+    },
+    {
+      "time_s": 3.552,
+      "novelty": 16.231780382869978
+    },
+    {
+      "time_s": 17.088,
+      "novelty": 15.727627742401713
+    },
+    {
+      "time_s": 152.16,
+      "novelty": 11.79037913066312
+    },
+    {
+      "time_s": 103.68,
+      "novelty": 10.589033071431595
+    },
+    {
+      "time_s": 142.464,
+      "novelty": 10.527506760714239
+    },
+    {
+      "time_s": 81.888,
+      "novelty": 10.256227334396103
+    }
+  ],
+  "selected_boundaries_s": [
+    0.0,
+    21.7,
+    77.5,
+    155.712
+  ],
+  "selected_boundary_source": "reviewed",
+  "sections": [
+    {
+      "start_s": 0.0,
+      "end_s": 21.7,
+      "duration_s": 21.7,
+      "spectral_centroid_hz_mean": 2433.494736307254,
+      "spectral_flatness_mean": 0.048923954367637634,
+      "onset_density_per_s": 5.253456221198157,
+      "energy_lt_300_ratio": 0.05328783020377159,
+      "energy_300_1000_ratio": 0.7575343251228333,
+      "energy_1000_4000_ratio": 0.13386666774749756,
+      "energy_ge_4000_ratio": 0.05531122535467148
+    },
+    {
+      "start_s": 21.7,
+      "end_s": 77.5,
+      "duration_s": 55.8,
+      "spectral_centroid_hz_mean": 2483.1327244695326,
+      "spectral_flatness_mean": 0.05308179184794426,
+      "onset_density_per_s": 6.935483870967742,
+      "energy_lt_300_ratio": 0.6209611296653748,
+      "energy_300_1000_ratio": 0.2484164834022522,
+      "energy_1000_4000_ratio": 0.1013021245598793,
+      "energy_ge_4000_ratio": 0.029320308938622475
+    },
+    {
+      "start_s": 77.5,
+      "end_s": 155.712,
+      "duration_s": 78.21199999999999,
+      "spectral_centroid_hz_mean": 2140.428252344579,
+      "spectral_flatness_mean": 0.02507212571799755,
+      "onset_density_per_s": 5.7408070372832825,
+      "energy_lt_300_ratio": 0.18725912272930145,
+      "energy_300_1000_ratio": 0.68870609998703,
+      "energy_1000_4000_ratio": 0.10952429473400116,
+      "energy_ge_4000_ratio": 0.014510535635054111
+    }
+  ]
+}

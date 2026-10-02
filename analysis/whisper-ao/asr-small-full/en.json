@@ -1,0 +1,84 @@
+{
+  "detected_language": "en",
+  "language_probability": 1,
+  "text": "And Paris money, it's a tour de views, Least bank for all, I did views To its come, to its go, And spoke words that are fat baloo Madness at sea, Kiri my heart, Like event like a dream, tour and a part Low in line, gang joe and soru, All diesel low and toy up Moonlight at shore, words on the toy, Memories lost and they rise and fall Fangres rich, bitch dioi, Ikossel paint, she does dance Vas per infig, views are a trend, Dinselt ovi, Lodet lengres low en nun Set leldar, eventes apuneu, Mouss, clets, ditest and sure Yet your voice lengres mou, Tiersanek entro di dip Dremses ki dur andi beris, A final gollans, aluvenz hul Mouss, celebs, n.e.o.s hul",
+  "segments": [
+    {
+      "start": 2.29,
+      "end": 27.38,
+      "text": " And Paris money, it's a tour de views, Least bank for all, I did views",
+      "avg_logprob": -0.8280627820098284,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 27.38,
+      "end": 32.2,
+      "text": " To its come, to its go, And spoke words that are fat baloo",
+      "avg_logprob": -0.8280627820098284,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 32.2,
+      "end": 37.48,
+      "text": " Madness at sea, Kiri my heart, Like event like a dream, tour and a part",
+      "avg_logprob": -0.8280627820098284,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 37.48,
+      "end": 42.18,
+      "text": " Low in line, gang joe and soru, All diesel low and toy up",
+      "avg_logprob": -0.8280627820098284,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 42.18,
+      "end": 47.1,
+      "text": " Moonlight at shore, words on the toy, Memories lost and they rise and fall",
+      "avg_logprob": -0.8280627820098284,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 47.1,
+      "end": 53.29,
+      "text": " Fangres rich, bitch dioi, Ikossel paint, she does dance",
+      "avg_logprob": -0.7596474444227559,
+      "no_speech_prob": 0.4139880836009979
+    },
+    {
+      "start": 53.29,
+      "end": 59.35,
+      "text": " Vas per infig, views are a trend, Dinselt ovi, Lodet lengres low en nun",
+      "avg_logprob": -0.7596474444227559,
+      "no_speech_prob": 0.4139880836009979
+    },
+    {
+      "start": 59.35,
+      "end": 64.29,
+      "text": " Set leldar, eventes apuneu, Mouss, clets, ditest and sure",
+      "avg_logprob": -0.7596474444227559,
+      "no_speech_prob": 0.4139880836009979
+    },
+    {
+      "start": 64.29,
+      "end": 69.31,
+      "text": " Yet your voice lengres mou, Tiersanek entro di dip",
+      "avg_logprob": -0.7596474444227559,
+      "no_speech_prob": 0.4139880836009979
+    },
+    {
+      "start": 69.31,
+      "end": 74.31,
+      "text": " Dremses ki dur andi beris, A final gollans, aluvenz hul",
+      "avg_logprob": -0.7596474444227559,
+      "no_speech_prob": 0.4139880836009979
+    },
+    {
+      "start": 74.31,
+      "end": 76.85,
+      "text": " Mouss, celebs, n.e.o.s hul",
+      "avg_logprob": -0.7038495352393702,
+      "no_speech_prob": 0.9717188477516174
+    }
+  ]
+}

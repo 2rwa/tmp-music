@@ -1,0 +1,21 @@
+{
+  "detected_language": "hu",
+  "language_probability": 0.4102609157562256,
+  "text": "A Paris Mani erahtióldi views, Líszmeng far, oh, ice did fuse, Toys it's calm, Toys it's goo, En spoke words that are fat baloo, Madna et si, Kirimai haret, Like event like a dream, Tó rendne paret, Lóin langeng jo en sorú, Al dizaló en toe, Up mulla et siur, Wars on the toy, Memories laset hendi, Rise and fall, Fengres rich, Bitch di oly, Ikhossz el pengy, Sido's Dance, Wars per infig views, Reitren, Dinszelt ovi, Lúdett lengres, Lóin nun, Sett lel, Döre fentes, O puni úr, Múst klátsd itt, Aztán súr, Jett jorvó esz, Lengres múr, Tiersanek, Entrodi dip, Dremseski dur, Andi beris, A final golanz, A lovenz húl, Na se leps en e oz húl, Na nííííííí",
+  "segments": [
+    {
+      "start": 2.91,
+      "end": 52.91,
+      "text": " A Paris Mani erahtióldi views, Líszmeng far, oh, ice did fuse, Toys it's calm, Toys it's goo, En spoke words that are fat baloo, Madna et si, Kirimai haret, Like event like a dream, Tó rendne paret, Lóin langeng jo en sorú, Al dizaló en toe, Up mulla et siur, Wars on the toy, Memories laset hendi, Rise and fall, Fengres rich, Bitch di oly, Ikhossz el pengy, Sido's",
+      "avg_logprob": -0.8764724283290088,
+      "no_speech_prob": 0.8561940789222717
+    },
+    {
+      "start": 52.91,
+      "end": 78.09,
+      "text": " Dance, Wars per infig views, Reitren, Dinszelt ovi, Lúdett lengres, Lóin nun, Sett lel, Döre fentes, O puni úr, Múst klátsd itt, Aztán súr, Jett jorvó esz, Lengres múr, Tiersanek, Entrodi dip, Dremseski dur, Andi beris, A final golanz, A lovenz húl, Na se leps en e oz húl, Na nííííííí",
+      "avg_logprob": -0.6601649082225302,
+      "no_speech_prob": 0.4422239065170288
+    }
+  ]
+}

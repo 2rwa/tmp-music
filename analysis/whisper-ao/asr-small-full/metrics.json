@@ -1,0 +1,44 @@
+{
+  "auto": {
+    "token": {
+      "substitutions": 101,
+      "deletions": 2,
+      "insertions": 18,
+      "correct": 14,
+      "reference_units": 117,
+      "hypothesis_units": 133,
+      "error_rate": 1.0341880341880343
+    },
+    "character": {
+      "substitutions": 132,
+      "deletions": 98,
+      "insertions": 52,
+      "correct": 284,
+      "reference_units": 514,
+      "hypothesis_units": 468,
+      "error_rate": 0.5486381322957199
+    },
+    "tokenization": "Latin words or contiguous Japanese script spans; CER removes spaces/punctuation"
+  },
+  "en": {
+    "token": {
+      "substitutions": 87,
+      "deletions": 4,
+      "insertions": 15,
+      "correct": 26,
+      "reference_units": 117,
+      "hypothesis_units": 128,
+      "error_rate": 0.905982905982906
+    },
+    "character": {
+      "substitutions": 127,
+      "deletions": 73,
+      "insertions": 59,
+      "correct": 314,
+      "reference_units": 514,
+      "hypothesis_units": 500,
+      "error_rate": 0.5038910505836576
+    },
+    "tokenization": "Latin words or contiguous Japanese script spans; CER removes spaces/punctuation"
+  }
+}
