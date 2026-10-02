@@ -1,0 +1,43 @@
+{
+  "duration_s": 240.0,
+  "tempo_bpm_half_time_candidate": 98.6842105263158,
+  "double_time_candidate_bpm": 197.3684210526316,
+  "template_start_s": 12.0,
+  "template_end_s": 34.0,
+  "candidate_cycle_starts": [
+    {
+      "start_s": 12.0,
+      "similarity": 1.0
+    },
+    {
+      "start_s": 40.75,
+      "similarity": 0.38241156935691833
+    },
+    {
+      "start_s": 69.5,
+      "similarity": 0.26272818446159363
+    },
+    {
+      "start_s": 96.0,
+      "similarity": 0.16399765014648438
+    },
+    {
+      "start_s": 127.25,
+      "similarity": 0.4176633954048157
+    },
+    {
+      "start_s": 156.0,
+      "similarity": 0.5131562352180481
+    },
+    {
+      "start_s": 184.75,
+      "similarity": 0.2677583694458008
+    },
+    {
+      "start_s": 213.5,
+      "similarity": 0.2170061618089676
+    }
+  ],
+  "cycle_gap_median_s": 28.75,
+  "cycle_gap_mean_s": 28.785714285714285
+}
