@@ -1,21 +1,91 @@
 {
   "detected_language": "hu",
-  "language_probability": 0.4102609157562256,
-  "text": "A Paris Mani erahtióldi views, Líszmeng far, oh, ice did fuse, Toys it's calm, Toys it's goo, En spoke words that are fat baloo, Madna et si, Kirimai haret, Like event like a dream, Tó rendne paret, Lóin langeng jo en sorú, Al dizaló en toe, Up mulla et siur, Wars on the toy, Memories laset hendi, Rise and fall, Fengres rich, Bitch di oly, Ikhossz el pengy, Sido's Dance, Wars per infig views, Reitren, Dinszelt ovi, Lúdett lengres, Lóin nun, Sett lel, Döre fentes, O puni úr, Múst klátsd itt, Aztán súr, Jett jorvó esz, Lengres múr, Tiersanek, Entrodi dip, Dremseski dur, Andi beris, A final golanz, A lovenz húl, Na se leps en e oz húl, Na nííííííí",
+  "language_probability": 0.4839232265949249,
+  "text": "Egy peris mani ereht jól divyúz, liszt meg farol, oh, ice did fuse, Tojt's kam, tojt's gú, én spoke vart, zarar fett balú, Madna etzi, kirimai harakt, like event like a dreamtúr, annep harakt, loin langeng, joeng sorú, áldi zálló, en toj, út, mulla et siur, vartzan dit toj, mimuriz laset, hendi rajzént foly, fengres rich, bitch di oly, ikosz el, pengsidus danz, vasperint fig, viusereit renn, dincelt ovi, lúdett lengres, loen nun, sett leldör, feintes, apune úr, múst, klesz, ditest, tentsúr, jett jövőes, lengres múr, ti erszenek, entrodi dip, dremses, kidúr, andi peris, a final golanz, aluvenz húl, nincs se lepsen, éhóz húl, na, níííííííííííííííííííííííííí",
   "segments": [
     {
-      "start": 2.91,
-      "end": 52.91,
-      "text": " A Paris Mani erahtióldi views, Líszmeng far, oh, ice did fuse, Toys it's calm, Toys it's goo, En spoke words that are fat baloo, Madna et si, Kirimai haret, Like event like a dream, Tó rendne paret, Lóin langeng jo en sorú, Al dizaló en toe, Up mulla et siur, Wars on the toy, Memories laset hendi, Rise and fall, Fengres rich, Bitch di oly, Ikhossz el pengy, Sido's",
-      "avg_logprob": -0.8764724283290088,
-      "no_speech_prob": 0.8561940789222717
+      "start": 2.29,
+      "end": 27.34,
+      "text": " Egy peris mani ereht jól divyúz, liszt meg farol, oh, ice did fuse,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
     },
     {
-      "start": 52.91,
-      "end": 78.09,
-      "text": " Dance, Wars per infig views, Reitren, Dinszelt ovi, Lúdett lengres, Lóin nun, Sett lel, Döre fentes, O puni úr, Múst klátsd itt, Aztán súr, Jett jorvó esz, Lengres múr, Tiersanek, Entrodi dip, Dremseski dur, Andi beris, A final golanz, A lovenz húl, Na se leps en e oz húl, Na nííííííí",
-      "avg_logprob": -0.6601649082225302,
-      "no_speech_prob": 0.4422239065170288
+      "start": 27.5,
+      "end": 32.18,
+      "text": " Tojt's kam, tojt's gú, én spoke vart, zarar fett balú,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
+    },
+    {
+      "start": 32.46,
+      "end": 36.92,
+      "text": " Madna etzi, kirimai harakt, like event like a dreamtúr,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
+    },
+    {
+      "start": 36.98,
+      "end": 39.7,
+      "text": " annep harakt, loin langeng, joeng sorú,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
+    },
+    {
+      "start": 40.14,
+      "end": 44.7,
+      "text": " áldi zálló, en toj, út, mulla et siur, vartzan dit toj,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
+    },
+    {
+      "start": 44.98,
+      "end": 49.78,
+      "text": " mimuriz laset, hendi rajzént foly, fengres rich, bitch di oly,",
+      "avg_logprob": -0.8314096319909189,
+      "no_speech_prob": 0.8495240211486816
+    },
+    {
+      "start": 49.78,
+      "end": 56.11,
+      "text": " ikosz el, pengsidus danz, vasperint fig, viusereit renn,",
+      "avg_logprob": -0.4920671886867947,
+      "no_speech_prob": 0.4516161382198334
+    },
+    {
+      "start": 56.23,
+      "end": 59.35,
+      "text": " dincelt ovi, lúdett lengres, loen nun,",
+      "avg_logprob": -0.4920671886867947,
+      "no_speech_prob": 0.4516161382198334
+    },
+    {
+      "start": 59.75,
+      "end": 64.67,
+      "text": " sett leldör, feintes, apune úr, múst, klesz, ditest, tentsúr,",
+      "avg_logprob": -0.4920671886867947,
+      "no_speech_prob": 0.4516161382198334
+    },
+    {
+      "start": 64.81,
+      "end": 69.29,
+      "text": " jett jövőes, lengres múr, ti erszenek, entrodi dip,",
+      "avg_logprob": -0.4920671886867947,
+      "no_speech_prob": 0.4516161382198334
+    },
+    {
+      "start": 69.67,
+      "end": 74.43,
+      "text": " dremses, kidúr, andi peris, a final golanz, aluvenz húl,",
+      "avg_logprob": -0.4920671886867947,
+      "no_speech_prob": 0.4516161382198334
+    },
+    {
+      "start": 74.43,
+      "end": 78.11,
+      "text": " nincs se lepsen, éhóz húl, na, níííííííííííííííííííííííííí",
+      "avg_logprob": -0.6606424873073896,
+      "no_speech_prob": 0.9869540333747864
     }
   ]
 }
