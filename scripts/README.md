@@ -198,6 +198,36 @@ Cycle-to-cycle transcript differences are an inspection signal only: they
 combine actual pronunciation variation with acoustic variation and ASR error.
 
 
+## Known-lyrics forced alignment (M5)
+
+Run through the shared CLI:
+
+```bash
+python scripts/cli.py align --track whisper-ao
+python scripts/cli.py align --track jugemu
+```
+
+The backend is Montreal Forced Aligner 3.4.2. Outputs live under
+`analysis/<track>/measurements/alignment-mfa/`:
+
+- `alignment.json`
+- `alignment.tsv`
+- `failed-spans.json`
+- `mfa.log`
+- `prepared-segments.json`
+- `provenance.json`
+- `status.json`
+
+Whisper AO aligns only the reviewed 0.0–77.5 s known-lyrics performance window
+and uses a widened 100/400 beam. Jugemu aligns the eight M3 cycle segments with
+the Japanese MFA dictionary/acoustic/G2P models and the same widened beam.
+
+Japanese mora timestamps are still an explicit approximation: morae are
+projected only over the MFA-phone-supported portion of each word. If a forced
+word has no positive phone overlap, it is omitted from mora projection and
+preserved in `failed-spans.json` instead of inventing a long mora interval.
+
+
 ## Current validation snapshot (2026-10-03)
 
 For detailed measurements and Actions run IDs, see `docs/STATUS_20261003.md`.

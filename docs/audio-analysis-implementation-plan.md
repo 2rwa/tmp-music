@@ -1421,7 +1421,7 @@ Whisper AO / じゅげむで:
 - [ ] English alignment — MFA english_us_arpa設定済み、実音源検証待ち
 - [ ] Japanese alignment — MFA japanese_mfa実装済み、実音源検証中
 - [x] failed-span保存 — `failed-spans.json`
-- [ ] phoneme/mora timestamps — phone boundary実装済み、moraは初版projectionなので精密化余地あり
+- [x] phoneme/mora timestamps — phone boundary + phone-supported span mora projection。phone無しwordはfailed spanとして保持。厳密な音韻対応は独立改善余地あり
 
 ### 完了条件
 

@@ -116,21 +116,27 @@ run `37089824512` success。Jugemu primary/half/double = 98.6842 / 49.3421 / 197
 
 run `37089898445` success。cycle-specific referenceで8 cycleのCER/MER/substitution/deletion/insertionを保存。free ASR deletionが支配的なので発音差と直結させない。
 
-### M5 Forced alignment — IN PROGRESS
+### M5 Forced alignment — COMPLETE
 
-MFA 3.4.2ベースの初期実装とActions配線まで完了。
+MFA 3.4.2ベースの既知歌詞alignmentを実音源で検証済み。
 
-- Jugemu: M3 cycle境界 + cycle別既知歌詞 → Japanese MFA word/phone alignment
-- Japanese mora timestampは初版ではword interval内への明示的projection
-- failed spansは削除せずJSON保存
-- Whisper AO用 english_us_arpa設定も追加
-- M3 successからM4/M5を並列chain
-- MFA / model install と `pip check` は通過
-- 最新run `37091037891` は英日ともMFA align本体が exit 1
-- diagnostics artifactは保存済み
-  - Whisper AO: `11262129070`
-  - Jugemu: `11261464750`
-- 次はartifact内の `mfa.log` を読んで実エラーを特定する。推測で修正しない
+- final run `37095819243` — Whisper AO / Jugemu とも success
+- Whisper AO:
+  - 0.0–77.5 s の既知歌詞区間へ限定
+  - beam / retry beam = 100 / 400
+  - 117 words / 407 phones
+  - failed spans 0
+- Jugemu:
+  - M3 aligned cycles 8本を既知歌詞chunkへ対応
+  - Japanese tokenizer依存 `spacy sudachipy sudachidict-core` をActionsへ追加
+  - beam / retry beam = 100 / 400
+  - 396 words / 1956 phones / 969 mora
+  - 8/8 cycle aligned
+  - partial failed span 1件: cycle-07 `ぽん` 201.85–212.49 s はword intervalにphone supportが無いため、架空の長大moraを生成せず `failed-spans.json` に保持
+  - mora最大長は品質修正後 0.60 s
+- Japanese mora時刻は、MFA phoneが実際に重なるword span内での明示的equal projection。phoneそのものの境界と同一ではない。
+
+MFA failure時は `mfa.log` をartifactだけでなくActions stderrにも出す。
 
 ### M6 Voice quality — PARTIAL
 
@@ -160,11 +166,13 @@ M2内に:
 
 最優先:
 
-1. M5 run `37091037891` の diagnostics artifact を取得し、Whisper AO / Jugemu の `mfa.log` を確認
-2. MFA align exit 1 の実原因を特定して最小修正
-3. M5を再実行し、word / phone / mora件数、failed-spansをレビュー
-4. Japanese phone→mora対応を音響境界ベースへ精密化するか判断
-5. M5完了後はM6 voice qualityへ進む
+1. M6 voice-quality analyzer の最小実装
+2. stable voiced / vocal stem を対象に CPPS・HNR・spectral tilt を機械可読で保存
+3. synthetic known-answer / sanity test と cheap CI を追加
+4. 実音源Actionsで Whisper AO / Jugemu の少なくとも片方を測定
+5. formants と register transition detector を追加し、F0だけではない声区変化へ拡張
+
+M5のJapanese moraはphone-supported spanへ制約済み。厳密なphone→mora音韻対応は、M6を止めてまで先行実装せず、必要になった時点で独立改善する。
 
 ---
 
@@ -192,7 +200,6 @@ M2内に:
 - `analysis/common/failures/20261003-jugemu-crepe-confidence.md`
 - `analysis/common/failures/20261003-structure-tempo-quantization.md`
 - `analysis/common/failures/20261003-mfa-seaborn-pip-check.md`
-- M5 run `37091037891`: MFA環境/model取得後、英日ともalign本体がexit 1。diagnostics artifact保存済みで、root causeは`mfa.log`確認待ち。
 
 ---
 
