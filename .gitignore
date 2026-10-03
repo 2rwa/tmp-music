@@ -1,0 +1,3 @@
+tests/fixtures/generated/
+__pycache__/
+*.pyc
