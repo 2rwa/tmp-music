@@ -255,10 +255,10 @@ def _as_finite_float(value: object) -> float | None:
 def detect_pitch_movement_events(
     rows: Iterable[dict[str, object]],
     *,
-    window_s: float = 0.20,
-    min_abs_slope_cents_per_s: float = 150.0,
-    min_total_change_cents: float = 40.0,
-    min_r2: float = 0.75,
+    window_s: float = 0.30,
+    min_abs_slope_cents_per_s: float = 200.0,
+    min_total_change_cents: float = 60.0,
+    min_r2: float = 0.80,
     max_gap_s: float = 0.05,
 ) -> list[dict[str, object]]:
     """Detect sustained monotonic F0 movement candidates from M2 consensus frames.
@@ -337,6 +337,12 @@ def detect_pitch_movement_events(
         r2 = 1.0 - residual / centered if centered > 1e-12 else 0.0
         duration = float(segment_times[-1] - segment_times[0])
         total_change = float(slope * duration)
+        if (
+            abs(float(slope)) < min_abs_slope_cents_per_s
+            or abs(total_change) < min_total_change_cents
+            or r2 < min_r2
+        ):
+            continue
         conf = confidence[mask]
         finite_conf = conf[np.isfinite(conf)]
         events.append({
@@ -417,9 +423,18 @@ def detect_register_transition_candidates(
             name for name, value in deltas.items()
             if value is not None and abs(value) >= limits[name]
         ]
-        # F0 alone is never enough: a register-transition candidate must contain
-        # at least one independently measured acoustic/voice-quality change.
-        if len(changed) < 2 or not any(name != "f0_cents" for name in changed):
+        # A register-transition candidate requires a pitch discontinuity plus
+        # at least two independent laryngeal/voice-quality changes. Formants,
+        # intensity and vibrato remain supporting context because phoneme changes
+        # can move them substantially without a register change.
+        voice_quality_evidence = {
+            "praat_cpps_db",
+            "praat_hnr_cc_db",
+            "autocorrelation_hnr_db",
+            "spectral_tilt_db_per_octave",
+        }
+        changed_voice_quality = [name for name in changed if name in voice_quality_evidence]
+        if "f0_cents" not in changed or len(changed_voice_quality) < 2:
             continue
         candidates.append({
             "time_s": float((before_end + after_start) / 2.0),
