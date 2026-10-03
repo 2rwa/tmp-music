@@ -192,7 +192,10 @@ def main() -> int:
             raise FileNotFoundError(f"pitch consensus not found: {args.pitch_consensus}")
         with args.pitch_consensus.open(newline="", encoding="utf-8") as f:
             consensus_rows = list(csv.DictReader(f))
-        pitch_movement_events = detect_pitch_movement_events(consensus_rows)
+        pitch_movement_events = detect_pitch_movement_events(
+            consensus_rows,
+            min_median_confidence=0.50,
+        )
         pitch_movement_status = "ok"
     movement_fields = [
         "start_s", "end_s", "duration_s", "direction", "slope_cents_per_s",
@@ -239,7 +242,11 @@ def main() -> int:
         "pitch_movement": {
             "measurement_status": pitch_movement_status,
             "candidate_count": len(pitch_movement_events),
-            "definition": "Sustained monotonic M2 F0 movement candidates; not asserted sung glissandi.",
+            "minimum_median_selected_confidence": 0.50,
+            "definition": (
+                "Sustained monotonic M2 F0 movement candidates with median selected-F0 "
+                "confidence >= 0.50; not asserted sung glissandi."
+            ),
         },
         "register_transitions": {
             "measurement_status": "ok",
@@ -284,8 +291,8 @@ def main() -> int:
                 "Copied from the M2 stable-target detector: detrended F0 95th minus 5th percentile."
             ),
             "pitch_movement_events": (
-                "M2 selected-F0 windows with sustained approximately linear pitch motion; "
-                "reported only as glissando candidates."
+                "M2 selected-F0 windows with sustained approximately linear pitch motion "
+                "and median selected confidence >= 0.50; reported only as glissando candidates."
             ),
             "register_transitions": (
                 "Candidate boundaries requiring an F0 discontinuity plus at least two "
