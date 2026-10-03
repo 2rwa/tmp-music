@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-10-03",
+  "source_commit": "4da2a606afc647b5997895b9e870ef48330af98c",
+  "milestone": "M6 Voice quality",
+  "status": "COMPLETE",
+  "m7": "HOLD",
+  "validation": {
+    "main_m6_run": 37106744254,
+    "holdout_run": 37105533801,
+    "cheap_ci_run": 37105533803,
+    "praat_version": "6.4.49",
+    "artifacts": {
+      "whisper_ao": {
+        "id": 11268226119,
+        "digest": "sha256:cacedad9efa1e327b0f6d716435a35da295f04c549c5d8797a7f4cc66652868c"
+      },
+      "jugemu": {
+        "id": 11268640196,
+        "digest": "sha256:bec1a01978de79b2a1226148ffa3fcd9fca4890ab37f5c61dde0cd8409b66bd1"
+      },
+      "chichinu_fiija": {
+        "id": 11267579268,
+        "digest": "sha256:1badd8410d843295944ff57d7f3a2b8546fedb274704692056613610ddcc6b9a"
+      }
+    }
+  },
+  "detector": {
+    "pitch_movement_min_median_confidence": 0.5,
+    "pitch_movement_note": "candidate only; not asserted sung glissando",
+    "register_note": "requires F0 discontinuity plus at least two independent voice-quality changes"
+  },
+  "tracks": [
+    {
+      "id": "whisper-ao",
+      "label": "Whisper AO",
+      "stable_targets": 97,
+      "duration_s": 47.8,
+      "autocorr_hnr_db": 15.7018,
+      "spectral_tilt_db_per_octave": -3.0667,
+      "cpps_db": 10.1083,
+      "praat_hnr_db": 24.0685,
+      "f1_hz": 446.203,
+      "f2_hz": 1751.331,
+      "f3_hz": 2523.572,
+      "vibrato_extent_cents": 42.2062,
+      "pitch_movement_candidates": 82,
+      "register_candidates": 16
+    },
+    {
+      "id": "jugemu",
+      "label": "Jugemu",
+      "stable_targets": 18,
+      "duration_s": 5.18,
+      "autocorr_hnr_db": 13.0798,
+      "spectral_tilt_db_per_octave": -2.5779,
+      "cpps_db": 10.8832,
+      "praat_hnr_db": 16.6291,
+      "f1_hz": 738.432,
+      "f2_hz": 1641.567,
+      "f3_hz": 2696.995,
+      "vibrato_extent_cents": 21.8824,
+      "pitch_movement_candidates": 45,
+      "register_candidates": 0
+    },
+    {
+      "id": "chichinu-fiija",
+      "label": "Chichinu Fiija",
+      "stable_targets": 43,
+      "duration_s": 13.47,
+      "autocorr_hnr_db": 12.1969,
+      "spectral_tilt_db_per_octave": -2.7454,
+      "cpps_db": 13.4858,
+      "praat_hnr_db": 19.2395,
+      "f1_hz": 704.659,
+      "f2_hz": 1508.583,
+      "f3_hz": 2638.602,
+      "vibrato_extent_cents": 14.6245,
+      "pitch_movement_candidates": 41,
+      "register_candidates": 1
+    }
+  ]
+}
