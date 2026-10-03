@@ -93,7 +93,7 @@ jobs:
       - name: Commit snapshot data
         run: |
           set -euo pipefail
-          if git diff --quiet -- docs/m6-status/timeline/data; then
+          if [ -z "$(git status --porcelain -- docs/m6-status/timeline/data)" ]; then
             echo "timeline snapshot unchanged"
             exit 0
           fi
