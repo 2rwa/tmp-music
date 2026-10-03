@@ -138,14 +138,18 @@ def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> P
             str(voice.get("tilt_max_hz", 5000.0)),
             "--min-rms-dbfs",
             str(voice.get("min_rms_dbfs", -70.0)),
+            "--praat-min-version",
+            str(voice.get("praat_min_version", "6.4.39")),
         ]
+        if voice.get("require_praat", True):
+            command += ["--require-praat"]
         parameters = {
             "input": input_path,
             "stable_notes": str(stable_notes.relative_to(REPO_ROOT)),
             "source": source,
             **voice,
         }
-        return command, parameters, {}, ["librosa", "numpy"]
+        return command, parameters, {"praat_min_version": voice.get("praat_min_version", "6.4.39")}, ["librosa", "numpy", "soundfile"]
     if stage == "pitch-compare":
         return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
     if stage == "cycle-asr":

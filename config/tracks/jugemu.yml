@@ -36,6 +36,8 @@ analysis:
     tilt_min_hz: 200.0
     tilt_max_hz: 5000.0
     min_rms_dbfs: -70.0
+    require_praat: true
+    praat_min_version: "6.4.39"
   structure:
     sample_rate_hz: 16000
     frame_step_s: 0.25

@@ -8,6 +8,7 @@ spectral_tilt_db_per_octave is a log-spectrum regression over retained bins.
 from __future__ import annotations
 
 import math
+import re
 from typing import Iterable
 
 import numpy as np
@@ -197,3 +198,32 @@ def segment_voice_quality(
         "autocorrelation_hnr_db": finite_summary(hnr_values),
         "spectral_tilt_db_per_octave": finite_summary(tilt_values),
     }
+
+
+_PRAAT_RESULT_RE = re.compile(r"CPPS=([^\\t\\r\\n]+)\\tHNR=([^\\r\\n]+)")
+_PRAAT_VERSION_RE = re.compile(r"Praat\\s+(\\d+)\\.(\\d+)\\.(\\d+)")
+
+
+def parse_praat_cpps_hnr(text: str) -> tuple[float, float]:
+    match = _PRAAT_RESULT_RE.search(text)
+    if not match:
+        raise ValueError(f"unparseable Praat CPPS/HNR output: {text!r}")
+    return float(match.group(1)), float(match.group(2))
+
+
+def parse_praat_version(text: str) -> tuple[int, int, int]:
+    match = _PRAAT_VERSION_RE.search(text)
+    if not match:
+        raise ValueError(f"unparseable Praat version: {text!r}")
+    return tuple(int(match.group(i)) for i in range(1, 4))
+
+
+def parse_version_triplet(text: str) -> tuple[int, int, int]:
+    parts = text.strip().split(".")
+    if len(parts) != 3:
+        raise ValueError(f"expected major.minor.patch version, got {text!r}")
+    return tuple(int(x) for x in parts)
+
+
+def version_at_least(current: tuple[int, int, int], required: tuple[int, int, int]) -> bool:
+    return current >= required

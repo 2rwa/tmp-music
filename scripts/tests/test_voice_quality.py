@@ -13,12 +13,26 @@ if str(SCRIPT_DIR) not in sys.path:
 from common.voice_quality import (
     autocorrelation_hnr_db,
     normalized_autocorrelation_peak,
+    parse_praat_cpps_hnr,
+    parse_praat_version,
+    parse_version_triplet,
     segment_voice_quality,
+    version_at_least,
     spectral_tilt_db_per_octave,
 )
 
 
 class VoiceQualityTests(unittest.TestCase):
+    def test_praat_output_and_version_parsing(self):
+        self.assertEqual(
+            parse_praat_cpps_hnr("CPPS=27.25\tHNR=12.5\n"),
+            (27.25, 12.5),
+        )
+        current = parse_praat_version("Praat 6.4.49 (December 23 2025)")
+        self.assertEqual(current, (6, 4, 49))
+        self.assertTrue(version_at_least(current, parse_version_triplet("6.4.39")))
+        self.assertFalse(version_at_least((6, 4, 38), parse_version_triplet("6.4.39")))
+
     def test_periodic_tone_has_higher_hnr_than_noisy_tone(self):
         sr = 16000
         t = np.arange(int(0.25 * sr), dtype=float) / sr
