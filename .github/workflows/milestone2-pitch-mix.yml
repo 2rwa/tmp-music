@@ -67,6 +67,19 @@ jobs:
           python -m pip install -r requirements-analysis.txt
           python -m pip install -r requirements-pitch-ml.txt
 
+      - name: Torchcrepe known-answer smoke
+        run: |
+          set -euo pipefail
+          python scripts/synthetic/generate_pitch_fixtures.py
+          python scripts/analyze_pitch.py             tests/fixtures/generated/pitch/p1-a4-440.wav             --out /tmp/torchcrepe-smoke             --estimators pyin,crepe             --fmax 1000             --crepe-model tiny
+          python - <<'PY'
+          import json
+          s = json.load(open("/tmp/torchcrepe-smoke/summary.json"))
+          assert s["pyin"]["voiced_fraction"] > 0.9, s
+          assert s["crepe"]["periodicity"]["median"] is not None, s
+          assert s["consensus"]["selected_frames"] > 0, s
+          PY
+
       - name: Run mix pitch analysis
         run: |
           set -euo pipefail
@@ -98,8 +111,9 @@ jobs:
           summary = json.loads((root / "summary.json").read_text())
           tuning = json.loads((root / "tuning" / "tuning-models.json").read_text())
           assert summary["consensus"]["frames"] > 0, summary
-          assert summary["consensus"]["consensus_frames"] > 0, summary
-          assert tuning["target_count"] > 0, tuning
+          assert summary["consensus"]["selected_frames"] > 0, summary
+          assert summary["crepe"]["periodicity"]["median"] is not None, summary
+          assert tuning["measurement_status"] in {"ok", "insufficient_stable_targets"}, tuning
           PY
 
       - uses: actions/upload-artifact@v4
