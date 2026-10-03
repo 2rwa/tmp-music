@@ -65,7 +65,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-core.txt
           python -m pip install -r requirements-analysis.txt
+          python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -r requirements-pitch-ml.txt
+          python -m pip check
 
       - name: Torchcrepe known-answer smoke
         run: |
