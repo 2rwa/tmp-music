@@ -200,8 +200,8 @@ def segment_voice_quality(
     }
 
 
-_PRAAT_RESULT_RE = re.compile(r"CPPS=([^\\t\\r\\n]+)\\tHNR=([^\\r\\n]+)")
-_PRAAT_VERSION_RE = re.compile(r"Praat\\s+(\\d+)\\.(\\d+)\\.(\\d+)")
+_PRAAT_RESULT_RE = re.compile(r"CPPS=([^\t\r\n]+)\tHNR=([^\r\n]+)")
+_PRAAT_VERSION_RE = re.compile(r"Praat\s+(\d+)\.(\d+)\.(\d+)")
 
 
 def parse_praat_cpps_hnr(text: str) -> tuple[float, float]:
