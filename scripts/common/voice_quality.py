@@ -259,14 +259,17 @@ def detect_pitch_movement_events(
     min_abs_slope_cents_per_s: float = 200.0,
     min_total_change_cents: float = 60.0,
     min_r2: float = 0.80,
+    min_median_confidence: float = 0.50,
     max_gap_s: float = 0.05,
 ) -> list[dict[str, object]]:
     """Detect sustained monotonic F0 movement candidates from M2 consensus frames.
 
     The detector intentionally reports candidates rather than asserting that a
     movement is a sung glissando. A window must be well approximated by a line
-    in cents, exceed both slope and total-change thresholds, and remain
-    contiguous in time. This rejects most periodic vibrato excursions.
+    in cents, exceed both slope and total-change thresholds, remain
+    contiguous in time, and have a median selected-F0 confidence at or above
+    the configured threshold. This rejects most periodic vibrato excursions
+    and low-confidence pitch-tracker paths.
     """
     parsed: list[tuple[float, float, float | None]] = []
     for row in rows:
@@ -293,6 +296,13 @@ def detect_pitch_movement_events(
         if len(segment_times) < 5 or float(np.max(np.diff(segment_times))) > max_gap_s:
             continue
         segment_cents = cents[i : j + 1]
+        segment_conf = confidence[i : j + 1]
+        finite_segment_conf = segment_conf[np.isfinite(segment_conf)]
+        if (
+            not finite_segment_conf.size
+            or float(np.median(finite_segment_conf)) < min_median_confidence
+        ):
+            continue
         slope, intercept = np.polyfit(segment_times, segment_cents, 1)
         fitted = slope * segment_times + intercept
         residual = float(np.sum((segment_cents - fitted) ** 2))
@@ -337,14 +347,17 @@ def detect_pitch_movement_events(
         r2 = 1.0 - residual / centered if centered > 1e-12 else 0.0
         duration = float(segment_times[-1] - segment_times[0])
         total_change = float(slope * duration)
+        conf = confidence[mask]
+        finite_conf = conf[np.isfinite(conf)]
+        median_confidence = float(np.median(finite_conf)) if finite_conf.size else None
         if (
             abs(float(slope)) < min_abs_slope_cents_per_s
             or abs(total_change) < min_total_change_cents
             or r2 < min_r2
+            or median_confidence is None
+            or median_confidence < min_median_confidence
         ):
             continue
-        conf = confidence[mask]
-        finite_conf = conf[np.isfinite(conf)]
         events.append({
             "start_s": float(segment_times[0]),
             "end_s": float(segment_times[-1]),
@@ -353,7 +366,7 @@ def detect_pitch_movement_events(
             "slope_cents_per_s": float(slope),
             "total_change_cents": total_change,
             "linear_fit_r2": float(r2),
-            "median_confidence": float(np.median(finite_conf)) if finite_conf.size else None,
+            "median_confidence": median_confidence,
             "interpretation": "glissando_candidate",
         })
     return events
