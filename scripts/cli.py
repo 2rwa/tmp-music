@@ -28,7 +28,7 @@ from common.provenance import (  # noqa: E402
     write_stage_state,
 )
 
-STAGES = ("verify", "metadata", "acoustic", "repetition", "asr", "full")
+STAGES = ("verify", "metadata", "acoustic", "repetition", "separate", "asr", "full")
 
 
 @dataclass(frozen=True)
@@ -86,6 +86,8 @@ def verify_source(track: Track) -> dict[str, Any]:
 
 
 def stage_output(track: Track, stage: str, model: str) -> Path:
+    if stage == "separate":
+        return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
     suffix = f"asr-{model}" if stage == "asr" else stage
     return REPO_ROOT / "analysis" / track.id / "measurements" / suffix
 
@@ -115,6 +117,22 @@ def stage_command(track: Track, stage: str, model: str) -> tuple[list[str], dict
         if rep.get("template_end_s") is not None:
             command += ["--template-end", str(rep["template_end_s"])]
         return command, {"template": rep}, {}, ["librosa", "numpy", "scipy"]
+    if stage == "separate":
+        separation = track.config.get("analysis", {}).get("separation", {})
+        demucs_model = str(separation.get("model", "htdemucs"))
+        device = str(separation.get("device", "cpu"))
+        command = [
+            py,
+            "scripts/separate_vocals.py",
+            track.source_rel,
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--model",
+            demucs_model,
+            "--device",
+            device,
+        ]
+        return command, {"device": device}, {"demucs": demucs_model}, ["demucs", "librosa", "numpy", "soundfile"]
     if stage == "asr":
         asr = track.config.get("analysis", {}).get("asr", {})
         modes = asr.get("modes", ["auto", track.language])
