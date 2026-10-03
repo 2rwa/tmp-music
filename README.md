@@ -6,6 +6,10 @@ Samples:
 - `samples/whisper-ao/source/whisper-ao.mp3`
 - `samples/jugemu/source/jugemu.mp3`
 
-See `docs/audio-analysis.md` for the common pipeline and `docs/jugemu-analysis.md` for the Japanese rap experiment.
+Documentation:
+- `docs/audio-analysis.md` — current analysis pipeline
+- `docs/audio-analysis-research-survey.md` — literature / methods survey
+- `docs/audio-analysis-implementation-plan.md` — implementation roadmap
+- `docs/jugemu-analysis.md` — Jugemu-specific notes
 
 Analysis implementation is under `scripts/`; see `scripts/README.md`.
