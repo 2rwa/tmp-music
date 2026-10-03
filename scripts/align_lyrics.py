@@ -45,12 +45,19 @@ def clip_audio(source: Path, start_s: float | None, end_s: float | None, out: Pa
 
 def prepare_segments(source: Path, reference_surface: str, corpus_dir: Path, *,
                      structure: dict[str, Any] | None, boundary_source: str,
-                     reference_cycle_lines: int) -> list[dict[str, Any]]:
+                     reference_cycle_lines: int, segment_start_s: float | None = None,
+                     segment_end_s: float | None = None) -> list[dict[str, Any]]:
     corpus_dir.mkdir(parents=True, exist_ok=True)
     if structure is None:
-        clip_audio(source, None, None, corpus_dir / "full-track.wav")
+        start_s = 0.0 if segment_start_s is None else float(segment_start_s)
+        end_s = None if segment_end_s is None else float(segment_end_s)
+        if start_s < 0:
+            raise ValueError("segment_start_s must be >= 0")
+        if end_s is not None and end_s <= start_s:
+            raise ValueError("segment_end_s must be greater than segment_start_s")
+        clip_audio(source, start_s, end_s, corpus_dir / "full-track.wav")
         (corpus_dir / "full-track.lab").write_text(reference_surface.strip() + "\n", encoding="utf-8")
-        return [{"id": "full-track", "start_s": 0.0, "end_s": None,
+        return [{"id": "full-track", "start_s": start_s, "end_s": end_s,
                  "reference": reference_surface.strip(), "reference_lines": len(reference_surface.splitlines())}]
 
     cycles = list(structure.get(boundary_source) or [])
@@ -155,6 +162,10 @@ def main() -> int:
     p.add_argument("--acoustic-model", required=True); p.add_argument("--g2p-model")
     p.add_argument("--structure-json", type=Path); p.add_argument("--boundary-source", default="aligned_cycles")
     p.add_argument("--reference-cycle-lines", type=int, default=10)
+    p.add_argument("--segment-start-s", type=float)
+    p.add_argument("--segment-end-s", type=float)
+    p.add_argument("--beam", type=int)
+    p.add_argument("--retry-beam", type=int)
     args = p.parse_args()
     source = args.audio.resolve()
     reference_surface = reference_text(source)
@@ -168,12 +179,18 @@ def main() -> int:
         temp = Path(td); corpus, aligned = temp / "corpus", temp / "aligned"
         segments = prepare_segments(source, reference_surface, corpus, structure=structure,
                                     boundary_source=args.boundary_source,
-                                    reference_cycle_lines=args.reference_cycle_lines)
+                                    reference_cycle_lines=args.reference_cycle_lines,
+                                    segment_start_s=args.segment_start_s,
+                                    segment_end_s=args.segment_end_s)
         (args.out / "prepared-segments.json").write_text(json.dumps(segments, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         cmd = ["mfa", "align", str(corpus), args.dictionary, args.acoustic_model, str(aligned),
                "--output_format", "json", "--include_original_text"]
         if args.g2p_model:
             cmd += ["--g2p_model_path", args.g2p_model]
+        if args.beam is not None:
+            cmd += ["--beam", str(args.beam)]
+        if args.retry_beam is not None:
+            cmd += ["--retry_beam", str(args.retry_beam)]
         proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
         (args.out / "mfa.log").write_text((proc.stdout or "") + ("\n" if proc.stdout and proc.stderr else "") + (proc.stderr or ""), encoding="utf-8")
         if proc.returncode != 0:
@@ -188,7 +205,8 @@ def main() -> int:
         failed_segments = {x["segment_id"] for x in failed}
         result = {"backend": "montreal-forced-aligner", "language": args.language,
                   "dictionary": args.dictionary, "acoustic_model": args.acoustic_model,
-                  "g2p_model": args.g2p_model, "segment_count": len(segments),
+                  "g2p_model": args.g2p_model, "beam": args.beam, "retry_beam": args.retry_beam,
+                  "segment_count": len(segments),
                   "aligned_segment_count": len(segments) - len(failed_segments),
                   "failed_span_count": len(failed),
                   "unit_counts": {k: len(v) for k, v in units.items()},

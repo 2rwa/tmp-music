@@ -331,6 +331,14 @@ def stage_command(
         ]
         if align_cfg.get("g2p_model"):
             command += ["--g2p-model", str(align_cfg["g2p_model"])]
+        if align_cfg.get("segment_start_s") is not None:
+            command += ["--segment-start-s", str(align_cfg["segment_start_s"])]
+        if align_cfg.get("segment_end_s") is not None:
+            command += ["--segment-end-s", str(align_cfg["segment_end_s"])]
+        if align_cfg.get("beam") is not None:
+            command += ["--beam", str(align_cfg["beam"])]
+        if align_cfg.get("retry_beam") is not None:
+            command += ["--retry-beam", str(align_cfg["retry_beam"])]
         if align_cfg.get("segment_source") == "structure_cycles":
             command += ["--structure-json", str(structure_json.relative_to(REPO_ROOT)),
                         "--boundary-source", str(align_cfg.get("boundary_source", "aligned_cycles")),
@@ -340,7 +348,11 @@ def stage_command(
                       "structure_json": str(structure_json.relative_to(REPO_ROOT))
                           if align_cfg.get("segment_source") == "structure_cycles" else None,
                       "boundary_source": align_cfg.get("boundary_source"),
-                      "reference_cycle_lines": align_cfg.get("reference_cycle_lines")}
+                      "reference_cycle_lines": align_cfg.get("reference_cycle_lines"),
+                      "segment_start_s": align_cfg.get("segment_start_s"),
+                      "segment_end_s": align_cfg.get("segment_end_s"),
+                      "beam": align_cfg.get("beam"),
+                      "retry_beam": align_cfg.get("retry_beam")}
         models = {"backend": "montreal-forced-aligner", "dictionary": dictionary,
                   "acoustic_model": acoustic_model, "g2p_model": align_cfg.get("g2p_model")}
         return command, parameters, models, ["montreal-forced-aligner", "mutagen", "pykakasi"]

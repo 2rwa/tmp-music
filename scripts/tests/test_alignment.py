@@ -4,13 +4,14 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from align_lyrics import parse_alignment, project_morae_from_words
+from align_lyrics import parse_alignment, prepare_segments, project_morae_from_words
 
 
 class ForcedAlignmentTests(unittest.TestCase):
@@ -45,6 +46,42 @@ class ForcedAlignmentTests(unittest.TestCase):
             )
             self.assertEqual(units["words"], [])
             self.assertEqual(failed[0]["reason"], "mfa-output-missing")
+
+    @patch("align_lyrics.clip_audio")
+    def test_full_track_reference_window_is_preserved(self, mock_clip_audio):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            source = root / "source.mp3"
+            source.touch()
+            corpus = root / "corpus"
+            segments = prepare_segments(
+                source,
+                "line one\nline two",
+                corpus,
+                structure=None,
+                boundary_source="aligned_cycles",
+                reference_cycle_lines=10,
+                segment_start_s=0.0,
+                segment_end_s=77.5,
+            )
+            mock_clip_audio.assert_called_once_with(source, 0.0, 77.5, corpus / "full-track.wav")
+            self.assertEqual(segments[0]["start_s"], 0.0)
+            self.assertEqual(segments[0]["end_s"], 77.5)
+            self.assertEqual((corpus / "full-track.lab").read_text(encoding="utf-8"), "line one\nline two\n")
+
+    def test_invalid_full_track_reference_window_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            with self.assertRaisesRegex(ValueError, "greater than"):
+                prepare_segments(
+                    Path(td) / "source.mp3",
+                    "line",
+                    Path(td) / "corpus",
+                    structure=None,
+                    boundary_source="aligned_cycles",
+                    reference_cycle_lines=10,
+                    segment_start_s=10.0,
+                    segment_end_s=5.0,
+                )
 
     def test_mora_projection_declares_approximation(self):
         rows = project_morae_from_words([

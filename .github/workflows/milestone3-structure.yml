@@ -8,6 +8,14 @@ on:
       - "scripts/analyze_structure.py"
       - "scripts/common/structure.py"
       - "config/tracks/jugemu.yml"
+      # M5 consumes this workflow's structure artifact, so alignment changes need
+      # a fresh M3 run before the workflow_run chain can validate them.
+      - ".github/workflows/milestone5-forced-alignment.yml"
+      - "scripts/align_lyrics.py"
+      - "scripts/cli.py"
+      - "scripts/tests/test_alignment.py"
+      - "config/tracks/whisper-ao.yml"
+      - "requirements-alignment.txt"
   workflow_dispatch:
 
 permissions:

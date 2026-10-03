@@ -32,6 +32,12 @@ analysis:
     backend: mfa
     language: en
     segment_source: full_track
+    # Existing reviewed boundaries and forced-English ASR both place the known-lyrics
+    # performance end near 77.5 s; do not align the 51 s trailing silence.
+    segment_start_s: 0.0
+    segment_end_s: 77.5
+    beam: 100
+    retry_beam: 400
     dictionary: english_us_arpa
     acoustic_model: english_us_arpa
     g2p_model: english_us_arpa

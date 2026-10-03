@@ -53,7 +53,7 @@ jobs:
         shell: bash -el {0}
         run: |
           set -euo pipefail
-          conda install -y -c conda-forge montreal-forced-aligner=3.4.2 ffmpeg
+          conda install -y -c conda-forge montreal-forced-aligner=3.4.2 ffmpeg spacy sudachipy sudachidict-core
           python -m pip install -r requirements-core.txt -r requirements-alignment.txt
           python -m pip check
           mfa version
