@@ -67,6 +67,8 @@ jobs:
             scripts/cli.py \
             scripts/common/schema.py \
             scripts/common/provenance.py \
+            scripts/common/separation.py \
+            scripts/separate_vocals.py \
             scripts/synthetic/generate_pitch_fixtures.py \
             scripts/synthetic/generate_rhythm_fixtures.py
       - name: Unit tests
