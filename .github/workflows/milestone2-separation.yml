@@ -1,0 +1,119 @@
+name: Milestone 2 Demucs separation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/milestone2-separation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  separate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        track: [whisper-ao, jugemu]
+    steps:
+      - name: Publish pending status
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ github.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRACK: ${{ matrix.track }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": "pending",
+              "context": f"demucs-separation/{os.environ['TRACK']}",
+              "description": "Demucs vocal separation is running",
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-separation.txt
+      - name: Separate vocals
+        run: |
+          set -euo pipefail
+          python scripts/cli.py separate --track "${{ matrix.track }}"
+      - name: Validate stems
+        run: |
+          set -euo pipefail
+          test -s "analysis/${{ matrix.track }}/stems/demucs/vocals.wav"
+          test -s "analysis/${{ matrix.track }}/stems/demucs/accompaniment.wav"
+          test -s "analysis/${{ matrix.track }}/stems/demucs/diagnostics.json"
+          test -s "analysis/${{ matrix.track }}/stems/demucs/provenance.json"
+          test -s "analysis/${{ matrix.track }}/stems/demucs/status.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path("analysis") / os.environ["TRACK"] / "stems" / "demucs"
+          status = json.loads((p / "status.json").read_text())
+          diag = json.loads((p / "diagnostics.json").read_text())
+          assert status["status"] == "success", status
+          assert diag["valid"], diag
+          assert diag["vocals"]["rms"] > 0, diag
+          assert diag["accompaniment"]["rms"] > 0, diag
+          PY
+        env:
+          TRACK: ${{ matrix.track }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demucs-${{ matrix.track }}
+          path: analysis/${{ matrix.track }}/stems/demucs
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish final status
+        if: always()
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ github.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          TRACK: ${{ matrix.track }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          state = "success" if os.environ["JOB_STATUS"] == "success" else "failure"
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": state,
+              "context": f"demucs-separation/{os.environ['TRACK']}",
+              "description": f"Demucs separation {state}",
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
