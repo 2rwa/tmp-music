@@ -1,0 +1,109 @@
+name: M6 holdout acoustic validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/m6-holdout-acoustic.yml"
+      - "config/tracks/chichinu-fiija.yml"
+      - "samples/chichinu-fiija/source/**"
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Track id to validate acoustically"
+        required: true
+        default: "chichinu-fiija"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    env:
+      TRACK: ${{ github.event_name == 'workflow_dispatch' && inputs.track || 'chichinu-fiija' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-core.txt
+            requirements-analysis.txt
+            requirements-separation.txt
+            requirements-pitch-ml.txt
+
+      - name: Install acoustic-analysis dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg praat
+          praat --version
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt -r requirements-analysis.txt
+          python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-separation.txt -r requirements-pitch-ml.txt
+          python -m pip check
+
+      - name: Verify holdout source
+        run: python scripts/cli.py verify --track "${TRACK}"
+
+      - name: Separate vocals
+        run: python scripts/cli.py separate --track "${TRACK}"
+
+      - name: Analyze vocal pitch and stable targets
+        run: |
+          set -euo pipefail
+          python scripts/cli.py pitch --track "${TRACK}" --source vocals
+          python scripts/cli.py targets --track "${TRACK}" --source vocals
+          python scripts/cli.py tuning --track "${TRACK}" --source vocals
+
+      - name: Analyze M6 voice quality
+        run: python scripts/cli.py voice-quality --track "${TRACK}" --source vocals
+
+      - name: Validate holdout outputs
+        run: |
+          set -euo pipefail
+          export ROOT="analysis/${TRACK}"
+          test -s "${ROOT}/stems/demucs/vocals.wav"
+          test -s "${ROOT}/measurements/pitch/vocals/consensus.csv"
+          test -s "${ROOT}/measurements/pitch/vocals/targets/stable-notes.csv"
+          test -s "${ROOT}/measurements/voice-quality/vocals/segments.csv"
+          test -s "${ROOT}/measurements/voice-quality/vocals/pitch-movement-events.csv"
+          test -s "${ROOT}/measurements/voice-quality/vocals/register-transitions.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["ROOT"])
+          pitch = json.loads((root / "measurements/pitch/vocals/summary.json").read_text())
+          vq = json.loads((root / "measurements/voice-quality/vocals/summary.json").read_text())
+          status = json.loads((root / "measurements/voice-quality/vocals/status.json").read_text())
+          assert pitch["consensus"]["selected_frames"] > 0, pitch
+          assert status["status"] == "success", status
+          assert vq["measurement_status"] == "ok", vq
+          assert vq["stable_target_count_measured"] > 0, vq
+          assert vq["praat"]["enabled"] is True and vq["praat"]["version"], vq
+          print(json.dumps({
+              "track": os.environ["TRACK"],
+              "stable_targets": vq["stable_target_count_measured"],
+              "measured_duration_s": vq["measured_duration_s"],
+              "pitch_movement_candidates": vq["pitch_movement"]["candidate_count"],
+              "register_candidates": vq["register_transitions"]["candidate_count"],
+              "praat_version": vq["praat"]["version"],
+              "aggregate_segment_medians": vq["aggregate_segment_medians"],
+          }, ensure_ascii=False, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m6-holdout-${{ env.TRACK }}
+          path: |
+            analysis/${{ env.TRACK }}/stems/demucs/diagnostics.json
+            analysis/${{ env.TRACK }}/measurements/pitch/vocals
+            analysis/${{ env.TRACK }}/measurements/voice-quality/vocals
+          if-no-files-found: error
+          retention-days: 14
