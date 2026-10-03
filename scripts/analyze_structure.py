@@ -101,6 +101,7 @@ def main() -> int:
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--sr", type=int, default=16000)
     p.add_argument("--frame-step", type=float, default=0.25)
+    p.add_argument("--tempo-hop-length", type=int, default=512)
     p.add_argument("--min-period", type=float, default=20.0)
     p.add_argument("--max-period", type=float, default=40.0)
     p.add_argument("--anchor-start", type=float, default=0.0)
@@ -111,6 +112,8 @@ def main() -> int:
 
     if args.frame_step <= 0:
         raise ValueError("frame-step must be positive")
+    if args.tempo_hop_length <= 0:
+        raise ValueError("tempo-hop-length must be positive")
     if args.min_period <= 0 or args.max_period <= args.min_period:
         raise ValueError("period search range is invalid")
 
@@ -121,20 +124,33 @@ def main() -> int:
     frames = min(len(v) for v in views.values())
     duration_s = len(y) / sr
 
-    onset_envelope = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+    # Tempo needs a much finer time base than the slow recurrence grid.
+    # Keeping these hops independent prevents coarse-grid beat quantization.
+    tempo_hop_length = int(args.tempo_hop_length)
+    tempo_frame_step_s = tempo_hop_length / sr
+    onset_envelope = librosa.onset.onset_strength(
+        y=y,
+        sr=sr,
+        hop_length=tempo_hop_length,
+    )
     primary_tempo, beat_frames = librosa.beat.beat_track(
         onset_envelope=onset_envelope,
         sr=sr,
-        hop_length=hop_length,
+        hop_length=tempo_hop_length,
         units="frames",
     )
     primary_bpm = float(np.atleast_1d(primary_tempo)[0])
     beat_times_s = librosa.frames_to_time(
         np.asarray(beat_frames),
         sr=sr,
-        hop_length=hop_length,
+        hop_length=tempo_hop_length,
     )
     tempo = tempo_candidate_set(primary_bpm, beat_times_s)
+    tempo.update({
+        "hop_length_samples": tempo_hop_length,
+        "frame_step_s": tempo_frame_step_s,
+        "time_base": "high_resolution_onset_envelope",
+    })
 
     min_lag = max(1, round(args.min_period / frame_step_s))
     max_lag = min(frames - 1, round(args.max_period / frame_step_s))
@@ -288,6 +304,9 @@ def main() -> int:
             "double_bpm": tempo["double_bpm"],
             "confidence": tempo["confidence"],
             "beat_count": tempo["beat_count"],
+            "hop_length_samples": tempo["hop_length_samples"],
+            "frame_step_s": tempo["frame_step_s"],
+            "time_base": tempo["time_base"],
         },
         "period_candidates": [
             {

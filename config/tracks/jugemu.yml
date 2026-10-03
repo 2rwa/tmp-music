@@ -31,6 +31,7 @@ analysis:
   structure:
     sample_rate_hz: 16000
     frame_step_s: 0.25
+    tempo_hop_length: 512
     min_period_s: 20.0
     max_period_s: 40.0
     anchor_start_s: 12.0

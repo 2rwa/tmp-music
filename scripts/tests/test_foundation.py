@@ -68,6 +68,13 @@ class FoundationTests(unittest.TestCase):
         self.assertIn("scripts/asr_compare.py", asr)
         self.assertEqual(params["template"]["template_start_s"], 12.0)
         self.assertEqual(structure_params["anchor_start_s"], 12.0)
+        self.assertEqual(structure_params["tempo_hop_length"], 512)
+        tempo_hop_index = structure.index("--tempo-hop-length")
+        self.assertEqual(structure[tempo_hop_index + 1], "512")
+        self.assertLess(
+            structure_params["tempo_hop_length"] / structure_params["sample_rate_hz"],
+            structure_params["frame_step_s"],
+        )
         self.assertEqual(structure_params["min_period_s"], 20.0)
         self.assertEqual(structure_params["max_period_s"], 40.0)
         self.assertEqual(structure_params["alignment_template_duration_s"], 22.0)

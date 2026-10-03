@@ -99,6 +99,9 @@ jobs:
           assert any(90.0 <= x <= 110.0 for x in tempo_values), tempo
           assert any(180.0 <= x <= 220.0 for x in tempo_values), tempo
           assert len(tempo["beat_timestamps_s"]) > 10, tempo
+          assert tempo["time_base"] == "high_resolution_onset_envelope", tempo
+          assert tempo["hop_length_samples"] == 512, tempo
+          assert tempo["frame_step_s"] < result["frame_step_s"], (tempo, result)
           PY
 
       - uses: actions/upload-artifact@v4

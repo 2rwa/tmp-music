@@ -168,6 +168,8 @@ def stage_command(
             str(structure.get("sample_rate_hz", 16000)),
             "--frame-step",
             str(structure.get("frame_step_s", 0.25)),
+            "--tempo-hop-length",
+            str(structure.get("tempo_hop_length", 512)),
             "--min-period",
             str(structure.get("min_period_s", 20.0)),
             "--max-period",
