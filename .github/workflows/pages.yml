@@ -27,6 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Browser analyzer self-test
+        run: node tests/browser-analyzer-selftest.mjs docs/m6-status/timeline-browser/app.js
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
