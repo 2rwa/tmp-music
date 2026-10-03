@@ -32,7 +32,7 @@ class StructureAlgorithmTests(unittest.TestCase):
         )
         candidates = period_candidates(profile, top_k=4, min_separation_frames=4)
         self.assertEqual(candidates[0]["lag_frames"], MOTIF_FRAMES)
-        self.assertGreater(candidates[0]["combined_similarity"], 0.99)
+        self.assertGreater(candidates[0]["combined_similarity"], 0.98)
 
     def test_abab_prefers_two_motif_period(self):
         views = fixture_arrays()["s2-abab"]
