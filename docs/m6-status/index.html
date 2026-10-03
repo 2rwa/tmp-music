@@ -22,7 +22,7 @@ footer{margin-top:3rem;color:var(--muted);font-size:.85rem}@media(max-width:800p
   <div class="eyebrow">2rwa / tmp-music · 2026-10-03</div>
   <h1>M6 Voice Quality</h1>
   <span class="status">COMPLETE</span>
-  <p>M1〜M6まで完了。M7 Cultural comparison は HOLD。ここでは confidence guard 適用後に再検証した3つの実音源の最新M6測定結果を表示する。</p>
+  <p>M1〜M6まで完了。M7 Cultural comparison は HOLD。confidence guard 適用後のsegment測定と、Level 1 / Level 2 時間軸可視化まで完了している。</p>
   <div class="runs">
     <a href="https://github.com/2rwa/tmp-music/actions/runs/37106744254">M6 real-audio run 37106744254</a>
     <a href="https://github.com/2rwa/tmp-music/actions/runs/37105533801">holdout run 37105533801</a>
@@ -30,6 +30,7 @@ footer{margin-top:3rem;color:var(--muted);font-size:.85rem}@media(max-width:800p
     <a href="./data.json">machine-readable data.json</a>
     <a href="./timeline/">Level 1 timeline visualization</a>
     <a href="./timeline-v2/">Level 2 continuous timeline</a>
+    <a href="https://github.com/2rwa/tmp-music/actions/runs/37116225090">Level 2 run 37116225090</a>
   </div>
 </section>
 
@@ -74,10 +75,21 @@ footer{margin-top:3rem;color:var(--muted);font-size:.85rem}@media(max-width:800p
 </tbody>
 </table>
 
+<h2>Level 2 continuous validation</h2>
+<table>
+<thead><tr><th>Track</th><th>Local metric frames</th><th>Praat frames</th><th>Full-track CPPS</th></tr></thead>
+<tbody>
+<tr><td>Whisper AO</td><td>6,820</td><td>10,347</td><td>10.00 dB</td></tr>
+<tr><td>Jugemu</td><td>6,518</td><td>11,997</td><td>8.12 dB</td></tr>
+<tr><td>Chichinu Fiija</td><td>3,734</td><td>6,113</td><td>9.48 dB</td></tr>
+</tbody>
+</table>
+<div class="note"><strong>Level 2:</strong> 20 ms local metric系列とPraat continuous seriesを追加。final run <code>37116225090</code>、snapshot <code>fc96a9e1545d0b8c363789ec26c7dc9127227b61</code>、Pages deploy <code>37116722140</code> は live validation まで success。</div>
+
 <h2>Interpretation limits</h2>
 <p>このページは測定結果のスナップショットであり、声の良し悪し・歌唱意図・言語や文化の分類を行うものではない。Pitch movement は glissando の断定ではなく候補、register transition も候補検出である。Formant は source separation、F0、歌唱母音の影響を受け得るため、単独で強い解釈をしない。</p>
 
-<footer>tmp-music M6 status snapshot · M7 remains HOLD.</footer>
+<footer>tmp-music M6 final snapshot · M1–M6 COMPLETE · M7 remains HOLD.</footer>
 </main>
 </body>
 </html>

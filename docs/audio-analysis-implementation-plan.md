@@ -6,7 +6,7 @@
 実装原則: `chatgpt-workspace/docs/build-test-fix.md`  
 現状スナップショット: `docs/STATUS_20261003.md`
 
-> 進捗更新: 2026-10-03。M1〜M6は完了。M7はHOLDし、次目標はM6実測結果をレビューして決める。
+> 進捗更新: 2026-10-04。M1〜M6は完了。完了記録の正本は `docs/M1_M6_FINAL_20261004.md`。M7はHOLD / NOT STARTED。
 
 ---
 
@@ -852,65 +852,57 @@ Whisper AO:
 
 ---
 
-## B3. Voice quality
+## B3. Voice quality — COMPLETE (M6)
 
-### 新規
+実装:
 
-- `scripts/analyze_voice.py`
+- `scripts/analyze_voice_quality.py`
+- `scripts/common/voice_quality.py`
+- Praat helper scripts
 
-Praat/Parselmouth候補。
+segment-level測定:
 
-測定:
-
-- CPPS
-- HNR
+- calibrated CPPS
+- Praat Harmonicity(cc) HNR
+- F0-guided autocorrelation HNR
 - spectral tilt
-- F1/F2/F3
-- intensity
-- register transitions
-- vibrato
-- glissando
+- Burg F1/F2/F3
+- intensity context
+- M2 stable-target vibrato extent
+- selected-F0 pitch-movement candidate
 
-### 区間選択
+区間はstable voiced targetを中心に扱い、全frame値とsegment代表値を混同しない。
 
-全frameへ無理に適用しない。
+主要出力:
 
-対象:
+- `segments.csv`
+- `pitch-movement-events.csv`
+- `register-transitions.json`
+- `summary.json`
+- `provenance.json`
+- `status.json`
 
-- stable voiced
-- vowel-dominant
-- F0 confidence high
-
-### 出力
-
-    voice/
-      frames.csv
-      stable-segments.csv
-      register-breaks.csv
-      summary.json
+Level 2ではsegment定義を変えず、20 ms系列のCPPS / HNR / tilt / local pitch modulationを追加した。
 
 ---
 
-## B4. Register transition detector
+## B4. Register transition detector — COMPLETE (M6)
 
-目的:
+候補成立条件:
 
-元ちとせ的な「裏返り」やAI生成の声区切替を定量化する。
+- F0 discontinuity
+- calibrated CPPS / Praat HNR / autocorrelation HNR / spectral tilt のうち最低2種類の独立変化
 
-候補特徴:
-
-- F0 jump
-- spectral tilt jump
-- CPPS jump
-- formant continuity
-- energy redistribution
+F1/F2/F3・intensity・vibratoはbefore/after contextとして保持するが、候補成立条件には使わない。
 
 出力:
 
-- start/end
+- candidate time
 - before/after F0
-- before/after source features
-- confidence
+- changed voice-quality features
+- before/after supporting context
+
+これはregister transitionの**候補検出**であり、歌唱意図を断定しない。
 
 ---
 
@@ -1465,23 +1457,38 @@ F1/F2/F3・intensity・vibratoはbefore/afterの補助contextとして保持す�
 
 ### 最終validation
 
-- cheap CI `37101306895` — success
-- Praat known-answer smoke `37101306899` — success
-- M6 real-audio E2E `37101306889` — Whisper AO / Jugemu とも success
-- artifact:
-  - Whisper AO `11266196721`
-  - Jugemu `11266885749`
-- `provenance.json` の `tool_versions.praat` に Praat 6.4.49 を保存していることをartifact展開後に確認
+segment-level confidence guard後:
+
+- M6 real-audio `37106744254` — Whisper AO / Jugemu success
+- Chichinu Fiija holdout `37105533801` — success
+- artifacts: `11268226119`, `11268640196`, `11267579268`
+- Praat 6.4.49
+
+Level 2 continuous time series:
+
+- final run `37116225090` — 3 tracks + publish success
+- artifacts:
+  - Whisper AO `11272086196`
+  - Jugemu `11271726804`
+  - Chichinu Fiija `11271721474`
+- snapshot commit `fc96a9e1545d0b8c363789ec26c7dc9127227b61`
+- Pages deploy `37116722140` — success + live HTTP validation
+
+Pages:
+
+- `https://2rwa.github.io/tmp-music/m6-status/`
+- `https://2rwa.github.io/tmp-music/m6-status/timeline/`
+- `https://2rwa.github.io/tmp-music/m6-status/timeline-v2/`
 
 ### 完了条件
 
-CPPS / 2系統HNR / tilt / formants / M2 F0系特徴をstable vocal区間で取得し、register transition候補を複数特徴のbefore/afterとしてmachine-readableに保存できる。Whisper AO / Jugemu両方でE2E successし、cheap CI・known-answer smoke・provenance・artifactまで確認済み。
+segment-level CPPS / 2系統HNR / tilt / formants / M2 F0系特徴を取得し、pitch movementとregister transitionをcandidate semantics付きでmachine-readableに保存できること。3曲の実音源で再検証し、Level 1/2可視化、provenance、artifact、Pages live validationまで完了。
 
 ---
 
 ## Milestone 7 — Cultural comparison — HOLD / NOT STARTED
 
-M6は完了したが、M7へ自動的には進まない。次の目標はM6実測結果をレビューした上でユーザーと決める。
+M6は完了済み。M7へ自動的には進まない。ユーザーが明示的に開始を指示するまでHOLDを維持する。
 
 
 - [ ] reference corpus manifest
@@ -1610,7 +1617,8 @@ M6は完了したが、M7へ自動的には進まない。次の目標はM6実�
 - `docs/audio-analysis.md` — 現行解析手順
 - `docs/audio-analysis-research-survey.md` — 文献調査と技術選定根拠
 - `docs/jugemu-analysis.md` — じゅげむ固有の観測
-- `docs/STATUS_20261003.md` — 現在の実装・実測・既知課題
+- `docs/M1_M6_FINAL_20261004.md` — M1〜M6完了記録の正本
+- `docs/STATUS_20261003.md` — 現在の短い状態
 - `scripts/README.md` — 現行スクリプト実行方法
 
 この計画書は、調査書の「何が有効か」を、tmp-music上で「何をどの順に作り、どう検証するか」へ変換したものとして扱う。
