@@ -336,3 +336,38 @@ def template_alignment_starts(
         previous = start
         k += 1
     return rows
+
+
+def tempo_candidate_set(primary_bpm: float, beat_times_s: Iterable[float]) -> dict[str, object]:
+    """Preserve half/double tempo ambiguity and a beat-regularity confidence.
+
+    The confidence describes regularity of detected beat intervals, not
+    certainty that the primary metrical level is the musically intended BPM.
+    """
+    primary = float(primary_bpm)
+    if not np.isfinite(primary) or primary <= 0:
+        raise ValueError("primary_bpm must be finite and positive")
+    beats = np.asarray(list(beat_times_s), dtype=np.float64)
+    intervals = np.diff(beats)
+    intervals = intervals[np.isfinite(intervals) & (intervals > 0)]
+    if len(intervals) >= 2:
+        mean_interval = float(np.mean(intervals))
+        cv = float(np.std(intervals) / mean_interval) if mean_interval > 0 else float("nan")
+        confidence = float(1.0 / (1.0 + cv)) if np.isfinite(cv) else None
+    else:
+        cv = None
+        confidence = None
+    return {
+        "primary_bpm": primary,
+        "half_bpm": primary / 2.0,
+        "double_bpm": primary * 2.0,
+        "confidence": confidence,
+        "confidence_kind": "beat_interval_regularity_1_over_1_plus_cv",
+        "beat_interval_cv": cv,
+        "beat_count": int(len(beats)),
+        "beat_timestamps_s": [float(x) for x in beats],
+        "interpretation_warning": (
+            "Primary/half/double are retained as metrical alternatives. "
+            "Confidence measures detected-beat regularity, not certainty about the intended metrical level."
+        ),
+    }
