@@ -163,6 +163,8 @@ jobs:
           python scripts/compare_pitch_sources.py             --track "${{ matrix.track }}"             --mix "analysis/${{ matrix.track }}/measurements/pitch/mix"             --vocals "analysis/${{ matrix.track }}/measurements/pitch/vocals"             --out "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals"
           test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/comparison.json"
           test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/measurements.md"
+          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/provenance.json"
+          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/status.json"
 
       - uses: actions/upload-artifact@v4
         with:
