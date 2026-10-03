@@ -23,6 +23,7 @@ from common.structure import (
     pairwise_cycle_distances,
     period_candidates,
     template_alignment_starts,
+    tempo_candidate_set,
     view_agreement,
     zscore_features,
 )
@@ -120,6 +121,21 @@ def main() -> int:
     frames = min(len(v) for v in views.values())
     duration_s = len(y) / sr
 
+    onset_envelope = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+    primary_tempo, beat_frames = librosa.beat.beat_track(
+        onset_envelope=onset_envelope,
+        sr=sr,
+        hop_length=hop_length,
+        units="frames",
+    )
+    primary_bpm = float(np.atleast_1d(primary_tempo)[0])
+    beat_times_s = librosa.frames_to_time(
+        np.asarray(beat_frames),
+        sr=sr,
+        hop_length=hop_length,
+    )
+    tempo = tempo_candidate_set(primary_bpm, beat_times_s)
+
     min_lag = max(1, round(args.min_period / frame_step_s))
     max_lag = min(frames - 1, round(args.max_period / frame_step_s))
     profile = multiview_lag_profile(
@@ -211,6 +227,10 @@ def main() -> int:
 
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    (out / "tempo.json").write_text(
+        json.dumps(tempo, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     ssm_payload = {
         name: cosine_similarity_matrix(zscore_features(feature)).astype(np.float32)
@@ -262,6 +282,13 @@ def main() -> int:
             for name, value in views.items()
         },
         "period_search_s": [args.min_period, args.max_period],
+        "tempo": {
+            "primary_bpm": tempo["primary_bpm"],
+            "half_bpm": tempo["half_bpm"],
+            "double_bpm": tempo["double_bpm"],
+            "confidence": tempo["confidence"],
+            "beat_count": tempo["beat_count"],
+        },
         "period_candidates": [
             {
                 **row,
