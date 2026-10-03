@@ -300,6 +300,8 @@ def stage_command(
             str(cycle_cfg.get("compute_type", "int8")),
             "--boundary-source",
             str(cycle_cfg.get("boundary_source", "aligned_cycles")),
+            "--reference-cycle-lines",
+            str(cycle_cfg.get("reference_cycle_lines", 10)),
         ]
         return command, {
             "structure_json": str(structure_json.relative_to(REPO_ROOT)),
