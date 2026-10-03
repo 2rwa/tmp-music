@@ -185,6 +185,15 @@ jobs:
           EOF
 
       - name: Commit available results
+        id: writeback
         run: |
           set -euo pipefail
           python scripts/common/github_writeback.py "Add Whisper AO Actions analysis results" analysis/whisper-ao
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-whisper-ao-analysis
+          path: analysis/whisper-ao
+          retention-days: 14

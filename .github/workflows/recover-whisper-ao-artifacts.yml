@@ -43,6 +43,15 @@ jobs:
           find analysis/whisper-ao -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
 
       - name: Commit recovered results
+        id: writeback
         run: |
           set -euo pipefail
           python scripts/common/github_writeback.py "Recover Whisper AO analysis artifacts" analysis/whisper-ao
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-whisper-ao-recovery
+          path: analysis/whisper-ao
+          retention-days: 14

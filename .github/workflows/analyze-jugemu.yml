@@ -129,6 +129,15 @@ jobs:
           - asr-medium: ${{ needs.asr-medium.result }}
           EOF
       - name: Commit results
+        id: writeback
         run: |
           set -euo pipefail
           python scripts/common/github_writeback.py "Add Jugemu Actions analysis results" analysis/jugemu
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-jugemu-analysis
+          path: analysis/jugemu
+          retention-days: 14

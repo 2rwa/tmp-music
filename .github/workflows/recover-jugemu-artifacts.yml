@@ -43,6 +43,15 @@ jobs:
           find analysis/jugemu -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
 
       - name: Commit recovered results
+        id: writeback
         run: |
           set -euo pipefail
           python scripts/common/github_writeback.py "Recover Jugemu analysis artifacts" analysis/jugemu
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-jugemu-recovery
+          path: analysis/jugemu
+          retention-days: 14

@@ -91,10 +91,18 @@ jobs:
           PY
 
       - name: Commit snapshot data
+        id: writeback
         run: |
           set -euo pipefail
           python scripts/common/github_writeback.py "Update M6 timeline snapshot data" docs/m6-status/timeline/data
 
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-m6-timeline
+          path: docs/m6-status/timeline/data
+          retention-days: 14
 
       - name: Dispatch Pages deployment
         env:
