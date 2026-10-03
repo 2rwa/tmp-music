@@ -18,7 +18,6 @@ on:
 permissions:
   actions: read
   contents: read
-  statuses: write
 
 jobs:
   jugemu-mfa:
@@ -50,7 +49,7 @@ jobs:
           python-version: "3.12"
           miniforge-version: latest
           auto-activate-base: false
-      - name: Install MFA and project dependencies
+      - name: Install MFA and Japanese models
         shell: bash -el {0}
         run: |
           set -euo pipefail
@@ -69,10 +68,13 @@ jobs:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
-      - name: Run known-lyrics alignment
+      - name: Run Jugemu known-lyrics alignment
+        id: align
+        continue-on-error: true
         shell: bash -el {0}
         run: python scripts/cli.py align --track jugemu
-      - name: Validate forced alignment
+      - name: Validate Jugemu alignment
+        if: ${{ steps.align.outcome == 'success' }}
         shell: bash -el {0}
         run: |
           set -euo pipefail
@@ -96,9 +98,91 @@ jobs:
           assert result["unit_counts"]["phones"] > 0, result
           assert result["unit_counts"]["morae"] > 0, result
           PY
-      - uses: actions/upload-artifact@v4
+      - name: Upload Jugemu diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: forced-alignment-jugemu
           path: analysis/jugemu/measurements/alignment-mfa
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
+      - name: Propagate alignment failure
+        if: ${{ steps.align.outcome != 'success' }}
+        run: exit 1
+
+  whisper-ao-mfa:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Resolve source SHA
+        id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            echo "sha=${EVENT_SHA}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "sha=${{ inputs.source_sha }}" >> "${GITHUB_OUTPUT}"
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: tmp-music-mfa
+          python-version: "3.12"
+          miniforge-version: latest
+          auto-activate-base: false
+      - name: Install MFA and English models
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          conda install -y -c conda-forge montreal-forced-aligner=3.4.2 ffmpeg
+          python -m pip install -r requirements-core.txt -r requirements-alignment.txt
+          python -m pip check
+          mfa version
+          mfa model download dictionary english_us_arpa
+          mfa model download acoustic english_us_arpa
+          mfa model download g2p english_us_arpa
+      - name: Run Whisper AO known-lyrics alignment
+        id: align
+        continue-on-error: true
+        shell: bash -el {0}
+        run: python scripts/cli.py align --track whisper-ao
+      - name: Validate Whisper AO alignment
+        if: ${{ steps.align.outcome == 'success' }}
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          root="analysis/whisper-ao/measurements/alignment-mfa"
+          test -s "${root}/alignment.json"
+          test -s "${root}/alignment.tsv"
+          test -s "${root}/failed-spans.json"
+          test -s "${root}/mfa.log"
+          test -s "${root}/provenance.json"
+          test -s "${root}/status.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("analysis/whisper-ao/measurements/alignment-mfa")
+          result = json.loads((root / "alignment.json").read_text())
+          status = json.loads((root / "status.json").read_text())
+          assert status["status"] == "success", status
+          assert result["segment_count"] == 1, result
+          assert result["unit_counts"]["words"] > 0, result
+          assert result["unit_counts"]["phones"] > 0, result
+          PY
+      - name: Upload Whisper AO diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forced-alignment-whisper-ao
+          path: analysis/whisper-ao/measurements/alignment-mfa
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Propagate alignment failure
+        if: ${{ steps.align.outcome != 'success' }}
+        run: exit 1
