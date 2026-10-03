@@ -107,28 +107,6 @@ def analysis_input(track: Track, source: str) -> str:
 
 
 def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> Path:
-    if stage == "structure":
-        structure = track.config.get("analysis", {}).get("structure", {})
-        command = [
-            py,
-            "scripts/analyze_structure.py",
-            track.source_rel,
-            "--out",
-            str(out.relative_to(REPO_ROOT)),
-            "--sr",
-            str(structure.get("sample_rate_hz", 16000)),
-            "--frame-step",
-            str(structure.get("frame_step_s", 0.25)),
-            "--min-period",
-            str(structure.get("min_period_s", 20.0)),
-            "--max-period",
-            str(structure.get("max_period_s", 40.0)),
-            "--anchor-start",
-            str(structure.get("anchor_start_s", 0.0)),
-            "--top-k",
-            str(structure.get("top_k", 8)),
-        ]
-        return command, structure, {}, ["librosa", "numpy"]
     if stage == "separate":
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
     if stage == "pitch-compare":
@@ -175,6 +153,28 @@ def stage_command(
         if rep.get("template_end_s") is not None:
             command += ["--template-end", str(rep["template_end_s"])]
         return command, {"template": rep}, {}, ["librosa", "numpy", "scipy"]
+    if stage == "structure":
+        structure = track.config.get("analysis", {}).get("structure", {})
+        command = [
+            py,
+            "scripts/analyze_structure.py",
+            track.source_rel,
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--sr",
+            str(structure.get("sample_rate_hz", 16000)),
+            "--frame-step",
+            str(structure.get("frame_step_s", 0.25)),
+            "--min-period",
+            str(structure.get("min_period_s", 20.0)),
+            "--max-period",
+            str(structure.get("max_period_s", 40.0)),
+            "--anchor-start",
+            str(structure.get("anchor_start_s", 0.0)),
+            "--top-k",
+            str(structure.get("top_k", 8)),
+        ]
+        return command, structure, {}, ["librosa", "numpy"]
     if stage == "separate":
         separation = track.config.get("analysis", {}).get("separation", {})
         demucs_model = str(separation.get("model", "htdemucs"))
