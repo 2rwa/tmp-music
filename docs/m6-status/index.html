@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tmp-music M6 Voice Quality Status</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#131a2d;--line:#2a3554;--text:#e8eefc;--muted:#a9b4d0;--good:#59d499;--accent:#7cb7ff;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#08101f,#0e1424 55%,#0b1020);color:var(--text);line-height:1.55}
+main{max-width:1120px;margin:auto;padding:36px 20px 72px}.eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(2rem,6vw,4.2rem);line-height:1;margin:.25rem 0 1rem;letter-spacing:-.04em}h2{margin-top:2.4rem;font-size:1.45rem}p{color:var(--muted)}
+.hero,.card,.note{border:1px solid var(--line);background:rgba(19,26,45,.88);border-radius:18px}.hero{padding:26px}.status{display:inline-flex;gap:.5rem;align-items:center;padding:.45rem .75rem;border-radius:999px;background:#123c2d;color:#b8f6d8;font-weight:700}.status:before{content:"";width:.6rem;height:.6rem;border-radius:50%;background:var(--good)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}.card{padding:18px}.card h3{margin:.1rem 0 .7rem}.big{font-size:2rem;font-weight:800}.small{font-size:.84rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;background:rgba(19,26,45,.7);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:block;overflow-x:auto}th,td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}th:first-child,td:first-child{text-align:left}thead{background:#18223a}
+.note{padding:16px 18px;margin:12px 0}.note strong{color:var(--text)}code{color:#cde4ff}a{color:#9ec8ff}.runs{display:flex;flex-wrap:wrap;gap:8px}.runs a{border:1px solid var(--line);border-radius:999px;padding:.35rem .65rem;text-decoration:none}
+footer{margin-top:3rem;color:var(--muted);font-size:.85rem}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<section class="hero">
+  <div class="eyebrow">2rwa / tmp-music · 2026-10-03</div>
+  <h1>M6 Voice Quality</h1>
+  <span class="status">COMPLETE</span>
+  <p>M1〜M6まで完了。M7 Cultural comparison は HOLD。ここでは confidence guard 適用後に再検証した3つの実音源の最新M6測定結果を表示する。</p>
+  <div class="runs">
+    <a href="https://github.com/2rwa/tmp-music/actions/runs/37106744254">M6 real-audio run 37106744254</a>
+    <a href="https://github.com/2rwa/tmp-music/actions/runs/37105533801">holdout run 37105533801</a>
+    <a href="https://github.com/2rwa/tmp-music/actions/runs/37105533803">cheap CI 37105533803</a>
+    <a href="./data.json">machine-readable data.json</a>
+  </div>
+</section>
+
+<h2>Latest real-audio validation</h2>
+<div class="grid">
+  <article class="card"><h3>Whisper AO</h3><div class="big">97</div><div class="small">stable targets · 47.80 s measured</div><p>movement 82 · register 16</p></article>
+  <article class="card"><h3>Jugemu</h3><div class="big">18</div><div class="small">stable targets · 5.18 s measured</div><p>movement 45 · register 0</p></article>
+  <article class="card"><h3>Chichinu Fiija</h3><div class="big">43</div><div class="small">stable targets · 13.47 s measured</div><p>movement 41 · register 1</p></article>
+</div>
+
+<h2>Segment median comparison</h2>
+<table>
+<thead><tr><th>Metric</th><th>Whisper AO</th><th>Jugemu</th><th>Chichinu Fiija</th></tr></thead>
+<tbody>
+<tr><td>CPPS (Praat)</td><td>10.11 dB</td><td>10.88 dB</td><td>13.49 dB</td></tr>
+<tr><td>HNR (Praat cc)</td><td>24.07 dB</td><td>16.63 dB</td><td>19.24 dB</td></tr>
+<tr><td>HNR (autocorrelation)</td><td>15.70 dB</td><td>13.08 dB</td><td>12.20 dB</td></tr>
+<tr><td>Spectral tilt</td><td>-3.07 dB/oct</td><td>-2.58 dB/oct</td><td>-2.75 dB/oct</td></tr>
+<tr><td>F1</td><td>446 Hz</td><td>738 Hz</td><td>705 Hz</td></tr>
+<tr><td>F2</td><td>1751 Hz</td><td>1642 Hz</td><td>1509 Hz</td></tr>
+<tr><td>F3</td><td>2524 Hz</td><td>2697 Hz</td><td>2639 Hz</td></tr>
+<tr><td>Vibrato extent (p95-p05)</td><td>42.21 cent</td><td>21.88 cent</td><td>14.62 cent</td></tr>
+<tr><td>Pitch-movement candidates</td><td>82</td><td>45</td><td>41</td></tr>
+<tr><td>Register-transition candidates</td><td>16</td><td>0</td><td>1</td></tr>
+</tbody>
+</table>
+
+<h2>What M6 now measures</h2>
+<div class="note"><strong>Voice quality:</strong> calibrated Praat CPPS、Praat HNR(cc)、独自autocorrelation HNR、spectral tilt、Praat Burg F1/F2/F3。</div>
+<div class="note"><strong>M2 integration:</strong> stable-target vibrato extent と selected-F0 の pitch movement candidate をM6へ統合。</div>
+<div class="note"><strong>Pitch movement guard:</strong> slope / total-change / R² に加え、イベントの median selected-F0 confidence ≥ <code>0.50</code> を必須化。低confidence軌跡を候補から除外する。</div>
+<div class="note"><strong>Register candidate:</strong> F0 discontinuity に加え、CPPS / Praat HNR / autocorrelation HNR / spectral tilt のうち2種類以上の独立変化を要求する。formant・intensity・vibratoは補助情報のみ。</div>
+
+<h2>Validation provenance</h2>
+<table>
+<tbody>
+<tr><td>Source commit</td><td><code>4da2a606afc647b5997895b9e870ef48330af98c</code></td></tr>
+<tr><td>Praat</td><td>6.4.49</td></tr>
+<tr><td>Whisper AO artifact</td><td><code>11268226119</code></td></tr>
+<tr><td>Jugemu artifact</td><td><code>11268640196</code></td></tr>
+<tr><td>Chichinu Fiija artifact</td><td><code>11267579268</code></td></tr>
+</tbody>
+</table>
+
+<h2>Interpretation limits</h2>
+<p>このページは測定結果のスナップショットであり、声の良し悪し・歌唱意図・言語や文化の分類を行うものではない。Pitch movement は glissando の断定ではなく候補、register transition も候補検出である。Formant は source separation、F0、歌唱母音の影響を受け得るため、単独で強い解釈をしない。</p>
+
+<footer>tmp-music M6 status snapshot · M7 remains HOLD.</footer>
+</main>
+</body>
+</html>

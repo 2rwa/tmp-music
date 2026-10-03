@@ -74,6 +74,19 @@ M7 Cultural comparison は引き続き HOLD。次の目標はM6実測結果を�
 
 M6の既存acceptanceを変更するものではなく、post-completion holdoutとしてgeneralizationを確認した。
 
+## 最新M6再検証 — confidence guard適用後
+
+main `4da2a606afc647b5997895b9e870ef48330af98c`:
+- M6 voice quality `37106744254` — Whisper AO / Jugemu success
+- Chichinu Fiija holdout `37105533801` — success
+- Whisper AO: stable 97 / 47.80 s / movement 82 / register 16
+- Jugemu: stable 18 / 5.18 s / movement 45 / register 0
+- Chichinu Fiija: stable 43 / 13.47 s / movement 41 / register 1
+- movement candidateは median selected-F0 confidence >= 0.50 を必須化
+- latest artifacts: `11268226119`, `11268640196`, `11267579268`
+
+Pages用スナップショットは `docs/m6-status/`。M7は引き続きHOLD。
+
 ## 解消した既知failure
 
 - cheap CI `37097290629`: Praat regex過剰escape → 修正、version regexも同時修正。

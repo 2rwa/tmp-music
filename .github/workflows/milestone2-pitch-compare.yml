@@ -2,7 +2,7 @@ name: Milestone 2 pitch comparison
 
 on:
   workflow_run:
-    workflows: ["Milestone 2 vocal pitch"]
+    workflows: ["Milestone 2 vocal pitch", "Milestone 2 mix pitch"]
     types: [completed]
   push:
     branches: [main]
@@ -38,62 +38,16 @@ jobs:
       matrix:
         track: [whisper-ao, jugemu]
     steps:
-      - name: Resolve vocal run
-        id: vocal
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
-          REPOSITORY: ${{ github.repository }}
-          TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if [ "${EVENT_NAME}" = "workflow_run" ]; then
-            echo "run_id=${EVENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
-          elif [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "run_id=${{ inputs.vocal_run_id }}" >> "${GITHUB_OUTPUT}"
-          else
-            python - <<'PY' >> "${GITHUB_OUTPUT}"
-          import json
-          import os
-          import urllib.parse
-          import urllib.request
-
-          query = urllib.parse.urlencode({"status": "success", "per_page": 20})
-          url = (
-              f"https://api.github.com/repos/{os.environ['REPOSITORY']}"
-              f"/actions/workflows/milestone2-pitch-vocals.yml/runs?{query}"
-          )
-          req = urllib.request.Request(url, headers={
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {os.environ['TOKEN']}",
-              "X-GitHub-Api-Version": "2022-11-28",
-          })
-          payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
-          runs = payload.get("workflow_runs", [])
-          if not runs:
-              raise SystemExit("no successful vocal pitch workflow run found")
-          print(f"run_id={runs[0]['id']}")
-          PY
-          fi
-
-      - uses: actions/checkout@v4
-
-      - name: Download vocal pitch artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: pitch-vocals-${{ matrix.track }}
-          path: analysis/${{ matrix.track }}/measurements/pitch/vocals
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.vocal.outputs.run_id }}
-
-      - name: Resolve source commit and mix run
+      - name: Resolve source runs
         id: source
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
           REPOSITORY: ${{ github.repository }}
           TOKEN: ${{ github.token }}
-          TRACK: ${{ matrix.track }}
         run: |
           set -euo pipefail
           python - <<'PY' >> "${GITHUB_OUTPUT}"
@@ -101,55 +55,94 @@ jobs:
           import os
           import urllib.parse
           import urllib.request
-          from pathlib import Path
 
-          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+          event_name = os.environ["EVENT_NAME"]
+          if event_name == "workflow_dispatch":
+              print("ready=true")
               print("sha=${{ inputs.source_sha }}")
+              print("vocal_run_id=${{ inputs.vocal_run_id }}")
               print("mix_run_id=${{ inputs.mix_run_id }}")
               raise SystemExit(0)
 
-          context_path = (
-              Path("analysis")
-              / os.environ["TRACK"]
-              / "measurements"
-              / "pitch"
-              / "vocals"
-              / "source-context.json"
-          )
-          if not context_path.is_file():
-              raise SystemExit(
-                  "vocal artifact has no source-context.json; use workflow_dispatch "
-                  "with explicit vocal_run_id, mix_run_id, and source_sha"
-              )
-          context = json.loads(context_path.read_text())
-          sha = context["source_commit_sha"]
+          sha = os.environ["EVENT_HEAD_SHA"] if event_name == "workflow_run" else os.environ["CURRENT_SHA"]
+          event_workflow = os.environ.get("EVENT_WORKFLOW_NAME", "")
+          event_run_id = os.environ.get("EVENT_RUN_ID", "")
 
-          query = urllib.parse.urlencode({
-              "head_sha": sha,
-              "status": "success",
-              "per_page": 20,
-          })
-          url = (
-              f"https://api.github.com/repos/{os.environ['REPOSITORY']}"
-              f"/actions/workflows/milestone2-pitch-mix.yml/runs?{query}"
-          )
-          req = urllib.request.Request(url, headers={
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {os.environ['TOKEN']}",
-              "X-GitHub-Api-Version": "2022-11-28",
-          })
-          payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
-          runs = payload.get("workflow_runs", [])
-          if not runs:
-              raise SystemExit(
-                  f"no successful mix pitch workflow found for source commit {sha}; "
-                  "retry this workflow after mix pitch completes"
+          def latest_success(workflow_file: str) -> str | None:
+              query = urllib.parse.urlencode({
+                  "head_sha": sha,
+                  "status": "success",
+                  "per_page": 20,
+              })
+              url = (
+                  f"https://api.github.com/repos/{os.environ['REPOSITORY']}"
+                  f"/actions/workflows/{workflow_file}/runs?{query}"
               )
+              req = urllib.request.Request(url, headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['TOKEN']}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
+              runs = payload.get("workflow_runs", [])
+              return str(runs[0]["id"]) if runs else None
+
+          vocal_run = (
+              event_run_id
+              if event_name == "workflow_run" and event_workflow == "Milestone 2 vocal pitch"
+              else latest_success("milestone2-pitch-vocals.yml")
+          )
+          mix_run = (
+              event_run_id
+              if event_name == "workflow_run" and event_workflow == "Milestone 2 mix pitch"
+              else latest_success("milestone2-pitch-mix.yml")
+          )
+
           print(f"sha={sha}")
-          print(f"mix_run_id={runs[0]['id']}")
+          print(f"vocal_run_id={vocal_run or ''}")
+          print(f"mix_run_id={mix_run or ''}")
+          ready = bool(vocal_run and mix_run)
+          print(f"ready={'true' if ready else 'false'}")
+          if not ready:
+              missing = []
+              if not vocal_run:
+                  missing.append("vocal pitch")
+              if not mix_run:
+                  missing.append("mix pitch")
+              print("reason=waiting for " + " and ".join(missing))
           PY
 
+      - name: Report deferred comparison
+        if: ${{ steps.source.outputs.ready != 'true' }}
+        run: |
+          echo "Comparison deferred for ${{ steps.source.outputs.sha }}: ${{ steps.source.outputs.reason }}"
+          echo "This is not a failure; the workflow will run again when the counterpart pitch workflow completes."
+
+      - uses: actions/checkout@v4
+        if: ${{ steps.source.outputs.ready == 'true' }}
+
+      - name: Download vocal pitch artifact
+        if: ${{ steps.source.outputs.ready == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: pitch-vocals-${{ matrix.track }}
+          path: analysis/${{ matrix.track }}/measurements/pitch/vocals
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.vocal_run_id }}
+
+      - name: Download mix pitch artifact
+        if: ${{ steps.source.outputs.ready == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: pitch-mix-${{ matrix.track }}
+          path: analysis/${{ matrix.track }}/measurements/pitch/mix
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.mix_run_id }}
+
       - name: Publish pending status
+        if: ${{ steps.source.outputs.ready == 'true' }}
         env:
           STATUS_TOKEN: ${{ github.token }}
           STATUS_REPOSITORY: ${{ github.repository }}
@@ -175,20 +168,14 @@ jobs:
           urllib.request.urlopen(req, timeout=30).read()
           PY
 
-      - name: Download mix pitch artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: pitch-mix-${{ matrix.track }}
-          path: analysis/${{ matrix.track }}/measurements/pitch/mix
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.mix_run_id }}
-
       - name: Compare mix and vocals
+        if: ${{ steps.source.outputs.ready == 'true' }}
+        env:
+          TRACK: ${{ matrix.track }}
         run: |
           set -euo pipefail
-          python scripts/cli.py pitch-compare --track "${{ matrix.track }}" --source mix-vocals
-          root="analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals"
+          python scripts/cli.py pitch-compare --track "${TRACK}" --source mix-vocals
+          root="analysis/${TRACK}/comparisons/pitch-mix-vs-vocals"
           test -s "${root}/comparison.json"
           test -s "${root}/measurements.md"
           test -s "${root}/provenance.json"
@@ -204,10 +191,9 @@ jobs:
           assert status["outputs"], status
           assert comparison["track"] == os.environ["TRACK"], comparison
           PY
-        env:
-          TRACK: ${{ matrix.track }}
 
       - uses: actions/upload-artifact@v4
+        if: ${{ steps.source.outputs.ready == 'true' }}
         with:
           name: pitch-comparison-${{ matrix.track }}
           path: analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals
@@ -215,7 +201,7 @@ jobs:
           retention-days: 14
 
       - name: Publish final status
-        if: always()
+        if: ${{ always() && steps.source.outputs.ready == 'true' }}
         env:
           STATUS_TOKEN: ${{ github.token }}
           STATUS_REPOSITORY: ${{ github.repository }}
@@ -224,9 +210,6 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           TRACK: ${{ matrix.track }}
         run: |
-          if [ -z "${STATUS_SHA}" ]; then
-            exit 0
-          fi
           python - <<'PY'
           import json, os, urllib.request
           state = "success" if os.environ["JOB_STATUS"] == "success" else "failure"
