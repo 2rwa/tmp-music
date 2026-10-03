@@ -68,6 +68,8 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(structure_params["anchor_start_s"], 12.0)
         self.assertEqual(structure_params["min_period_s"], 20.0)
         self.assertEqual(structure_params["max_period_s"], 40.0)
+        self.assertEqual(structure_params["alignment_template_duration_s"], 22.0)
+        self.assertEqual(structure_params["alignment_search_radius_s"], 4.0)
         self.assertEqual(separation_params["device"], "cpu")
         self.assertEqual(separation_models["demucs"], "htdemucs")
         self.assertEqual(pitch_params["source"], "mix")
