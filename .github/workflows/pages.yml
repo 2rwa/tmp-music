@@ -65,7 +65,9 @@ jobs:
               grep -q '"track":"chichinu-fiija"' /tmp/chichinu.json
               grep -q "Browser audio analyzer" /tmp/timeline-browser.html
               grep -q "現在位置の読み方" /tmp/timeline-browser.html
+              grep -q "音声タイムライン" /tmp/timeline-browser.html
               grep -q "syncPlaybackUi" /tmp/timeline-browser-app.js
+              grep -q "drawOverviewTimeline" /tmp/timeline-browser-app.js
               if [ -s docs/m6-status/timeline-v2/data/whisper-ao.json ]; then
                 curl -fsSL --max-time 15 "${BASE_URL}/timeline-v2/" -o /tmp/timeline-v2.html
                 curl -fsSL --max-time 15 "${BASE_URL}/timeline-v2/data/whisper-ao.json" -o /tmp/v2-whisper.json

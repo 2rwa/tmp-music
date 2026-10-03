@@ -4,6 +4,11 @@
   const $ = (s) => document.querySelector(s);
   const canvas = $('#timeline');
   const ctx = canvas.getContext('2d');
+  const overviewCanvas = $('#overview-timeline');
+  const overviewCtx = overviewCanvas.getContext('2d');
+  const overviewPlayhead = $('#overview-playhead');
+  const overviewPlayheadLabel = $('#overview-playhead-label');
+  const overviewReadout = $('#overview-readout');
   const tooltip = $('#tooltip');
   const fileInput = $('#file-input');
   const chooseFile = $('#choose-file');
@@ -33,7 +38,9 @@
   const colors = {
     f0: C('--f0'), f0low: C('--f0low'), cpps: C('--cpps'), hnr: C('--hnr'),
     tilt: C('--tilt'), rms: C('--rms'), vib: C('--vib'), rate: C('--rate'),
-    reg: C('--reg'), move: C('--move'), playhead: C('--playhead'), line: C('--line'), muted: C('--muted'), text: C('--text')
+    reg: C('--reg'), move: C('--move'), playhead: C('--playhead'),
+    quiet: C('--state-quiet'), periodic: C('--state-periodic'), transient: C('--state-transient'), mixed: C('--state-mixed'),
+    line: C('--line'), muted: C('--muted'), text: C('--text')
   };
 
   const state = {
@@ -48,6 +55,8 @@
     playRaf: 0,
     lastInsightAt: NaN,
     layout: null,
+    overviewLayout: null,
+    overviewHovering: false,
   };
 
   const fmt = (v, d = 2) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : '—';
@@ -541,6 +550,157 @@
     insightPitch.innerHTML = `<h3>Local pitch modulation</h3><div class="metric-value">extent ${fmt(q.vibExtent,1)} cent · rate ${fmt(q.vibRate,2)} Hz</div><p>${pitchText}</p>`;
   }
 
+  const SOUND_STATES = {
+    quiet: { label: '静音', colorKey: 'quiet' },
+    periodic: { label: '周期音', colorKey: 'periodic' },
+    transient: { label: '打撃・ノイズ寄り', colorKey: 'transient' },
+    mixed: { label: '混合', colorKey: 'mixed' },
+  };
+
+  function classifyFrame(q) {
+    if (!q || q.rmsDb < -55) return 'quiet';
+    if ((q.rmsDb > -38 && q.confidence < .45 && q.hnr < 4) || (q.tilt > -3 && q.confidence < .4 && q.rmsDb > -48)) return 'transient';
+    if (Number.isFinite(q.f0) && q.confidence >= .6 && q.hnr >= 5) return 'periodic';
+    return 'mixed';
+  }
+
+  function overviewLayout() {
+    const dpr = Math.max(1, devicePixelRatio || 1), r = overviewCanvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(r.width));
+    const cssHeight = parseFloat(getComputedStyle(overviewCanvas).height);
+    const h = Number.isFinite(cssHeight) && cssHeight > 0 ? Math.floor(cssHeight) : 188;
+    if (overviewCanvas.width !== Math.floor(w * dpr) || overviewCanvas.height !== Math.floor(h * dpr)) {
+      overviewCanvas.width = Math.floor(w * dpr); overviewCanvas.height = Math.floor(h * dpr);
+    }
+    overviewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const left = w < 560 ? 46 : 58, right = 16, plotW = Math.max(1, w - left - right);
+    return {
+      w, h, left, right, plotW,
+      level: { x:left, y:23, w:plotW, h:70 },
+      state: { x:left, y:108, w:plotW, h:22 },
+      events: { x:left, y:145, w:plotW, h:18 },
+    };
+  }
+
+  function overviewX(t, L) {
+    return L.left + clamp(t / Math.max(state.data?.duration_s || 1, 1e-6), 0, 1) * L.plotW;
+  }
+
+  function drawOverviewTimeline() {
+    const L = overviewLayout(); state.overviewLayout = L;
+    overviewCtx.clearRect(0, 0, L.w, L.h);
+    overviewCtx.fillStyle = '#08111e'; overviewCtx.fillRect(0, 0, L.w, L.h);
+    if (!state.data) {
+      overviewCtx.fillStyle = colors.muted; overviewCtx.font = '14px system-ui'; overviewCtx.textAlign = 'center';
+      overviewCtx.fillText('解析後に全尺タイムラインを表示します', L.w / 2, 82); overviewCtx.textAlign = 'start';
+      overviewPlayhead.hidden = true;
+      overviewCanvas.dataset.rendered = 'empty';
+      return;
+    }
+
+    const d = state.data, duration = Math.max(d.duration_s, 0.001);
+    overviewCtx.font = '10px system-ui'; overviewCtx.textAlign = 'right'; overviewCtx.fillStyle = colors.muted;
+    overviewCtx.fillText('LEVEL', L.left - 7, L.level.y + 13);
+    overviewCtx.fillText('STATE', L.left - 7, L.state.y + 14);
+    overviewCtx.fillText('EVENT', L.left - 7, L.events.y + 13);
+    overviewCtx.textAlign = 'start';
+
+    // Time grid shared by all three lanes.
+    const rough = duration / 7, steps = [.5,1,2,5,10,20,30,60,120,300,600,1200];
+    const step = steps.find((s) => s >= rough) || Math.ceil(rough / 600) * 600;
+    overviewCtx.strokeStyle = 'rgba(70,93,126,.26)'; overviewCtx.fillStyle = colors.muted; overviewCtx.font = '9px system-ui'; overviewCtx.textAlign = 'center';
+    for (let t = 0; t <= duration + .001; t += step) {
+      const x = overviewX(t, L);
+      overviewCtx.beginPath(); overviewCtx.moveTo(x, L.level.y); overviewCtx.lineTo(x, L.events.y + L.events.h); overviewCtx.stroke();
+      overviewCtx.fillText(t < 10 ? `${t.toFixed(1)}s` : `${Math.round(t)}s`, x, L.h - 7);
+    }
+    overviewCtx.textAlign = 'start';
+
+    // RMS envelope: the more energetic the frame, the higher the line.
+    overviewCtx.strokeStyle = colors.rms; overviewCtx.lineWidth = 1.2; overviewCtx.beginPath();
+    let started = false;
+    for (const q of d.frames) {
+      const x = overviewX(q.t, L), norm = clamp((q.rmsDb + 80) / 80, 0, 1);
+      const y = L.level.y + L.level.h - norm * L.level.h;
+      if (!started) { overviewCtx.moveTo(x, y); started = true; } else overviewCtx.lineTo(x, y);
+    }
+    overviewCtx.stroke();
+    overviewCtx.strokeStyle = colors.line;
+    overviewCtx.strokeRect(L.level.x + .5, L.level.y + .5, L.level.w - 1, L.level.h - 1);
+
+    // State lane, frame-by-frame. Narrow frames naturally coalesce visually.
+    const counts = {quiet:0, periodic:0, transient:0, mixed:0};
+    for (let i = 0; i < d.frames.length; i++) {
+      const q = d.frames[i], kind = classifyFrame(q); counts[kind]++;
+      const nextT = i + 1 < d.frames.length ? d.frames[i + 1].t : Math.min(duration, q.t + d.frame_hop_ms / 1000);
+      const x1 = overviewX(Math.max(0, q.t - d.frame_hop_ms / 2000), L);
+      const x2 = overviewX(nextT, L);
+      overviewCtx.fillStyle = colors[SOUND_STATES[kind].colorKey];
+      overviewCtx.fillRect(x1, L.state.y, Math.max(1, x2 - x1), L.state.h);
+    }
+    overviewCtx.strokeStyle = colors.line;
+    overviewCtx.strokeRect(L.state.x + .5, L.state.y + .5, L.state.w - 1, L.state.h - 1);
+
+    // Event lane: movement spans + register markers.
+    overviewCtx.fillStyle = 'rgba(255,166,77,.62)';
+    for (const e of d.movement) {
+      const x1 = overviewX(e.s, L), x2 = overviewX(e.e, L);
+      overviewCtx.fillRect(x1, L.events.y + 3, Math.max(1, x2 - x1), 6);
+    }
+    overviewCtx.strokeStyle = colors.reg; overviewCtx.lineWidth = 1.5;
+    for (const r of d.register) {
+      const x = overviewX(r.t, L); overviewCtx.beginPath(); overviewCtx.moveTo(x, L.events.y); overviewCtx.lineTo(x, L.events.y + L.events.h); overviewCtx.stroke();
+    }
+    overviewCtx.strokeStyle = colors.line;
+    overviewCtx.strokeRect(L.events.x + .5, L.events.y + .5, L.events.w - 1, L.events.h - 1);
+
+    // Current detailed-chart viewport.
+    const vx1 = overviewX(state.view[0], L), vx2 = overviewX(state.view[1], L);
+    overviewCtx.fillStyle = 'rgba(121,194,255,.065)';
+    overviewCtx.fillRect(vx1, L.level.y, Math.max(1, vx2 - vx1), L.events.y + L.events.h - L.level.y);
+    overviewCtx.strokeStyle = colors.f0; overviewCtx.lineWidth = 1;
+    overviewCtx.strokeRect(vx1 + .5, L.level.y + .5, Math.max(1, vx2 - vx1) - 1, L.events.y + L.events.h - L.level.y - 1);
+
+    overviewCanvas.dataset.rendered = 'ready';
+    overviewCanvas.dataset.stateCounts = JSON.stringify(counts);
+    document.documentElement.dataset.overviewTimeline = 'ready';
+    updateOverviewPlayhead();
+  }
+
+  function overviewTimeAtEvent(ev) {
+    if (!state.data || !state.overviewLayout) return null;
+    const L = state.overviewLayout, r = overviewCanvas.getBoundingClientRect();
+    const x = clamp(ev.clientX - r.left, L.left, L.left + L.plotW);
+    return (x - L.left) / L.plotW * state.data.duration_s;
+  }
+
+  function renderOverviewReadout(t) {
+    if (!state.data) return;
+    const q = nearest(state.data.frames, t), kind = classifyFrame(q);
+    const label = SOUND_STATES[kind].label;
+    const mov = state.data.movement.find((e) => t >= e.s && t <= e.e);
+    const reg = state.data.register.find((e) => Math.abs(e.t - t) <= .25);
+    let s = `${fmt(t,2)} s · ${label}`;
+    if (q) s += ` · RMS ${fmt(q.rmsDb,1)} dBFS · F0 ${fmt(q.f0,1)} Hz · conf ${fmt(q.confidence,2)}`;
+    if (mov) s += ` · pitch ${mov.dir} ${fmt(mov.change,0)} cent`;
+    if (reg) s += ' · register候補';
+    overviewReadout.textContent = s;
+  }
+
+  function updateOverviewPlayhead() {
+    if (!state.data || !state.overviewLayout || !Number.isFinite(state.playhead)) { overviewPlayhead.hidden = true; return; }
+    const L = state.overviewLayout, x = overviewX(state.playhead, L);
+    const canvasRect = overviewCanvas.getBoundingClientRect(), wrapRect = overviewCanvas.parentElement.getBoundingClientRect();
+    overviewPlayhead.hidden = false;
+    overviewPlayhead.style.left = `${canvasRect.left - wrapRect.left + x}px`;
+    overviewPlayhead.style.top = `${canvasRect.top - wrapRect.top + L.level.y}px`;
+    overviewPlayhead.style.height = `${L.events.y + L.events.h - L.level.y}px`;
+    overviewPlayheadLabel.textContent = `${fmt(state.playhead,2)} s`;
+    const flip = x > L.left + L.plotW - 82;
+    overviewPlayheadLabel.style.left = flip ? '-6px' : '6px';
+    overviewPlayheadLabel.style.transform = flip ? 'translateX(-100%)' : 'none';
+  }
+
   function layout() {
     const dpr = Math.max(1, devicePixelRatio || 1), r = canvas.getBoundingClientRect();
     const w = Math.max(320, Math.floor(r.width)), h = Math.floor(parseFloat(getComputedStyle(canvas).height));
@@ -679,6 +839,7 @@
     ctx.fillStyle = 'rgba(121,194,255,.12)'; ctx.fillRect(x1, L.f0.y, x2 - x1, L.vib.y + L.vib.h - L.f0.y);
   }
   function draw() {
+    drawOverviewTimeline();
     const L = layout(); state.layout = L; ctx.clearRect(0, 0, L.w, L.h);
     if (!state.data) {
       ctx.fillStyle = colors.muted; ctx.font = '16px system-ui'; ctx.textAlign = 'center'; ctx.fillText('音声を選択すると解析結果をここに表示します', L.w / 2, 80); ctx.textAlign = 'start'; return;
@@ -726,7 +887,8 @@
       playbackState.textContent = playing ? '再生中' : (audio.ended ? '再生終了' : '一時停止 / 停止');
       playbackTime.textContent = `${fmt(state.playhead, 2)} s`;
     }
-    if (viewChanged) draw(); else updatePlayheadOverlay();
+    if (!state.overviewHovering) renderOverviewReadout(state.playhead);
+    if (viewChanged) draw(); else { updatePlayheadOverlay(); updateOverviewPlayhead(); }
   }
 
   function playbackTick() {
@@ -767,6 +929,25 @@
     return clamp(timeAtX(x, L.f0), state.view[0], state.view[1]);
   }
   function resetView() { if (state.data) { state.view = [0, state.data.duration_s]; draw(); } }
+
+  overviewCanvas.addEventListener('pointermove', (ev) => {
+    const t = overviewTimeAtEvent(ev); if (t == null) return;
+    state.overviewHovering = true; renderOverviewReadout(t);
+  });
+  overviewCanvas.addEventListener('pointerleave', () => {
+    state.overviewHovering = false;
+    if (state.data) renderOverviewReadout(state.playhead);
+  });
+  overviewCanvas.addEventListener('pointerdown', (ev) => {
+    const t = overviewTimeAtEvent(ev); if (t == null) return;
+    state.playhead = t;
+    document.documentElement.dataset.playhead = t.toFixed(2);
+    if (!audio.hidden) {
+      audio.currentTime = t; syncPlaybackUi(t, !audio.paused, true);
+    } else {
+      renderOverviewReadout(t); updateOverviewPlayhead();
+    }
+  });
 
   canvas.addEventListener('pointermove', (ev) => {
     const t = pointTime(ev); if (t == null) return;
@@ -811,7 +992,7 @@
     const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = `${state.data.name.replace(/\.[^.]+$/, '') || 'audio'}-browser-analysis.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(u), 1000);
   });
-  addEventListener('resize', () => { draw(); updatePlayheadOverlay(); });
+  addEventListener('resize', () => { draw(); updatePlayheadOverlay(); updateOverviewPlayhead(); });
 
   draw();
   if (new URLSearchParams(location.search).get('selftest') === '1') runSynthetic(true);

@@ -24,7 +24,7 @@ class ElementStub {
     const xs = this.listeners.get(name) || [];
     xs.push(fn); this.listeners.set(name, xs);
   }
-  dispatch(name) { for (const fn of this.listeners.get(name) || []) fn({ type: name }); }
+  dispatch(name, event = {}) { for (const fn of this.listeners.get(name) || []) fn({ type: name, ...event }); }
   setPointerCapture() {}
   click() {}
   getBoundingClientRect() { return { width: 1200, height: 820, left: 0, top: 0 }; }
@@ -35,7 +35,8 @@ const ids = [
   'cancel-analysis', 'export-json', 'synthetic-test', 'show-low', 'show-segments', 'show-movement',
   'show-register', 'reset-view', 'summary', 'provenance', 'playback-insights', 'playback-state',
   'playback-time', 'playback-overview', 'insight-f0', 'insight-voice', 'insight-spectrum',
-  'insight-pitch', 'playhead-line', 'playhead-label'
+  'insight-pitch', 'playhead-line', 'playhead-label', 'overview-panel', 'overview-timeline',
+  'overview-playhead', 'overview-playhead-label', 'overview-readout'
 ];
 const elements = new Map(ids.map((id) => [`#${id}`, new ElementStub(id)]));
 const canvasContext = {
@@ -44,6 +45,7 @@ const canvasContext = {
   textAlign: '', lineWidth: 1, globalAlpha: 1,
 };
 elements.get('#timeline').getContext = () => canvasContext;
+elements.get('#overview-timeline').getContext = () => canvasContext;
 
 const documentElement = new ElementStub('html');
 const document = {
@@ -55,7 +57,8 @@ const palette = {
   '--f0': '#72d6ff', '--f0low': '#526b82', '--cpps': '#ffd166', '--hnr': '#7ee787',
   '--tilt': '#ff9f68', '--rms': '#a5b4fc', '--vib': '#69dbd0', '--rate': '#f78fb3',
   '--reg': '#ff78c6', '--move': 'rgba(255,166,77,.13)', '--line': '#263653',
-  '--muted': '#9faecc', '--text': '#edf3ff'
+  '--muted': '#9faecc', '--text': '#edf3ff', '--playhead': '#ffe082',
+  '--state-quiet':'#374151', '--state-periodic':'#45c7a1', '--state-transient':'#ff9f68', '--state-mixed':'#7185a5'
 };
 
 const context = {
@@ -78,7 +81,7 @@ const context = {
   clearTimeout,
   requestAnimationFrame: (fn) => setTimeout(() => fn(Date.now()), 0),
   cancelAnimationFrame: (id) => clearTimeout(id),
-  getComputedStyle: () => ({ getPropertyValue: (name) => palette[name] || '', height: '820px' }),
+  getComputedStyle: (el) => ({ getPropertyValue: (name) => palette[name] || '', height: el?.id === 'overview-timeline' ? '188px' : '820px' }),
   addEventListener: () => {},
 };
 context.window = context;
@@ -122,3 +125,22 @@ if (!elements.get('#insight-f0').innerHTML.includes('F0') || !elements.get('#ins
   throw new Error('live parameter explanations did not render');
 }
 console.log(`playhead regression: ${playhead.toFixed(2)} s · live explanations rendered`);
+
+const overview = elements.get('#overview-timeline');
+if (documentElement.dataset.overviewTimeline !== 'ready' || overview.dataset.rendered !== 'ready') {
+  throw new Error('overview timeline did not render');
+}
+const counts = JSON.parse(overview.dataset.stateCounts || '{}');
+if (!counts.periodic || counts.periodic < 20) throw new Error(`overview classification missing periodic frames: ${overview.dataset.stateCounts}`);
+
+audio.hidden = false;
+audio.currentTime = 0;
+audio.paused = true;
+overview.dispatch('pointerdown', { clientX: 600 });
+await new Promise((resolve) => setTimeout(resolve, 20));
+const expectedSeek = 2.8 * ((600 - 58) / (1200 - 58 - 16));
+if (Math.abs(audio.currentTime - expectedSeek) > 0.08) {
+  throw new Error(`overview click seek failed: got ${audio.currentTime}, expected ${expectedSeek}`);
+}
+if (!elements.get('#overview-readout').textContent.includes('RMS')) throw new Error('overview readout did not update after seek');
+console.log(`overview regression: rendered states ${overview.dataset.stateCounts} · click seek ${audio.currentTime.toFixed(2)} s`);

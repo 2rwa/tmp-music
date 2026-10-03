@@ -54,6 +54,27 @@
     <div class="stat"><b>—</b><small>analysis rate</small></div>
   </section>
 
+  <section class="overview-panel" id="overview-panel">
+    <div class="overview-header">
+      <div>
+        <div class="overview-kicker">FULL TRACK NAVIGATOR</div>
+        <h2>音声タイムライン</h2>
+      </div>
+      <div class="overview-legend" aria-label="タイムラインの凡例">
+        <span><i class="state-dot quiet"></i>静音</span>
+        <span><i class="state-dot periodic"></i>周期音</span>
+        <span><i class="state-dot transient"></i>打撃・ノイズ寄り</span>
+        <span><i class="state-dot mixed"></i>混合</span>
+      </div>
+    </div>
+    <div class="overview-wrap">
+      <canvas id="overview-timeline" aria-label="音声全体の解析タイムライン"></canvas>
+      <div id="overview-playhead" class="overview-playhead" hidden><span id="overview-playhead-label">0.00 s</span></div>
+    </div>
+    <div id="overview-readout" class="overview-readout" aria-live="polite">音声を解析すると、全尺の音量・状態・イベントをここに表示します。</div>
+    <p class="hint">全尺を常に表示 · クリック: 再生位置へ移動 · 青枠: 詳細グラフで表示中の範囲 · 上段: RMS音量 · 中段: 音の状態 · 下段: pitch movement / register候補</p>
+  </section>
+
   <section class="playback-insights" id="playback-insights" hidden>
     <div class="insight-header">
       <div>
