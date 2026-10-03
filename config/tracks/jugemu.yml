@@ -1,0 +1,15 @@
+id: jugemu
+source: samples/jugemu/source/jugemu.mp3
+expected_sha256: e760ff46dcea8a1056a006a3373250da0a4f6f42616a74986b8182e8a33b31ab
+expected_size_bytes: 5790694
+language: ja
+embedded_lyrics: true
+analysis:
+  repetitions: true
+  reference_lyrics: embedded
+  repetition:
+    template_start_s: 12.0
+    template_end_s: 34.0
+  asr:
+    default_model: small
+    modes: [auto, ja]
