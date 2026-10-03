@@ -6,7 +6,7 @@
 実装原則: `chatgpt-workspace/docs/build-test-fix.md`  
 現状スナップショット: `docs/STATUS_20261003.md`
 
-> 進捗更新: 2026-10-03。M1〜M5は完了。現在はM6 Voice quality完了を唯一の次目標とし、M7はM6完了後に再検討する。
+> 進捗更新: 2026-10-03。M1〜M6は完了。M7はHOLDし、次目標はM6実測結果をレビューして決める。
 
 ---
 
@@ -1431,29 +1431,56 @@ Whisper AOで元歌詞のword/phoneを、Jugemuで各cycleのword/phone/moraを�
 
 ---
 
-## Milestone 6 — Voice quality — IN PROGRESS / CURRENT GOAL
+## Milestone 6 — Voice quality — COMPLETE
 
-- [ ] calibrated CPPS — Praat 6.4.49 known-answer smoke成功。本体E2E修正中
-- [ ] Praat HNR — known-answer smoke成功。本体E2E修正中
-- [x] autocorrelation HNR baseline — stable vocal preflight済み
-- [x] spectral tilt baseline — stable vocal preflight済み
-- [ ] F1/F2/F3 formants
-- [ ] vibrato — M2情報をM6へ統合
-- [ ] glissando — M2情報をM6へ統合
-- [ ] register transitions
+- [x] calibrated CPPS — Praat 6.4.49、stable vocal区間で実音源測定
+- [x] Praat HNR(cc)
+- [x] autocorrelation HNR
+- [x] spectral tilt
+- [x] F1/F2/F3 Burg formants
+- [x] vibrato — M2 stable-target情報をM6へ統合
+- [x] glissando — M2 consensus由来のpitch-movement候補を統合
+- [x] register transitions — multi-feature候補検出
 
-### 現在の既知failure
+### candidate semantics
 
-- cheap CI `37097290629`: Praat output regex escape過剰
-- M6 `37098551676`: `NameError: py is not defined`。CLI voice-quality blockの配置ミス
+pitch-movementはglissandoの**候補**であり、意図的glissandoとは断定しない。
 
-詳細: `docs/M6_HANDOFF_20261003.md`
+既定条件:
+
+- window 0.30 s
+- |slope| >= 200 cent/s
+- total change >= 60 cent
+- linear-fit R² >= 0.80
+- window結合後にも同じ条件を再確認
+
+register transition候補は:
+
+- F0 discontinuity
+- calibrated CPPS / Praat HNR / autocorrelation HNR / spectral tilt のうち2種類以上の独立変化
+
+を必須とする。
+
+F1/F2/F3・intensity・vibratoはbefore/afterの補助contextとして保持するが、phoneme差だけでregister候補にならないよう成立条件には使わない。
+
+### 最終validation
+
+- cheap CI `37101306895` — success
+- Praat known-answer smoke `37101306899` — success
+- M6 real-audio E2E `37101306889` — Whisper AO / Jugemu とも success
+- artifact:
+  - Whisper AO `11266196721`
+  - Jugemu `11266885749`
+- `provenance.json` の `tool_versions.praat` に Praat 6.4.49 を保存していることをartifact展開後に確認
 
 ### 完了条件
 
-CPPS / HNR / tilt / formants / F0系特徴をstable vocal区間で取得し、register transition候補を複数特徴のbefore/afterとして示せる。Whisper AO / Jugemu両方でE2E successし、cheap CI・provenance・artifact・既存milestone regressionまで確認する。
+CPPS / 2系統HNR / tilt / formants / M2 F0系特徴をstable vocal区間で取得し、register transition候補を複数特徴のbefore/afterとしてmachine-readableに保存できる。Whisper AO / Jugemu両方でE2E successし、cheap CI・known-answer smoke・provenance・artifactまで確認済み。
 
 ---
+
+
+M6は完了したが、M7へ自動的には進まない。次の目標はM6実測結果をレビューした上でユーザーと決める。
 
 ## Milestone 7 — Cultural comparison — HOLD UNTIL M6 COMPLETE
 
