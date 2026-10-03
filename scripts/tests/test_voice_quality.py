@@ -107,6 +107,21 @@ class VoiceQualityTests(unittest.TestCase):
             [],
         )
 
+        formant_only = dict(before)
+        formant_only.update({
+            "stable_target_index": 2,
+            "start_s": 0.5,
+            "end_s": 0.9,
+            "median_f0_hz": 300.0,
+            "praat_f1_hz": 800.0,
+            "praat_f2_hz": 1900.0,
+            "praat_f3_hz": 3000.0,
+        })
+        self.assertEqual(
+            detect_register_transition_candidates([before, formant_only]),
+            [],
+        )
+
     def test_periodic_tone_has_higher_hnr_than_noisy_tone(self):
         sr = 16000
         t = np.arange(int(0.25 * sr), dtype=float) / sr
