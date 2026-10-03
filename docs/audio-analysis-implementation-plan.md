@@ -1479,10 +1479,10 @@ CPPS / 2系統HNR / tilt / formants / M2 F0系特徴をstable vocal区間で取�
 
 ---
 
+## Milestone 7 — Cultural comparison — HOLD / NOT STARTED
 
 M6は完了したが、M7へ自動的には進まない。次の目標はM6実測結果をレビューした上でユーザーと決める。
 
-## Milestone 7 — Cultural comparison — HOLD UNTIL M6 COMPLETE
 
 - [ ] reference corpus manifest
 - [ ] MERT
