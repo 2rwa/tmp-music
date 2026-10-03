@@ -37,6 +37,11 @@ analysis:
     alignment_template_duration_s: 22.0
     alignment_search_radius_s: 4.0
     top_k: 8
+  cycle_asr:
+    boundary_source: aligned_cycles
+    language: ja
+    device: cpu
+    compute_type: int8
   repetitions: true
   reference_lyrics: embedded
   repetition:
