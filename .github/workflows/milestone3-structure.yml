@@ -67,6 +67,7 @@ jobs:
           set -euo pipefail
           root="analysis/jugemu/measurements/structure"
           test -s "${root}/structure.json"
+          test -s "${root}/tempo.json"
           test -s "${root}/ssm.npz"
           test -s "${root}/features.npz"
           test -s "${root}/lag-profile.csv"
@@ -84,6 +85,7 @@ jobs:
           root = Path("analysis/jugemu/measurements/structure")
           result = json.loads((root / "structure.json").read_text())
           status = json.loads((root / "status.json").read_text())
+          tempo = json.loads((root / "tempo.json").read_text())
           assert status["status"] == "success", status
           assert status["outputs"], status
           assert 20.0 <= result["selected_period_s"] <= 40.0, result
@@ -93,6 +95,10 @@ jobs:
           assert all(abs(x["offset_s"]) <= 4.0 for x in result["cycle_alignment_starts"]), result
           assert len(result["period_candidates"]) >= 1, result
           assert set(result["views"]) == {"mfcc", "chroma", "rhythm"}, result
+          tempo_values = [tempo["primary_bpm"], tempo["half_bpm"], tempo["double_bpm"]]
+          assert any(90.0 <= x <= 110.0 for x in tempo_values), tempo
+          assert any(180.0 <= x <= 220.0 for x in tempo_values), tempo
+          assert len(tempo["beat_timestamps_s"]) > 10, tempo
           PY
 
       - uses: actions/upload-artifact@v4
