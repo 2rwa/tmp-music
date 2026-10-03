@@ -42,7 +42,7 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "tuning-models.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["target_count"] else 2
+    return 0
 
 
 if __name__ == "__main__":
