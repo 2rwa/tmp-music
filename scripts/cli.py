@@ -37,6 +37,7 @@ STAGES = (
     "pitch",
     "targets",
     "tuning",
+    "pitch-compare",
     "asr",
     "full",
 )
@@ -107,6 +108,8 @@ def analysis_input(track: Track, source: str) -> str:
 def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> Path:
     if stage == "separate":
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
+    if stage == "pitch-compare":
+        return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
     if stage in {"pitch", "targets", "tuning"}:
         root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / source
         if stage == "pitch":
@@ -245,6 +248,25 @@ def stage_command(
             ",".join(str(x) for x in edos),
         ]
         return command, {"input": str(input_path.relative_to(REPO_ROOT)), "source": source, "edos": edos}, {}, ["numpy"]
+    if stage == "pitch-compare":
+        mix_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "mix"
+        vocal_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "vocals"
+        command = [
+            py,
+            "scripts/compare_pitch_sources.py",
+            "--track",
+            track.id,
+            "--mix",
+            str(mix_root.relative_to(REPO_ROOT)),
+            "--vocals",
+            str(vocal_root.relative_to(REPO_ROOT)),
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+        ]
+        return command, {
+            "mix": str(mix_root.relative_to(REPO_ROOT)),
+            "vocals": str(vocal_root.relative_to(REPO_ROOT)),
+        }, {}, []
     if stage == "asr":
         asr = track.config.get("analysis", {}).get("asr", {})
         modes = asr.get("modes", ["auto", track.language])
@@ -349,7 +371,7 @@ def main() -> int:
     parser.add_argument("stage", choices=STAGES)
     parser.add_argument("--track", required=True)
     parser.add_argument("--model", default=None, help="ASR model override")
-    parser.add_argument("--source", choices=("mix", "vocals"), default="mix")
+    parser.add_argument("--source", choices=("mix", "vocals", "mix-vocals"), default="mix")
     parser.add_argument("--estimators", default=None, help="Pitch estimator override, e.g. pyin or pyin,crepe")
     parser.add_argument("--dry-run", action="store_true", help="verify source and print analyzer commands without running them")
     parser.add_argument("--config-dir", type=Path, default=REPO_ROOT / "config" / "tracks")
