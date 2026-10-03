@@ -1,0 +1,13 @@
+id: whisper-ao
+source: samples/whisper-ao/source/whisper-ao.mp3
+expected_sha256: 91f021f6906873c3e4ff4d72a82d2a3cc27faa1c312de98d6b7eee7352e9394b
+expected_size_bytes: 4992093
+language: en
+embedded_lyrics: true
+analysis:
+  repetitions: false
+  reference_lyrics: embedded
+  trailing_silence_expected: true
+  asr:
+    default_model: small
+    modes: [auto, en]
