@@ -18,6 +18,7 @@ from common.structure import (
     pairwise_cycle_distances,
     period_candidates,
     template_alignment_starts,
+    tempo_candidate_set,
     view_agreement,
 )
 from synthetic.generate_structure_fixtures import MOTIF_FRAMES, fixture_arrays, main as generate_main
@@ -88,6 +89,15 @@ class StructureAlgorithmTests(unittest.TestCase):
         self.assertEqual([row["expected_frame"] for row in rows[:3]], [0, 32, 64])
         self.assertEqual([row["aligned_frame"] for row in rows[:3]], [0, 36, 68])
         self.assertEqual([row["offset_frames"] for row in rows[:3]], [0, 4, 4])
+
+    def test_tempo_candidates_preserve_half_double_ambiguity(self):
+        beats = np.arange(0.0, 6.0, 0.6)
+        result = tempo_candidate_set(100.0, beats)
+        self.assertAlmostEqual(result["primary_bpm"], 100.0)
+        self.assertAlmostEqual(result["half_bpm"], 50.0)
+        self.assertAlmostEqual(result["double_bpm"], 200.0)
+        self.assertGreater(result["confidence"], 0.99)
+        self.assertIn("metrical alternatives", result["interpretation_warning"])
 
     def test_generator_writes_known_answer_files(self):
         with tempfile.TemporaryDirectory() as td:
