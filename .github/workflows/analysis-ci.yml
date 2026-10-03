@@ -25,8 +25,11 @@ on:
       - "requirements-alignment.txt"
       - "requirements-analysis.txt"
       - ".github/workflows/milestone6-voice-quality.yml"
+      - ".github/workflows/milestone2-pitch-compare.yml"
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
+      - "docs/m6-status/**"
+      - "m6-status/**"
   pull_request:
     paths:
       - "scripts/cli.py"
@@ -50,8 +53,11 @@ on:
       - "requirements-alignment.txt"
       - "requirements-analysis.txt"
       - ".github/workflows/milestone6-voice-quality.yml"
+      - ".github/workflows/milestone2-pitch-compare.yml"
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
+      - "docs/m6-status/**"
+      - "m6-status/**"
   workflow_dispatch:
 
 permissions:
@@ -142,6 +148,25 @@ jobs:
           python scripts/cli.py targets --track chichinu-fiija --source vocals --dry-run
           python scripts/cli.py tuning --track chichinu-fiija --source vocals --dry-run
           python scripts/cli.py voice-quality --track chichinu-fiija --source vocals --dry-run
+      - name: Validate M6 status page
+        run: |
+          set -euo pipefail
+          test -s docs/m6-status/index.html
+          test -s docs/m6-status/data.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("docs/m6-status/data.json").read_text())
+          assert data["status"] == "COMPLETE", data
+          assert data["m7"] == "HOLD", data
+          assert len(data["tracks"]) == 3, data
+          assert all(track["stable_targets"] > 0 for track in data["tracks"]), data
+          assert all(track["pitch_movement_candidates"] >= 0 for track in data["tracks"]), data
+          html = Path("docs/m6-status/index.html").read_text()
+          assert "M6 Voice Quality" in html
+          assert "Chichinu Fiija" in html
+          PY
+
       - name: Publish final status
         if: always()
         env:
