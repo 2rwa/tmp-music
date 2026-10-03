@@ -1,0 +1,131 @@
+name: Analyzer foundation real-audio smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/analyzer-foundation-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Publish pending status
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ github.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": "pending",
+              "context": "analyzer-foundation-smoke",
+              "description": "Real-audio CLI smoke is running",
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg and analyzer dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-analysis.txt
+          python -m pip install -r requirements-asr.txt
+
+      - name: Run existing analyzers through common CLI
+        run: |
+          set -euo pipefail
+          python scripts/cli.py metadata --track whisper-ao
+          python scripts/cli.py metadata --track jugemu
+          python scripts/cli.py repetition --track jugemu
+          python scripts/cli.py asr --track whisper-ao --model tiny
+
+      - name: Validate real outputs
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              Path("analysis/whisper-ao/measurements/metadata"): "91f021f6906873c3e4ff4d72a82d2a3cc27faa1c312de98d6b7eee7352e9394b",
+              Path("analysis/jugemu/measurements/metadata"): "e760ff46dcea8a1056a006a3373250da0a4f6f42616a74986b8182e8a33b31ab",
+              Path("analysis/jugemu/measurements/repetition"): "e760ff46dcea8a1056a006a3373250da0a4f6f42616a74986b8182e8a33b31ab",
+              Path("analysis/whisper-ao/measurements/asr-tiny"): "91f021f6906873c3e4ff4d72a82d2a3cc27faa1c312de98d6b7eee7352e9394b",
+          }
+          for path, sha in expected.items():
+              status = json.loads((path / "status.json").read_text())
+              provenance = json.loads((path / "provenance.json").read_text())
+              assert status["status"] == "success", (path, status)
+              assert status["outputs"], (path, status)
+              assert provenance["source_sha256"] == sha, (path, provenance)
+              assert provenance["actions_run"], (path, provenance)
+
+          assert Path("analysis/whisper-ao/measurements/metadata/metadata.json").is_file()
+          assert Path("analysis/jugemu/measurements/metadata/metadata.json").is_file()
+          assert Path("analysis/jugemu/measurements/repetition/repetition.json").is_file()
+          assert Path("analysis/whisper-ao/measurements/asr-tiny/metrics.json").is_file()
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-foundation-smoke
+          path: |
+            analysis/whisper-ao/measurements
+            analysis/jugemu/measurements
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish final status
+        if: always()
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ github.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          state = "success" if os.environ["JOB_STATUS"] == "success" else "failure"
+          description = "Real-audio CLI smoke passed" if state == "success" else "Real-audio CLI smoke failed"
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": state,
+              "context": "analyzer-foundation-smoke",
+              "description": description,
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
