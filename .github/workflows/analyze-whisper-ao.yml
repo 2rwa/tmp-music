@@ -187,12 +187,4 @@ jobs:
       - name: Commit available results
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/whisper-ao
-          if git diff --cached --quiet; then
-            echo "No analysis changes to commit"
-            exit 0
-          fi
-          git commit -m "Add Whisper AO Actions analysis results"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Add Whisper AO Actions analysis results" analysis/whisper-ao

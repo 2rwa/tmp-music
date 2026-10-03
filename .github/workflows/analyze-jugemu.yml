@@ -131,9 +131,4 @@ jobs:
       - name: Commit results
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/jugemu
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Add Jugemu Actions analysis results"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Add Jugemu Actions analysis results" analysis/jugemu

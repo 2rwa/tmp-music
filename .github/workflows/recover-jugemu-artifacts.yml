@@ -45,12 +45,4 @@ jobs:
       - name: Commit recovered results
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/jugemu
-          if git diff --cached --quiet; then
-            echo "No recovery changes to commit"
-            exit 0
-          fi
-          git commit -m "Recover Jugemu analysis artifacts"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Recover Jugemu analysis artifacts" analysis/jugemu

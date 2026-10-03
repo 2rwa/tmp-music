@@ -45,12 +45,4 @@ jobs:
       - name: Commit recovered results
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/whisper-ao
-          if git diff --cached --quiet; then
-            echo "No recovery changes to commit"
-            exit 0
-          fi
-          git commit -m "Recover Whisper AO analysis artifacts"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Recover Whisper AO analysis artifacts" analysis/whisper-ao
