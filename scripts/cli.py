@@ -210,7 +210,7 @@ def stage_command(
             "pyin_fallback_confidence": pitch.get("pyin_fallback_confidence", 0.80),
         }
         models = {"torchcrepe": crepe_model} if "crepe" in selected_estimators.split(",") else {}
-        return command, parameters, models, ["librosa", "numpy", "torchcrepe", "torch"]
+        return command, parameters, models, ["librosa", "numpy", "torchcrepe", "torch", "torchaudio"]
     if stage == "targets":
         target_cfg = track.config.get("analysis", {}).get("pitch_targets", {})
         pitch_root = stage_output(track, "pitch", model, source)
