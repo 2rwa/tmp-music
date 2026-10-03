@@ -185,14 +185,15 @@ jobs:
           EOF
 
       - name: Commit available results
+        id: writeback
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/whisper-ao
-          if git diff --cached --quiet; then
-            echo "No analysis changes to commit"
-            exit 0
-          fi
-          git commit -m "Add Whisper AO Actions analysis results"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Add Whisper AO Actions analysis results" analysis/whisper-ao
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-whisper-ao-analysis
+          path: analysis/whisper-ao
+          retention-days: 14

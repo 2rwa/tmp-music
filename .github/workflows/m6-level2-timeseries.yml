@@ -180,17 +180,18 @@ jobs:
           PY
 
       - name: Commit Level 2 snapshot data
+        id: writeback
         run: |
           set -euo pipefail
-          if [ -z "$(git status --porcelain -- docs/m6-status/timeline-v2/data)" ]; then
-            echo "Level 2 timeline data unchanged"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/m6-status/timeline-v2/data
-            git commit -m "Update M6 Level 2 timeline data"
-            git push
-          fi
+          python scripts/common/github_writeback.py "Update M6 Level 2 timeline data" docs/m6-status/timeline-v2/data
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-m6-level2
+          path: docs/m6-status/timeline-v2/data
+          retention-days: 14
 
       - name: Dispatch Pages deployment
         env:

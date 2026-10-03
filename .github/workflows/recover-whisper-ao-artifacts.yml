@@ -43,14 +43,15 @@ jobs:
           find analysis/whisper-ao -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
 
       - name: Commit recovered results
+        id: writeback
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis/whisper-ao
-          if git diff --cached --quiet; then
-            echo "No recovery changes to commit"
-            exit 0
-          fi
-          git commit -m "Recover Whisper AO analysis artifacts"
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py "Recover Whisper AO analysis artifacts" analysis/whisper-ao
+
+      - name: Preserve write-back payload on failure
+        if: failure() && steps.writeback.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-writeback-whisper-ao-recovery
+          path: analysis/whisper-ao
+          retention-days: 14
