@@ -170,6 +170,9 @@ jobs:
               assert aggregates[metric]["count"] > 0, (metric, aggregates[metric])
           assert summary["pitch_movement"]["measurement_status"] == "ok", summary
           assert summary["pitch_movement"]["candidate_count"] == len(movements), summary
+          min_conf = float(summary["pitch_movement"]["minimum_median_selected_confidence"])
+          assert min_conf == 0.5, summary["pitch_movement"]
+          assert all(float(row["median_confidence"]) >= min_conf for row in movements), movements
           assert register["candidate_count"] == len(register["candidates"]), register
           assert summary["register_transitions"]["candidate_count"] == register["candidate_count"], summary
           PY
