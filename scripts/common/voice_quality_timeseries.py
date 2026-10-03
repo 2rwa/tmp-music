@@ -13,7 +13,7 @@ from typing import Iterable
 
 import numpy as np
 
-from .voice_quality import autocorrelation_hnr_db, rms_dbfs, spectral_tilt_db_per_octave
+from .voice_quality import rms_dbfs, spectral_tilt_db_per_octave
 
 
 def _finite(value: object) -> float | None:
@@ -113,6 +113,39 @@ def local_pitch_modulation_metrics(
     }
 
 
+
+def local_autocorrelation_hnr_db(
+    frame: np.ndarray,
+    sample_rate_hz: int,
+    f0_hz: float,
+    *,
+    search_fraction: float = 0.15,
+) -> float | None:
+    """Equivalent F0-near HNR using only the relevant lag interval.
+
+    This matches the existing M6 autocorrelation definition but avoids
+    calculating the full autocorrelation sequence for every Level-2 frame.
+    """
+    x = np.asarray(frame, dtype=float)
+    if x.size < 8 or not np.isfinite(f0_hz) or f0_hz <= 0:
+        return None
+    x = (x - float(np.mean(x))) * np.hanning(x.size)
+    energy = float(np.dot(x, x))
+    if energy <= 1e-12:
+        return None
+    low = max(1, int(math.floor(sample_rate_hz / (f0_hz * (1.0 + search_fraction)))))
+    high = min(
+        x.size - 1,
+        int(math.ceil(sample_rate_hz / (f0_hz * (1.0 - search_fraction)))),
+    )
+    if high < low:
+        return None
+    peak = max(float(np.dot(x[:-lag], x[lag:])) for lag in range(low, high + 1))
+    r = float(np.clip(peak / energy, 1e-9, 1.0 - 1e-9))
+    if r <= 0:
+        return None
+    return float(10.0 * np.log10(r / (1.0 - r)))
+
 def frame_voice_quality_series(
     samples: np.ndarray,
     sample_rate_hz: int,
@@ -154,7 +187,7 @@ def frame_voice_quality_series(
             "selected_f0_hz": float(f0),
             "selected_confidence": float(conf),
             "rms_dbfs": rms,
-            "autocorrelation_hnr_db": autocorrelation_hnr_db(
+            "autocorrelation_hnr_db": local_autocorrelation_hnr_db(
                 frame,
                 sample_rate_hz,
                 f0,
