@@ -260,3 +260,79 @@ def view_agreement(candidates: Mapping[str, Iterable[int]], tolerance_frames: in
         }
         for group in groups
     ]
+
+
+def template_alignment_starts(
+    views: Mapping[str, np.ndarray],
+    *,
+    anchor_frame: int,
+    period_frames: int,
+    template_frames: int,
+    search_radius_frames: int,
+    view_names: Iterable[str] | None = None,
+    min_separation_fraction: float = 0.5,
+) -> list[dict[str, object]]:
+    """Refine repeated-content start positions around a fixed recurrence grid.
+
+    This does not redefine the recurrence period. It answers a different
+    question: near each expected period-grid position, where does the same
+    template content align best?
+    """
+    selected = list(view_names) if view_names is not None else list(views)
+    if not selected:
+        raise ValueError("at least one alignment view is required")
+    frame_counts = {_name: _frames(views[_name]).shape[0] for _name in selected}
+    if len(set(frame_counts.values())) != 1:
+        raise ValueError(f"alignment views must share frame count: {frame_counts}")
+    total_frames = next(iter(frame_counts.values()))
+    if period_frames <= 0 or template_frames <= 0:
+        raise ValueError("period_frames and template_frames must be positive")
+    if anchor_frame < 0 or anchor_frame + template_frames > total_frames:
+        raise ValueError("alignment template falls outside feature sequence")
+
+    normalized: dict[str, np.ndarray] = {}
+    templates: dict[str, np.ndarray] = {}
+    for name in selected:
+        x = zscore_features(views[name])
+        norms = np.linalg.norm(x, axis=1, keepdims=True)
+        unit = x / np.where(norms > 1e-12, norms, 1.0)
+        normalized[name] = unit
+        templates[name] = unit[anchor_frame:anchor_frame + template_frames]
+
+    min_sep = max(1, round(period_frames * min_separation_fraction))
+    rows: list[dict[str, object]] = []
+    previous: int | None = None
+    k = 0
+    while True:
+        expected = anchor_frame + k * period_frames
+        if expected - search_radius_frames > total_frames - template_frames:
+            break
+        low = max(0, expected - search_radius_frames)
+        high = min(total_frames - template_frames, expected + search_radius_frames)
+        if previous is not None:
+            low = max(low, previous + min_sep)
+        if low > high:
+            break
+
+        candidates: list[tuple[float, int, int, dict[str, float]]] = []
+        for start in range(low, high + 1):
+            per_view: dict[str, float] = {}
+            for name in selected:
+                segment = normalized[name][start:start + template_frames]
+                per_view[name] = float(np.mean(np.sum(templates[name] * segment, axis=1)))
+            combined = float(np.mean(list(per_view.values())))
+            candidates.append((combined, -abs(start - expected), -start, per_view))
+
+        best = max(candidates, key=lambda item: (item[0], item[1], item[2]))
+        start = -best[2]
+        rows.append({
+            "index": k,
+            "expected_frame": expected,
+            "aligned_frame": start,
+            "offset_frames": start - expected,
+            "combined_similarity": best[0],
+            "views": best[3],
+        })
+        previous = start
+        k += 1
+    return rows
