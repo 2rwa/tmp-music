@@ -291,13 +291,17 @@ def stage_command(
     if stage == "voice-quality":
         voice = track.config.get("analysis", {}).get("voice_quality", {})
         input_path = analysis_input(track, source)
+        pitch_root = stage_output(track, "pitch", model, source)
         targets_root = stage_output(track, "targets", model, source)
         stable_notes = targets_root / "stable-notes.csv"
+        pitch_consensus = pitch_root / "consensus.csv"
         command = [
             py,
             "scripts/analyze_voice_quality.py",
             input_path,
             str(stable_notes.relative_to(REPO_ROOT)),
+            "--pitch-consensus",
+            str(pitch_consensus.relative_to(REPO_ROOT)),
             "--out",
             str(out.relative_to(REPO_ROOT)),
             "--sr",
@@ -322,6 +326,7 @@ def stage_command(
         parameters = {
             "input": input_path,
             "stable_notes": str(stable_notes.relative_to(REPO_ROOT)),
+            "pitch_consensus": str(pitch_consensus.relative_to(REPO_ROOT)),
             "source": source,
             **voice,
         }
