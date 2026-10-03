@@ -24,6 +24,30 @@ class PitchAlgorithmTests(unittest.TestCase):
         self.assertIsNotNone(rows[0]["consensus_f0_hz"])
         self.assertIsNone(rows[2]["consensus_f0_hz"])
 
+    def test_low_confidence_crepe_falls_back_to_high_confidence_pyin(self):
+        rows = consensus_frames(
+            [0.0, 0.01],
+            [440.0, 440.0],
+            [441.0, 441.0],
+            [0.95, 0.50],
+            [0.05, 0.05],
+            pyin_fallback_confidence=0.80,
+        )
+        self.assertEqual(rows[0]["agreement"], "low-confidence-crepe")
+        self.assertEqual(rows[0]["selected_source"], "pyin-fallback")
+        self.assertAlmostEqual(rows[0]["selected_f0_hz"], 440.0)
+        self.assertEqual(rows[1]["selected_source"], "none")
+
+    def test_stable_detector_preserves_evidence_label(self):
+        t = np.arange(0.0, 1.0, 0.01)
+        f0 = np.full_like(t, 440.0)
+        confidence = np.ones_like(t)
+        evidence = ["pyin-fallback"] * len(t)
+        segments = detect_stable_segments(t, f0, confidence, evidence=evidence)
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(segments[0]["evidence"], "pyin-fallback")
+        self.assertEqual(segments[0]["pyin_fallback_fraction"], 1.0)
+
     def test_stable_detector_rejects_glissando_and_keeps_vibrato(self):
         t = np.arange(0.0, 2.0, 0.01)
         confidence = np.ones_like(t)
@@ -51,10 +75,17 @@ class PitchAlgorithmTests(unittest.TestCase):
             for step in range(20)
         ]
         result = fit_equal_divisions(targets, (12, 19, 24, 31))
+        self.assertEqual(result["measurement_status"], "ok")
         models = {row["edo"]: row for row in result["models"]}
         self.assertLess(models[19]["weighted_rmse_cents"], 1e-6)
         self.assertLess(models[19]["weighted_rmse_cents"], models[12]["weighted_rmse_cents"])
 
+
+    def test_empty_tuning_is_explicitly_insufficient(self):
+        result = fit_equal_divisions([], (12, 19, 24, 31))
+        self.assertEqual(result["measurement_status"], "insufficient_stable_targets")
+        self.assertEqual(result["target_count"], 0)
+        self.assertEqual(result["models"], [])
 
 if __name__ == "__main__":
     unittest.main()
