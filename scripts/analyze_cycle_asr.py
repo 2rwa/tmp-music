@@ -17,7 +17,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from common.japanese import edit_alignment, morae_from_kana, normalize_kana
+from common.japanese import (
+    edit_alignment,
+    morae_from_kana,
+    normalize_kana,
+    partition_repeated_reference_lines,
+)
 
 
 def reference_text(path: Path) -> str:
@@ -108,6 +113,7 @@ def main() -> int:
     p.add_argument("--device", default="cpu")
     p.add_argument("--compute-type", default="int8")
     p.add_argument("--boundary-source", choices=("aligned_cycles", "cycles"), default="aligned_cycles")
+    p.add_argument("--reference-cycle-lines", type=int, default=10)
     args = p.parse_args()
 
     source = args.audio.resolve()
@@ -119,17 +125,23 @@ def main() -> int:
     reference_surface = reference_text(source)
     if not reference_surface:
         raise RuntimeError("embedded reference lyrics not found")
-    reference_reading = to_hiragana_reading(reference_surface)
-    reference_chars = list(reference_reading)
-    reference_morae = morae_from_kana(reference_reading)
+    reference_chunks = partition_repeated_reference_lines(
+        reference_surface,
+        len(cycles),
+        canonical_line_count=args.reference_cycle_lines,
+    )
+    reference_chunk_readings = [to_hiragana_reading(chunk) for chunk in reference_chunks]
+    reference_chunk_morae = [morae_from_kana(reading) for reading in reference_chunk_readings]
+    full_reference_reading = to_hiragana_reading(reference_surface)
+    full_reference_morae = morae_from_kana(full_reference_reading)
 
     from faster_whisper import WhisperModel
 
     model = WhisperModel(args.model, device=args.device, compute_type=args.compute_type)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "reference-surface.txt").write_text(reference_surface + "\n", encoding="utf-8")
-    (args.out / "reference-reading.txt").write_text(reference_reading + "\n", encoding="utf-8")
-    (args.out / "reference-morae.txt").write_text(" ".join(reference_morae) + "\n", encoding="utf-8")
+    (args.out / "reference-reading.txt").write_text(full_reference_reading + "\n", encoding="utf-8")
+    (args.out / "reference-morae.txt").write_text(" ".join(full_reference_morae) + "\n", encoding="utf-8")
 
     cycle_rows: list[dict[str, object]] = []
     cycle_morae: list[list[str]] = []
@@ -139,6 +151,10 @@ def main() -> int:
             cycle_id = str(cycle.get("id") or f"cycle-{index:02d}")
             start_s = float(cycle["start_s"])
             end_s = float(cycle["end_s"])
+            cycle_reference_surface = reference_chunks[index - 1]
+            cycle_reference_reading = reference_chunk_readings[index - 1]
+            cycle_reference_chars = list(cycle_reference_reading)
+            cycle_reference_morae = reference_chunk_morae[index - 1]
             clip = temp / f"{cycle_id}.wav"
             clip_audio(source, start_s, end_s, clip)
             asr = transcribe(model, clip, args.language)
@@ -146,15 +162,22 @@ def main() -> int:
             reading = to_hiragana_reading(surface)
             chars = list(reading)
             morae = morae_from_kana(reading)
-            char_metrics, char_alignment = edit_alignment(reference_chars, chars)
-            mora_metrics, mora_alignment = edit_alignment(reference_morae, morae)
+            char_metrics, char_alignment = edit_alignment(cycle_reference_chars, chars)
+            mora_metrics, mora_alignment = edit_alignment(cycle_reference_morae, morae)
             cycle_morae.append(morae)
 
+            (args.out / f"{cycle_id}-reference.txt").write_text(
+                cycle_reference_surface + "\n",
+                encoding="utf-8",
+            )
             detail = {
                 "cycle_id": cycle_id,
                 "start_s": start_s,
                 "end_s": end_s,
                 "duration_s": end_s - start_s,
+                "reference_surface": cycle_reference_surface,
+                "reference_reading": cycle_reference_reading,
+                "reference_morae": cycle_reference_morae,
                 "surface": surface,
                 "reading": reading,
                 "morae": morae,
@@ -181,6 +204,8 @@ def main() -> int:
                 "mora_substitutions": mora_metrics["substitutions"],
                 "mora_deletions": mora_metrics["deletions"],
                 "mora_insertions": mora_metrics["insertions"],
+                "reference_lines": len(cycle_reference_surface.splitlines()),
+                "reference_morae": len(cycle_reference_morae),
                 "hypothesis_morae": len(morae),
                 "text": surface,
             })
@@ -208,8 +233,16 @@ def main() -> int:
         "language": args.language,
         "boundary_source": args.boundary_source,
         "cycle_count": len(cycle_rows),
-        "reference_character_count": len(reference_chars),
-        "reference_mora_count": len(reference_morae),
+        "reference_scope": "cycle-specific-contiguous-partition",
+        "reference_total_character_count": len(list(full_reference_reading)),
+        "reference_total_mora_count": len(full_reference_morae),
+        "reference_cycle_line_counts": [len(chunk.splitlines()) for chunk in reference_chunks],
+        "reference_cycle_mora_counts": [len(morae) for morae in reference_chunk_morae],
+        "reference_partition": {
+            "canonical_line_count": args.reference_cycle_lines,
+            "max_line_deviation": 3,
+            "method": "dynamic-programming line edit distance to first canonical cycle",
+        },
         "cycles": cycle_rows,
         "pairwise_mora_distance": {
             "mean": statistics.mean(off_diagonal) if off_diagonal else None,
@@ -217,6 +250,7 @@ def main() -> int:
             "max": max(off_diagonal) if off_diagonal else None,
         },
         "interpretation_warning": (
+            "Per-cycle CER/MER uses the corresponding contiguous reference-lyric chunk. "
             "Cycle-to-cycle transcript differences combine pronunciation variation, source-separation/"
             "acoustic differences, and ASR error. They are evidence for where to listen, not a direct "
             "measurement of pronunciation change."
