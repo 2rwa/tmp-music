@@ -183,19 +183,29 @@ def stage_command(
             "--fmin",
             str(pitch.get("fmin_hz", 65.40639132514966)),
             "--fmax",
-            str(pitch.get("fmax_hz", 2093.004522404789)),
+            str(pitch.get("fmax_hz", 2006.0)),
             "--crepe-model",
             crepe_model,
             "--device",
             str(pitch.get("device", "cpu")),
             "--crepe-periodicity-threshold",
             str(pitch.get("crepe_periodicity_threshold", 0.21)),
+            "--pyin-fallback-confidence",
+            str(pitch.get("pyin_fallback_confidence", 0.80)),
             "--strong-cents",
             str(pitch.get("consensus_strong_cents", 25.0)),
             "--weak-cents",
             str(pitch.get("consensus_weak_cents", 50.0)),
         ]
-        parameters = {"input": input_path, "source": source, "estimators": selected_estimators}
+        parameters = {
+            "input": input_path,
+            "source": source,
+            "estimators": selected_estimators,
+            "fmin_hz": pitch.get("fmin_hz", 65.40639132514966),
+            "fmax_hz": pitch.get("fmax_hz", 2006.0),
+            "crepe_periodicity_threshold": pitch.get("crepe_periodicity_threshold", 0.21),
+            "pyin_fallback_confidence": pitch.get("pyin_fallback_confidence", 0.80),
+        }
         models = {"torchcrepe": crepe_model} if "crepe" in selected_estimators.split(",") else {}
         return command, parameters, models, ["librosa", "numpy", "torchcrepe", "torch"]
     if stage == "targets":
