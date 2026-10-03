@@ -32,6 +32,7 @@ def main() -> int:
     p.add_argument("--max-residual-std", type=float, default=40.0)
     p.add_argument("--min-duration", type=float, default=0.15)
     p.add_argument("--min-confidence", type=float, default=0.5)
+    p.add_argument("--max-drift-cents", type=float, default=50.0)
     args = p.parse_args()
 
     times, f0, confidence, evidence = [], [], [], []
@@ -52,6 +53,7 @@ def main() -> int:
         max_detrended_std_cents=args.max_residual_std,
         min_duration_s=args.min_duration,
         min_confidence=args.min_confidence,
+        max_drift_cents=args.max_drift_cents,
     )
     args.out.mkdir(parents=True, exist_ok=True)
     fields = [
@@ -79,6 +81,7 @@ def main() -> int:
             "max_detrended_std_cents": args.max_residual_std,
             "min_duration_s": args.min_duration,
             "min_confidence": args.min_confidence,
+            "max_drift_cents": args.max_drift_cents,
         },
     }
     (args.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -65,6 +65,27 @@ class PitchAlgorithmTests(unittest.TestCase):
         self.assertAlmostEqual(stable_segments[0]["median_f0_hz"], 440.0, places=3)
         self.assertGreater(vibrato_segments[0]["vibrato_extent_cents_p95_p05"], 40.0)
 
+    def test_stable_detector_rejects_slow_glissando(self):
+        t = np.arange(0.0, 2.0, 0.01)
+        confidence = np.ones_like(t)
+        slow_gliss = 440.0 * 2 ** ((40.0 * t) / 1200.0)
+        segments = detect_stable_segments(t, slow_gliss, confidence)
+        self.assertEqual(len(segments), 0)
+
+    def test_fit_equal_divisions_handles_wrap_boundary(self):
+        targets = [
+            {
+                "median_f0_hz": 440.0 * 2 ** (cents / 1200.0),
+                "duration_s": 1.0,
+                "median_confidence": 1.0,
+            }
+            for cents in (49.0, -49.0)
+        ]
+        result = fit_equal_divisions(targets, (12,))
+        model = result["models"][0]
+        self.assertAlmostEqual(abs(float(model["estimated_global_offset_cents"])), 50.0, places=1)
+        self.assertAlmostEqual(float(model["weighted_rmse_cents"]), 1.0, places=1)
+
     def test_19edo_fixture_fits_19edo_better_than_12tet(self):
         targets = [
             {

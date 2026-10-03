@@ -163,6 +163,7 @@ def detect_stable_segments(
     min_duration_s: float = 0.15,
     min_confidence: float = 0.5,
     max_gap_s: float = 0.04,
+    max_drift_cents: float = 50.0,
 ) -> list[dict[str, object]]:
     times = np.asarray(list(times_s), dtype=float)
     f0 = np.asarray(list(f0_hz), dtype=float)
@@ -210,6 +211,12 @@ def detect_stable_segments(
         seg_f0 = f0[group]
         seg_cents = cents[group]
         seg_conf = conf[group]
+        seg_times = times[group]
+        if len(seg_times) > 1:
+            overall_slope, _ = np.polyfit(seg_times, seg_cents, 1)
+            overall_drift = abs(float(overall_slope) * duration)
+            if overall_drift > max_drift_cents:
+                continue
         median_f0 = float(np.median(seg_f0))
         midi = hz_to_midi(median_f0)
         nearest_12tet = 100.0 * (midi - round(midi))
@@ -273,8 +280,17 @@ def fit_equal_divisions(
     models = []
     for edo in divisions:
         step = 1200.0 / int(edo)
-        raw = _wrap_residual(absolute_cents, step)
-        offset = weighted_median(raw, weights)
+        # Estimate the global offset on a circle so values near the wrap boundary
+        # (for example ±49 cents in 12-EDO) are treated as neighbors.
+        angles = absolute_cents * (2.0 * np.pi / step)
+        mean_sin = float(np.average(np.sin(angles), weights=weights))
+        mean_cos = float(np.average(np.cos(angles), weights=weights))
+        if math.hypot(mean_sin, mean_cos) > 1e-12:
+            offset = float(math.atan2(mean_sin, mean_cos) * (step / (2.0 * np.pi)))
+        else:
+            # Degenerate circular mean: retain the previous robust fallback.
+            raw = _wrap_residual(absolute_cents, step)
+            offset = weighted_median(raw, weights)
         residual = _wrap_residual(absolute_cents - offset, step)
         rmse = float(np.sqrt(np.average(residual ** 2, weights=weights)))
         mae = float(np.average(np.abs(residual), weights=weights))
