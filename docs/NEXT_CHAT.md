@@ -232,3 +232,97 @@ Milestone 1〜7、TODO約50件を記載。
 大きな設計変更、Milestone完了、新しい基準曲追加、重要な既知バグ修正のたびにこのファイルを更新する。
 
 一行継続プロンプトから復帰できることを壊さない。
+
+
+## 2026-10-03 Milestone 1/2 progress
+
+### Milestone 1 — complete
+
+Analyzer foundation is implemented and validated.
+
+Implemented:
+
+- `scripts/cli.py`
+- `config/tracks/whisper-ao.yml`
+- `config/tracks/jugemu.yml`
+- common provenance/status schema
+- synthetic pitch/rhythm fixtures
+- cheap CI
+- existing acoustic/repetition/ASR analyzers routed through the common CLI
+
+Validation:
+
+- cheap CI success: Actions run `37083242829`
+- real-audio foundation smoke success: Actions run `37083316389`
+- both benchmark source SHA checks passed
+- both tracks were exercised through the common CLI
+- Whisper AO tiny-ASR, Jugemu repetition, and metadata stages produced validated outputs
+
+### Milestone 2 — in progress
+
+Implemented in main:
+
+- `scripts/separate_vocals.py`
+  - Demucs two-stem vocal/accompaniment separation
+  - duration/RMS/finite/clipping/re-sum diagnostics
+  - silent stem is treated as failure
+- `scripts/analyze_pitch.py`
+  - pYIN
+  - torchcrepe
+  - estimator agreement/consensus
+- `scripts/detect_pitch_targets.py`
+  - local slope + detrended variation
+  - glissando rejection
+  - moderate-vibrato retention
+- `scripts/analyze_tuning.py`
+  - 12/19/24/31 EDO residual comparison
+  - global offset removal
+  - interpretation warning
+- `scripts/common/separation.py`
+- `scripts/common/pitch.py`
+- `requirements-separation.txt`
+- `requirements-pitch-ml.txt`
+- unit/regression tests for separation diagnostics, CREPE/pYIN consensus, stable targets, and 19-EDO fixture
+
+Current validation runs:
+
+- Demucs separation: `37084031007`
+  - Whisper AO and Jugemu run in parallel
+  - dependency install succeeded
+  - both are currently in the separation step
+- mix pYIN+CREPE: `37084031038`
+  - Whisper AO and Jugemu run in parallel
+  - Whisper AO reached pitch analysis
+  - Jugemu is installing pitch dependencies
+- cheap CI for this Milestone 2 code: `37084031010` — success
+
+A previous Demucs run `37083721806` failed before installing dependencies because `actions/setup-python` had `cache: pip` without `cache-dependency-path`. This is fixed and recorded at:
+
+`analysis/common/failures/20261003-setup-python-cache-path.md`
+
+### Vocal-only dependency chain
+
+`.github/workflows/milestone2-pitch-vocals.yml` is configured to trigger after successful completion of the Demucs workflow.
+
+It:
+
+1. receives the completed Demucs run ID and head SHA,
+2. downloads `demucs-<track>` artifacts from that exact run,
+3. runs pYIN + CREPE on `vocals.wav`,
+4. runs stable-target detection,
+5. runs EDO residual comparison,
+6. uploads compact vocal-pitch artifacts.
+
+This avoids re-running Demucs merely to analyze the vocal stem.
+
+### Next checks
+
+When resuming:
+
+1. check run `37084031007` (Demucs)
+2. check run `37084031038` (mix pitch)
+3. if Demucs succeeded, find the automatically triggered vocal-pitch workflow run and check both matrix jobs
+4. inspect actual `diagnostics.json`, `summary.json`, stable-note counts, and tuning residuals before declaring Milestone 2 complete
+5. only after mix + vocal results both exist, add the explicit mix-vs-vocal comparison report
+
+Do not declare Milestone 2 complete based only on process exit status; verify artifacts and measurement contents.
