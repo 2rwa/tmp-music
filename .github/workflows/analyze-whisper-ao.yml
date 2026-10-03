@@ -5,8 +5,10 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/analyze-whisper-ao.yml"
-      - "scripts/**"
+      # Keep this heavy workflow tied to the legacy analyzer inputs only.
+      # Foundation/CLI changes are covered by analysis-ci.yml instead.
+      - "scripts/analyze_audio.py"
+      - "scripts/asr_compare.py"
       - "requirements-analysis.txt"
       - "requirements-asr.txt"
       - "samples/whisper-ao/source/whisper-ao.mp3"
