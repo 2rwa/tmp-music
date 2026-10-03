@@ -7,6 +7,8 @@ on:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
       - "scripts/analyze_voice_quality.py"
+      - "scripts/analyze_voice_quality_timeseries.py"
+      - "scripts/export_m6_timeline_v2.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
@@ -29,6 +31,7 @@ on:
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
       - ".github/workflows/m6-timeline-export.yml"
+      - ".github/workflows/m6-level2-timeseries.yml"
       - "scripts/export_m6_timeline.py"
       - "docs/m6-status/timeline/index.html"
       - "docs/m6-status/timeline/app.js"
@@ -40,6 +43,8 @@ on:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
       - "scripts/analyze_voice_quality.py"
+      - "scripts/analyze_voice_quality_timeseries.py"
+      - "scripts/export_m6_timeline_v2.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
@@ -62,6 +67,7 @@ on:
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
       - ".github/workflows/m6-timeline-export.yml"
+      - ".github/workflows/m6-level2-timeseries.yml"
       - "scripts/export_m6_timeline.py"
       - "docs/m6-status/timeline/index.html"
       - "docs/m6-status/timeline/app.js"
@@ -118,11 +124,14 @@ jobs:
             scripts/common/separation.py \
             scripts/common/pitch.py \
             scripts/common/voice_quality.py \
+            scripts/common/voice_quality_timeseries.py \
             scripts/common/structure.py \
             scripts/common/japanese.py \
             scripts/separate_vocals.py \
             scripts/analyze_pitch.py \
             scripts/analyze_voice_quality.py \
+            scripts/analyze_voice_quality_timeseries.py \
+            scripts/export_m6_timeline_v2.py \
             scripts/analyze_structure.py \
             scripts/analyze_cycle_asr.py \
             scripts/align_lyrics.py \
@@ -163,8 +172,11 @@ jobs:
           set -euo pipefail
           python -m py_compile scripts/export_m6_timeline.py
           node --check docs/m6-status/timeline/app.js
+          node --check docs/m6-status/timeline-v2/app.js
           test -s docs/m6-status/timeline/index.html
           test -s docs/m6-status/timeline/style.css
+          test -s docs/m6-status/timeline-v2/index.html
+          test -s docs/m6-status/timeline-v2/style.css
 
       - name: Validate M6 status page
         run: |

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M6 Level 2 Timeline — tmp-music</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+  <nav><a href="../">← M6 summary</a> · <a href="../timeline/">Level 1</a></nav>
+  <header>
+    <div class="eyebrow">tmp-music · M6 Level 2</div>
+    <h1>Continuous voice-quality timeline</h1>
+    <p>Level 1の区間代表値に、Praat calibrated CPPS / Harmonicity(cc)、F0-guided autocorrelation HNR、spectral tilt、local pitch modulationを高時間分解能で追加した探索用ビュー。</p>
+  </header>
+
+  <section class="controls">
+    <div class="track-tabs" id="track-tabs"></div>
+    <div class="toggles">
+      <label><input id="show-low" type="checkbox" checked> low-confidence F0</label>
+      <label><input id="show-segments" type="checkbox" checked> Level 1 segment guides</label>
+      <label><input id="show-movement" type="checkbox" checked> pitch movement</label>
+      <label><input id="show-register" type="checkbox" checked> register candidates</label>
+      <button id="reset-view" type="button">Reset view</button>
+    </div>
+  </section>
+
+  <section class="summary" id="summary"></section>
+
+  <section class="chart-shell">
+    <div class="legend">
+      <span><i class="swatch f0"></i>F0</span>
+      <span><i class="swatch cpps"></i>Praat CPPS</span>
+      <span><i class="swatch hnrp"></i>Praat HNR(cc)</span>
+      <span><i class="swatch hnra"></i>autocorr HNR</span>
+      <span><i class="swatch tilt"></i>spectral tilt</span>
+      <span><i class="swatch vib"></i>local vibrato extent</span>
+      <span><i class="swatch rate"></i>local modulation rate</span>
+      <span><i class="swatch move"></i>pitch movement</span>
+      <span><i class="swatch reg"></i>register candidate</span>
+    </div>
+    <canvas id="timeline" aria-label="M6 Level 2 time-series visualization"></canvas>
+    <div id="tooltip" class="tooltip" hidden></div>
+    <p class="hint">ドラッグ: 範囲ズーム · ホイール: カーソル中心ズーム · ダブルクリック / Reset view: 全体表示</p>
+  </section>
+
+  <section class="notes">
+    <h2>Level 2 の意味</h2>
+    <div class="note"><strong>CPPS:</strong> M6と同じ calibrated Praat PowerCepstrogram を 0.01 s time smoothing / 0.001 s quefrency smoothing したframe系列。segment中央値とは別の連続観察用。</div>
+    <div class="note"><strong>Praat HNR:</strong> Harmonicity(cc) 10 ms系列。<strong>autocorr HNR</strong>はselected-F0に誘導された独自推定で、両者は同一指標ではない。</div>
+    <div class="note"><strong>Local vibrato:</strong> 0.8 s窓のdetrended selected-F0 p95−p05と、十分な連続データがある場合の3–9 Hz dominant modulation rate。意図的なビブラートを断定する指標ではない。</div>
+    <div class="note"><strong>Register / movement:</strong> Level 1と同じ候補イベント。連続指標が候補前後でどう変わるかを見るための重ね表示。</div>
+  </section>
+  <footer id="provenance"></footer>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
