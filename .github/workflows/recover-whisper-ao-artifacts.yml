@@ -1,10 +1,6 @@
 name: Recover Whisper AO artifacts
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/recover-whisper-ao-artifacts.yml"
   workflow_dispatch:
 
 permissions:

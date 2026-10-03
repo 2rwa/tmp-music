@@ -1,43 +1,43 @@
 {
   "auto": {
     "token": {
-      "substitutions": 82,
-      "deletions": 1,
-      "insertions": 37,
-      "correct": 34,
+      "substitutions": 0,
+      "deletions": 117,
+      "insertions": 0,
+      "correct": 0,
       "reference_units": 117,
-      "hypothesis_units": 153,
-      "error_rate": 1.0256410256410255
+      "hypothesis_units": 0,
+      "error_rate": 1.0
     },
     "character": {
-      "substitutions": 204,
-      "deletions": 44,
-      "insertions": 66,
-      "correct": 266,
+      "substitutions": 0,
+      "deletions": 514,
+      "insertions": 0,
+      "correct": 0,
       "reference_units": 514,
-      "hypothesis_units": 536,
-      "error_rate": 0.6108949416342413
+      "hypothesis_units": 0,
+      "error_rate": 1.0
     },
     "tokenization": "Latin words or contiguous Japanese script spans; CER removes spaces/punctuation"
   },
   "en": {
     "token": {
-      "substitutions": 82,
-      "deletions": 1,
-      "insertions": 37,
-      "correct": 34,
+      "substitutions": 90,
+      "deletions": 0,
+      "insertions": 27,
+      "correct": 27,
       "reference_units": 117,
-      "hypothesis_units": 153,
-      "error_rate": 1.0256410256410255
+      "hypothesis_units": 144,
+      "error_rate": 1.0
     },
     "character": {
-      "substitutions": 204,
-      "deletions": 44,
-      "insertions": 66,
-      "correct": 266,
+      "substitutions": 201,
+      "deletions": 58,
+      "insertions": 51,
+      "correct": 255,
       "reference_units": 514,
-      "hypothesis_units": 536,
-      "error_rate": 0.6108949416342413
+      "hypothesis_units": 507,
+      "error_rate": 0.603112840466926
     },
     "tokenization": "Latin words or contiguous Japanese script spans; CER removes spaces/punctuation"
   }

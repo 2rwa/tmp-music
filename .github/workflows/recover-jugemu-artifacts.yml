@@ -1,10 +1,6 @@
 name: Recover Jugemu artifacts
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/recover-jugemu-artifacts.yml"
   workflow_dispatch:
 
 permissions:
