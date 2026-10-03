@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
+      - "scripts/analyze_structure.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -21,6 +22,7 @@ on:
     paths:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
+      - "scripts/analyze_structure.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -84,6 +86,7 @@ jobs:
             scripts/common/structure.py \
             scripts/separate_vocals.py \
             scripts/analyze_pitch.py \
+            scripts/analyze_structure.py \
             scripts/detect_pitch_targets.py \
             scripts/analyze_tuning.py \
             scripts/compare_pitch_sources.py \
