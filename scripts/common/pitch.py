@@ -26,6 +26,7 @@ def consensus_frames(
     pyin_confidence: Iterable[float],
     crepe_periodicity: Iterable[float],
     *,
+    pyin_confidence_threshold: float = 0.1,
     crepe_periodicity_threshold: float = 0.21,
     strong_cents: float = 25.0,
     weak_cents: float = 50.0,
@@ -42,19 +43,26 @@ def consensus_frames(
 
     rows: list[dict[str, float | str | None]] = []
     for i in range(n):
-        p_ok = bool(np.isfinite(p[i]) and p[i] > 0)
+        p_ok = bool(np.isfinite(p[i]) and p[i] > 0 and np.isfinite(pc[i]) and pc[i] >= pyin_confidence_threshold)
         c_ok = bool(np.isfinite(c[i]) and c[i] > 0 and np.isfinite(cc[i]) and cc[i] >= crepe_periodicity_threshold)
         agreement = "none"
         delta: float | None = None
         consensus: float | None = None
         if p_ok and c_ok:
             delta = abs(cents_between(float(p[i]), float(c[i])))
+            octave_residual = min(delta % 1200, 1200 - (delta % 1200))
             if delta <= strong_cents:
                 agreement = "strong"
                 consensus = math.sqrt(float(p[i]) * float(c[i]))
             elif delta <= weak_cents:
                 agreement = "weak"
                 consensus = math.sqrt(float(p[i]) * float(c[i]))
+            elif octave_residual <= strong_cents:
+                agreement = "octave-strong"
+                consensus = float(p[i]) if pc[i] >= cc[i] else float(c[i])
+            elif octave_residual <= weak_cents:
+                agreement = "octave-weak"
+                consensus = float(p[i]) if pc[i] >= cc[i] else float(c[i])
             else:
                 agreement = "disagreement"
         elif p_ok:
@@ -77,7 +85,7 @@ def consensus_frames(
 
 def consensus_summary(rows: list[dict[str, float | str | None]]) -> dict[str, float | int]:
     total = len(rows)
-    counts = {key: 0 for key in ("strong", "weak", "disagreement", "pyin-only", "crepe-only", "none")}
+    counts = {key: 0 for key in ("strong", "weak", "octave-strong", "octave-weak", "disagreement", "pyin-only", "crepe-only", "none")}
     consensus_count = 0
     for row in rows:
         counts[str(row["agreement"])] = counts.get(str(row["agreement"]), 0) + 1
@@ -122,6 +130,7 @@ def detect_stable_segments(
     min_duration_s: float = 0.15,
     min_confidence: float = 0.5,
     max_gap_s: float = 0.04,
+    max_drift_cents: float = 50.0,
 ) -> list[dict[str, float | int]]:
     times = np.asarray(list(times_s), dtype=float)
     f0 = np.asarray(list(f0_hz), dtype=float)
@@ -170,6 +179,17 @@ def detect_stable_segments(
         seg_f0 = f0[group]
         seg_cents = cents[group]
         seg_conf = conf[group]
+        seg_times = times[group]
+
+        if len(seg_times) > 1:
+            overall_slope, _ = np.polyfit(seg_times, seg_cents, 1)
+        else:
+            overall_slope = 0.0
+
+        overall_drift = abs(overall_slope * duration)
+        if overall_drift > max_drift_cents:
+            continue
+
         median_f0 = float(np.median(seg_f0))
         midi = hz_to_midi(median_f0)
         nearest_12tet = 100.0 * (midi - round(midi))
@@ -221,8 +241,12 @@ def fit_equal_divisions(
     models = []
     for edo in divisions:
         step = 1200.0 / int(edo)
-        raw = _wrap_residual(absolute_cents, step)
-        offset = weighted_median(raw, weights)
+        # Circular mean to find the offset, avoiding boundary artifacts (e.g. at ±50 cents for 12-TET)
+        angle = absolute_cents * (2 * np.pi / step)
+        mean_sin = np.average(np.sin(angle), weights=weights)
+        mean_cos = np.average(np.cos(angle), weights=weights)
+        offset = np.arctan2(mean_sin, mean_cos) * (step / (2 * np.pi))
+
         residual = _wrap_residual(absolute_cents - offset, step)
         rmse = float(np.sqrt(np.average(residual ** 2, weights=weights)))
         mae = float(np.average(np.abs(residual), weights=weights))
@@ -240,8 +264,6 @@ def fit_equal_divisions(
     ambiguity = None
     if len(by_rmse) >= 2:
         ambiguity = {
-            "lowest_residual_edo": by_rmse[0]["edo"],
-            "rmse_gap_to_second_cents": float(by_rmse[1]["weighted_rmse_cents"] - by_rmse[0]["weighted_rmse_cents"]),
-            "note": "Lowest residual is a fit statistic, not an identification of the track's scale or tuning system.",
+            "note": "Lowest residual is a fit statistic, not an identification of the track's scale or tuning system. Do not use this to identify a tuning system.",
         }
     return {"target_count": int(len(freqs)), "models": models, "ambiguity": ambiguity}

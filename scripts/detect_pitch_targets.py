@@ -42,6 +42,10 @@ def main() -> int:
             cconf = parse_float(row.get("crepe_periodicity", ""))
             if pconf == pconf and cconf == cconf:
                 confidence.append(min(pconf, cconf))
+            elif pconf == pconf:
+                confidence.append(pconf)
+            elif cconf == cconf:
+                confidence.append(cconf)
             else:
                 confidence.append(float("nan"))
 
