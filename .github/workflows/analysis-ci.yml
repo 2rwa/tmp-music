@@ -1,0 +1,60 @@
+name: Analysis cheap CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/cli.py"
+      - "scripts/common/**"
+      - "scripts/synthetic/**"
+      - "scripts/tests/**"
+      - "config/tracks/**"
+      - "requirements-core.txt"
+      - ".github/workflows/analysis-ci.yml"
+  pull_request:
+    paths:
+      - "scripts/cli.py"
+      - "scripts/common/**"
+      - "scripts/synthetic/**"
+      - "scripts/tests/**"
+      - "config/tracks/**"
+      - "requirements-core.txt"
+      - ".github/workflows/analysis-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cheap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install core dependency
+        run: python -m pip install -r requirements-core.txt
+      - name: Compile
+        run: |
+          python -m py_compile \
+            scripts/cli.py \
+            scripts/common/schema.py \
+            scripts/common/provenance.py \
+            scripts/synthetic/generate_pitch_fixtures.py \
+            scripts/synthetic/generate_rhythm_fixtures.py
+      - name: Unit tests
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Generate synthetic fixtures
+        run: |
+          python scripts/synthetic/generate_pitch_fixtures.py
+          python scripts/synthetic/generate_rhythm_fixtures.py
+          test -s tests/fixtures/generated/pitch/manifest.json
+          test -s tests/fixtures/generated/rhythm/manifest.json
+      - name: Verify benchmark sources and common CLI plan
+        run: |
+          python scripts/cli.py verify --track whisper-ao
+          python scripts/cli.py verify --track jugemu
+          python scripts/cli.py full --track whisper-ao --dry-run
+          python scripts/cli.py full --track jugemu --dry-run
