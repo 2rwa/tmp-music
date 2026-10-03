@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
+      - "scripts/analyze_voice_quality.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
@@ -22,11 +23,14 @@ on:
       - "requirements-pitch-ml.txt"
       - "requirements-japanese.txt"
       - "requirements-alignment.txt"
+      - "requirements-analysis.txt"
+      - ".github/workflows/milestone6-voice-quality.yml"
       - ".github/workflows/analysis-ci.yml"
   pull_request:
     paths:
       - "scripts/cli.py"
       - "scripts/analyze_pitch.py"
+      - "scripts/analyze_voice_quality.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
@@ -43,6 +47,8 @@ on:
       - "requirements-pitch-ml.txt"
       - "requirements-japanese.txt"
       - "requirements-alignment.txt"
+      - "requirements-analysis.txt"
+      - ".github/workflows/milestone6-voice-quality.yml"
       - ".github/workflows/analysis-ci.yml"
   workflow_dispatch:
 
@@ -93,10 +99,12 @@ jobs:
             scripts/common/provenance.py \
             scripts/common/separation.py \
             scripts/common/pitch.py \
+            scripts/common/voice_quality.py \
             scripts/common/structure.py \
             scripts/common/japanese.py \
             scripts/separate_vocals.py \
             scripts/analyze_pitch.py \
+            scripts/analyze_voice_quality.py \
             scripts/analyze_structure.py \
             scripts/analyze_cycle_asr.py \
             scripts/align_lyrics.py \

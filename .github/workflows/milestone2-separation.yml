@@ -8,6 +8,12 @@ on:
       - "scripts/separate_vocals.py"
       - "scripts/common/separation.py"
       - "requirements-separation.txt"
+      # M6 consumes Demucs vocals and vocal-pitch targets. Rebuild the chain
+      # when the voice-quality implementation changes.
+      - ".github/workflows/milestone6-voice-quality.yml"
+      - "scripts/analyze_voice_quality.py"
+      - "scripts/common/voice_quality.py"
+      - "scripts/tests/test_voice_quality.py"
   workflow_dispatch:
 
 permissions:
