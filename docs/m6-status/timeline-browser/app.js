@@ -9,6 +9,10 @@
   const overviewPlayhead = $('#overview-playhead');
   const overviewPlayheadLabel = $('#overview-playhead-label');
   const overviewReadout = $('#overview-readout');
+  const chronicleLog = $('#chronicle-log');
+  const chronicleCount = $('#chronicle-count');
+  const followLog = $('#follow-log');
+  const jumpCurrentLog = $('#jump-current-log');
   const tooltip = $('#tooltip');
   const fileInput = $('#file-input');
   const chooseFile = $('#choose-file');
@@ -57,6 +61,8 @@
     layout: null,
     overviewLayout: null,
     overviewHovering: false,
+    chronicleEntries: [],
+    currentChronicleId: null,
   };
 
   const fmt = (v, d = 2) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : '—';
@@ -468,7 +474,7 @@
     state.data = d; state.view = [0, d.duration_s]; state.hover = null; state.drag = null;
     state.playhead = 0; state.lastInsightAt = NaN;
     document.documentElement.dataset.playhead = '0.00';
-    renderSummary(); renderProvenance(); renderPlaybackInsights(0, false); draw(); exportBtn.disabled = false;
+    renderSummary(); renderProvenance(); renderPlaybackInsights(0, false); renderChronicle(); draw(); exportBtn.disabled = false;
   }
 
   function setAnalyzing(on) {
@@ -562,6 +568,155 @@
     if ((q.rmsDb > -38 && q.confidence < .45 && q.hnr < 4) || (q.tilt > -3 && q.confidence < .4 && q.rmsDb > -48)) return 'transient';
     if (Number.isFinite(q.f0) && q.confidence >= .6 && q.hnr >= 5) return 'periodic';
     return 'mixed';
+  }
+
+  function smoothedFrameKinds(frames) {
+    const raw = frames.map(classifyFrame);
+    if (raw.length < 5) return raw;
+    const order = ['quiet','periodic','transient','mixed'];
+    return raw.map((kind, i) => {
+      const counts = new Map(order.map((k) => [k, 0]));
+      for (let j = Math.max(0, i - 2); j <= Math.min(raw.length - 1, i + 2); j++) counts.set(raw[j], counts.get(raw[j]) + 1);
+      let best = kind, bestN = -1;
+      for (const k of order) {
+        const n = counts.get(k);
+        if (n > bestN || (n === bestN && k === kind)) { best = k; bestN = n; }
+      }
+      return best;
+    });
+  }
+
+  function stateDescription(kind) {
+    if (kind === 'quiet') return '静かな区間。RMSが低く、F0やHNRはノイズ床の影響を受けやすい。';
+    if (kind === 'periodic') return '周期構造が優勢。母音・歌声・ベース・弦・管など持続する周期音で現れやすい。';
+    if (kind === 'transient') return '音量はあるが周期性が弱い。ドラム／パーカッションのアタック、子音、ノイズなどの影響候補。';
+    return '周期成分と非周期成分が混在。単独の指標では音源を特定しにくい状態。';
+  }
+
+  function buildChronicleEntries() {
+    if (!state.data?.frames?.length) return [];
+    const frames = state.data.frames, kinds = smoothedFrameKinds(frames), entries = [];
+    let start = 0;
+    for (let i = 1; i <= frames.length; i++) {
+      if (i < frames.length && kinds[i] === kinds[start]) continue;
+      const end = i - 1, slice = frames.slice(start, i), kind = kinds[start];
+      const s = Math.max(0, frames[start].t - state.data.frame_hop_ms / 2000);
+      const e = Math.min(state.data.duration_s, frames[end].t + state.data.frame_hop_ms / 2000);
+      const f0s = slice.filter((q) => q.confidence >= .5 && Number.isFinite(q.f0)).map((q) => q.f0);
+      entries.push({
+        id: `state-${start}-${end}`, type:'state', kind, s, e, frameStart:start, frameEnd:end,
+        title:SOUND_STATES[kind].label,
+        text:stateDescription(kind),
+        metrics:{
+          rms:median(slice.map((q)=>q.rmsDb)),
+          f0:median(f0s),
+          conf:median(slice.map((q)=>q.confidence)),
+          hnr:median(slice.map((q)=>q.hnr)),
+          tilt:median(slice.map((q)=>q.tilt)),
+        }
+      });
+      start = i;
+    }
+    for (let i = 0; i < state.data.movement.length; i++) {
+      const m = state.data.movement[i];
+      entries.push({
+        id:`move-${i}`, type:'movement', kind:'movement', s:m.s, e:m.e,
+        title:m.dir === 'up' ? 'ピッチ上昇' : 'ピッチ下降',
+        text:`pitch movement候補。区間内で${m.dir === 'up' ? '上方向' : '下方向'}へ連続的な変化。`,
+        metrics:{change:m.change,r2:m.r2}
+      });
+    }
+    for (let i = 0; i < state.data.register.length; i++) {
+      const r = state.data.register[i];
+      entries.push({
+        id:`register-${i}`, type:'register', kind:'register', s:r.t, e:r.t,
+        title:'register変化候補',
+        text:`F0のジャンプに加えて ${r.features.join(' / ')} が同時に変化。`,
+        metrics:{jump:r.jump}
+      });
+    }
+    entries.sort((a,b)=>a.s-b.s || (a.type==='state'?-1:1));
+    return entries;
+  }
+
+  function chronicleMetricText(entry) {
+    if (entry.type === 'state') {
+      const m = entry.metrics;
+      return `RMS ${fmt(m.rms,1)} dBFS · F0 ${fmt(m.f0,1)} Hz · conf ${fmt(m.conf,2)} · HNR ${fmt(m.hnr,1)} dB · tilt ${fmt(m.tilt,1)} dB/oct`;
+    }
+    if (entry.type === 'movement') return `${fmt(entry.metrics.change,0)} cent · r² ${fmt(entry.metrics.r2,2)}`;
+    return `F0 jump ${fmt(entry.metrics.jump,0)} cent`;
+  }
+
+  function chronicleTimeText(entry) {
+    const a = fmt(entry.s,2);
+    if (entry.e - entry.s < .03) return `${a} s`;
+    return `${a}–${fmt(entry.e,2)} s`;
+  }
+
+  function renderChronicle() {
+    state.chronicleEntries = buildChronicleEntries();
+    const entries = state.chronicleEntries;
+    chronicleCount.textContent = `${entries.length.toLocaleString()} logs`;
+    jumpCurrentLog.disabled = !entries.length;
+    document.documentElement.dataset.chronicleEntries = String(entries.length);
+    if (!entries.length) {
+      chronicleLog.innerHTML = '<div class="chronicle-empty">解析ログはありません。</div>';
+      return;
+    }
+    chronicleLog.innerHTML = entries.map((entry) => {
+      const frameDetails = entry.type === 'state'
+        ? `<details data-frame-start="${entry.frameStart}" data-frame-end="${entry.frameEnd}"><summary>生フレーム ${(entry.frameEnd-entry.frameStart+1).toLocaleString()}件</summary><div class="raw-frame-placeholder">開くと20ms解析値を読み込みます。</div></details>`
+        : '';
+      const cls = entry.type === 'state' ? `state-${entry.kind}` : `type-${entry.type}`;
+      return `<article class="chronicle-item ${cls}" data-log-id="${entry.id}" data-s="${entry.s}" data-e="${entry.e}">
+        <button class="chronicle-main" type="button" data-seek="${entry.s}">
+          <span class="chronicle-time">${chronicleTimeText(entry)}</span>
+          <span>
+            <span class="chronicle-type">${entry.type === 'state' ? 'STATE' : entry.type.toUpperCase()}</span>
+            <div class="chronicle-title">${escapeHtml(entry.title)}</div>
+            <div class="chronicle-text">${escapeHtml(entry.text)}</div>
+            <div class="chronicle-metrics">${escapeHtml(chronicleMetricText(entry))}</div>
+          </span>
+        </button>
+        ${frameDetails}
+      </article>`;
+    }).join('');
+    syncChronicle(state.playhead, false);
+  }
+
+  function rawFramesHtml(start, end) {
+    const rows = [];
+    for (let i = start; i <= end; i++) {
+      const q = state.data.frames[i], kind = classifyFrame(q);
+      rows.push(`<tr><td>${fmt(q.t,2)}s</td><td><span class="raw-state">${SOUND_STATES[kind].label}</span></td><td>${fmt(q.rmsDb,1)}</td><td>${fmt(q.f0,1)}</td><td>${fmt(q.confidence,2)}</td><td>${fmt(q.hnr,1)}</td><td>${fmt(q.cppsLike,1)}</td><td>${fmt(q.tilt,1)}</td><td>${fmt(q.vibExtent,1)}</td><td>${fmt(q.vibRate,2)}</td></tr>`);
+    }
+    return `<div class="raw-frame-wrap"><table class="raw-frame-table"><thead><tr><th>time</th><th>state</th><th>RMS</th><th>F0</th><th>conf</th><th>HNR</th><th>CPPS-like</th><th>tilt</th><th>extent</th><th>rate</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  }
+
+  function syncChronicle(t, forceScroll = false) {
+    if (!state.chronicleEntries.length) return;
+    const active = state.chronicleEntries.filter((e) => {
+      if (e.type === 'register') return Math.abs(e.s - t) <= .18;
+      return t >= e.s && t <= e.e;
+    });
+    const primary = active.find((e)=>e.type==='state') || active[0] ||
+      state.chronicleEntries.reduce((best,e)=>!best || Math.abs(e.s-t)<Math.abs(best.s-t)?e:best,null);
+    const currentId = primary?.id || null;
+    document.documentElement.dataset.chronicleCurrent = currentId || '';
+    if (typeof chronicleLog.querySelectorAll === 'function') {
+      for (const el of chronicleLog.querySelectorAll('.chronicle-item.is-current')) el.classList.remove('is-current');
+      for (const e of active.length ? active : (primary ? [primary] : [])) {
+        const el = chronicleLog.querySelector(`[data-log-id="${e.id}"]`);
+        if (el) el.classList.add('is-current');
+      }
+    }
+    const changed = currentId !== state.currentChronicleId;
+    state.currentChronicleId = currentId;
+    if ((forceScroll || (changed && followLog.checked)) && currentId && typeof chronicleLog.querySelector === 'function') {
+      const el = chronicleLog.querySelector(`[data-log-id="${currentId}"]`);
+      if (el?.scrollIntoView) el.scrollIntoView({block:'center',behavior:forceScroll?'smooth':'auto'});
+    }
   }
 
   function overviewLayout() {
@@ -888,6 +1043,7 @@
       playbackTime.textContent = `${fmt(state.playhead, 2)} s`;
     }
     if (!state.overviewHovering) renderOverviewReadout(state.playhead);
+    syncChronicle(state.playhead, false);
     if (viewChanged) draw(); else { updatePlayheadOverlay(); updateOverviewPlayhead(); }
   }
 
@@ -929,6 +1085,27 @@
     return clamp(timeAtX(x, L.f0), state.view[0], state.view[1]);
   }
   function resetView() { if (state.data) { state.view = [0, state.data.duration_s]; draw(); } }
+
+  chronicleLog.addEventListener('click', (ev) => {
+    const button = ev.target.closest?.('.chronicle-main');
+    if (!button || !state.data) return;
+    const t = Number(button.dataset.seek);
+    if (!Number.isFinite(t)) return;
+    state.playhead = clamp(t,0,state.data.duration_s);
+    document.documentElement.dataset.playhead = state.playhead.toFixed(2);
+    if (!audio.hidden) { audio.currentTime = state.playhead; syncPlaybackUi(state.playhead, !audio.paused, true); }
+    else { renderOverviewReadout(state.playhead); updateOverviewPlayhead(); syncChronicle(state.playhead,true); }
+  });
+  chronicleLog.addEventListener('toggle', (ev) => {
+    const details = ev.target;
+    if (details?.tagName !== 'DETAILS' || !details.open || details.dataset.loaded === '1' || !state.data) return;
+    const start = Number(details.dataset.frameStart), end = Number(details.dataset.frameEnd);
+    if (!Number.isInteger(start) || !Number.isInteger(end)) return;
+    details.innerHTML = `<summary>生フレーム ${(end-start+1).toLocaleString()}件</summary>${rawFramesHtml(start,end)}`;
+    details.dataset.loaded = '1';
+  }, true);
+  jumpCurrentLog.addEventListener('click', () => syncChronicle(state.playhead,true));
+  followLog.addEventListener('change', () => { if (followLog.checked) syncChronicle(state.playhead,true); });
 
   overviewCanvas.addEventListener('pointermove', (ev) => {
     const t = overviewTimeAtEvent(ev); if (t == null) return;

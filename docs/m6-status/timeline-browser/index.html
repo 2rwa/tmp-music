@@ -75,6 +75,25 @@
     <p class="hint">全尺を常に表示 · クリック: 再生位置へ移動 · 青枠: 詳細グラフで表示中の範囲 · 上段: RMS音量 · 中段: 音の状態 · 下段: pitch movement / register候補</p>
   </section>
 
+  <section class="chronicle-panel" id="chronicle-panel">
+    <div class="chronicle-header">
+      <div>
+        <div class="chronicle-kicker">VERTICAL ANALYSIS LOG</div>
+        <h2>縦型解析年表</h2>
+        <p>音声全体を「何が起きていたか」の順に読む。状態区間と解析イベントを省略せず並べ、各区間から20ms単位の生フレームへ降りられる。</p>
+      </div>
+      <div class="chronicle-actions">
+        <label><input id="follow-log" type="checkbox" checked> 再生位置に追従</label>
+        <button id="jump-current-log" type="button" disabled>現在位置へ</button>
+        <span id="chronicle-count">0 logs</span>
+      </div>
+    </div>
+    <div id="chronicle-log" class="chronicle-log">
+      <div class="chronicle-empty">音声を解析すると、ここに縦型の解析年表を生成します。</div>
+    </div>
+    <p class="hint">▶ NOW PLAYING: 現在再生中の区間 · 項目クリック: その時刻へシーク · 「生フレーム」を開くと区間内の20ms解析値を全件表示</p>
+  </section>
+
   <section class="playback-insights" id="playback-insights" hidden>
     <div class="insight-header">
       <div>

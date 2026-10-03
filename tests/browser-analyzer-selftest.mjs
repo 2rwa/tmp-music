@@ -19,6 +19,9 @@ class ElementStub {
     this.paused = true;
     this.ended = false;
     this.listeners = new Map();
+    this.tagName = id === 'details' ? 'DETAILS' : 'DIV';
+    this.open = false;
+    this.classList = { add() {}, remove() {} };
   }
   addEventListener(name, fn) {
     const xs = this.listeners.get(name) || [];
@@ -27,6 +30,10 @@ class ElementStub {
   dispatch(name, event = {}) { for (const fn of this.listeners.get(name) || []) fn({ type: name, ...event }); }
   setPointerCapture() {}
   click() {}
+  querySelectorAll() { return []; }
+  querySelector() { return null; }
+  closest() { return null; }
+  scrollIntoView() {}
   getBoundingClientRect() { return { width: 1200, height: 820, left: 0, top: 0 }; }
 }
 
@@ -36,7 +43,8 @@ const ids = [
   'show-register', 'reset-view', 'summary', 'provenance', 'playback-insights', 'playback-state',
   'playback-time', 'playback-overview', 'insight-f0', 'insight-voice', 'insight-spectrum',
   'insight-pitch', 'playhead-line', 'playhead-label', 'overview-panel', 'overview-timeline',
-  'overview-playhead', 'overview-playhead-label', 'overview-readout'
+  'overview-playhead', 'overview-playhead-label', 'overview-readout', 'chronicle-panel', 'chronicle-log',
+  'chronicle-count', 'follow-log', 'jump-current-log'
 ];
 const elements = new Map(ids.map((id) => [`#${id}`, new ElementStub(id)]));
 const canvasContext = {
@@ -144,3 +152,11 @@ if (Math.abs(audio.currentTime - expectedSeek) > 0.08) {
 }
 if (!elements.get('#overview-readout').textContent.includes('RMS')) throw new Error('overview readout did not update after seek');
 console.log(`overview regression: rendered states ${overview.dataset.stateCounts} · click seek ${audio.currentTime.toFixed(2)} s`);
+
+const logCount = Number(documentElement.dataset.chronicleEntries);
+if (!Number.isFinite(logCount) || logCount < 1) throw new Error(`chronicle entries missing: ${documentElement.dataset.chronicleEntries}`);
+const chronicleHtml = elements.get('#chronicle-log').innerHTML;
+if (!chronicleHtml.includes('生フレーム') || !chronicleHtml.includes('周期音')) throw new Error('chronicle did not render readable state logs');
+if (!documentElement.dataset.chronicleCurrent) throw new Error('chronicle current playback item was not tracked');
+if (!elements.get('#chronicle-count').textContent.includes('logs')) throw new Error('chronicle count missing');
+console.log(`chronicle regression: ${logCount} logs · current ${documentElement.dataset.chronicleCurrent}`);
