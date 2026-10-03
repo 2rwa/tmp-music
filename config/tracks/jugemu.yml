@@ -44,6 +44,15 @@ analysis:
     language: ja
     device: cpu
     compute_type: int8
+  alignment:
+    backend: mfa
+    language: ja
+    segment_source: structure_cycles
+    boundary_source: aligned_cycles
+    reference_cycle_lines: 10
+    dictionary: japanese_mfa
+    acoustic_model: japanese_mfa
+    g2p_model: japanese_mfa
   repetitions: true
   reference_lyrics: embedded
   repetition:

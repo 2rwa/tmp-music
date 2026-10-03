@@ -9,6 +9,7 @@ on:
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
+      - "scripts/align_lyrics.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -20,6 +21,7 @@ on:
       - "requirements-core.txt"
       - "requirements-pitch-ml.txt"
       - "requirements-japanese.txt"
+      - "requirements-alignment.txt"
       - ".github/workflows/analysis-ci.yml"
   pull_request:
     paths:
@@ -28,6 +30,7 @@ on:
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
       - "scripts/analyze_cycle_asr.py"
+      - "scripts/align_lyrics.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -39,6 +42,7 @@ on:
       - "requirements-core.txt"
       - "requirements-pitch-ml.txt"
       - "requirements-japanese.txt"
+      - "requirements-alignment.txt"
       - ".github/workflows/analysis-ci.yml"
   workflow_dispatch:
 
@@ -95,6 +99,7 @@ jobs:
             scripts/analyze_pitch.py \
             scripts/analyze_structure.py \
             scripts/analyze_cycle_asr.py \
+            scripts/align_lyrics.py \
             scripts/japanese_metrics.py \
             scripts/detect_pitch_targets.py \
             scripts/analyze_tuning.py \

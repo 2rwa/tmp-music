@@ -28,6 +28,13 @@ analysis:
     min_confidence: 0.5
   tuning:
     edos: [12, 19, 24, 31]
+  alignment:
+    backend: mfa
+    language: en
+    segment_source: full_track
+    dictionary: english_us_arpa
+    acoustic_model: english_us_arpa
+    g2p_model: english_us_arpa
   repetitions: false
   reference_lyrics: embedded
   trailing_silence_expected: true

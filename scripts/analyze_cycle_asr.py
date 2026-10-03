@@ -22,6 +22,7 @@ from common.japanese import (
     morae_from_kana,
     normalize_kana,
     partition_repeated_reference_lines,
+    to_hiragana_reading,
 )
 
 
@@ -31,13 +32,6 @@ def reference_text(path: Path) -> str:
         if frame.lang == "eng":
             return frame.text.strip()
     return frames[0].text.strip() if frames else ""
-
-
-def to_hiragana_reading(text: str) -> str:
-    import pykakasi
-
-    converter = pykakasi.kakasi()
-    return normalize_kana("".join(str(chunk["hira"]) for chunk in converter.convert(text)))
 
 
 def clip_audio(source: Path, start_s: float, end_s: float, out: Path) -> None:

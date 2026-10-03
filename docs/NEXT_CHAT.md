@@ -108,70 +108,23 @@ AI生成音楽、とくに unusual / rap / nonlexical / folk-like vocal を、�
 
 whole-mixだけから歌唱pitchを結論しない。
 
-### M3 Structure / cycles — MOSTLY COMPLETE
+### M3 Structure / cycles — COMPLETE
 
-実装・実測済み:
+run `37089824512` success。Jugemu primary/half/double = 98.6842 / 49.3421 / 197.3684 BPM。tempo hop 512 samples = 0.032 s。recurrence 28.75 s。
 
-- MFCC / chroma / rhythm multi-view SSM
-- recurrence period
-- cycle grid
-- local template alignment
-- DTW
-- cycle-distance
+### M4 Japanese lyrics — COMPLETE
 
-成功run:
+run `37089898445` success。cycle-specific referenceで8 cycleのCER/MER/substitution/deletion/insertionを保存。free ASR deletionが支配的なので発音差と直結させない。
 
-- `37086468933`
+### M5 Forced alignment — IN PROGRESS
 
-Jugemu:
+MFA 3.4系ベースの初期実装。
 
-- selected period: 28.75 s
-- aligned starts:
-  - 12.00
-  - 40.75
-  - 69.50
-  - 98.50
-  - 127.25
-  - 156.00
-  - 184.75
-  - 213.50 s
-
-未解決:
-
-- Jules追加tempo estimatorがstructure用0.25 s gridを使い、120 / 60 / 240 BPMへ量子化
-- 実音源validation run `37086741133`, `37087024183` はこのtempo条件でfailure
-
-structure/cycle本体は正常。tempoだけ修正する。
-
-### M4 Japanese lyrics — IMPLEMENTED / E2E REVALIDATION PENDING
-
-実装済み:
-
-- Japanese normalization
-- kana/mora tokenizer
-- CER / MER
-- cycle-level Whisper
-- pairwise mora distance
-- cycle-specific contiguous reference partition
-
-旧reference方式:
-
-- cycle-ASR run `37086549657` success
-
-Jules改善後:
-
-- canonical reference cycle lines = 10
-- expected line counts = 10,10,10,10,10,9,9,9
-- latest cheap CI `37087076630` success
-
-未完了:
-
-- 修正版referenceで実音源E2E再実行
-- 上流tempo validation failureを直せば自動chain可能
-
-### M5 Forced alignment — NOT STARTED
-
-次段。
+- Jugemu: M3 cycle境界 + cycle別既知歌詞 → Japanese MFA word/phone alignment
+- Japanese mora timestampは初版ではword interval内への明示的projection
+- failed spansは削除せずJSON保存
+- Whisper AO用 english_us_arpa設定も追加
+- M3 successからM4/M5を並列chain
 
 ### M6 Voice quality — PARTIAL
 
@@ -201,15 +154,11 @@ M2内に:
 
 最優先:
 
-1. **tempo estimator のhopをstructure feature gridから分離**
-2. high-resolution onset envelopeでtempoを再測定
-3. primary / half / double ambiguityを保存
-4. Jugemu soft regressionとして約99 / 197 BPM候補を確認
-5. M3 structure workflow をsuccessへ戻す
-6. 自動chainされたM4 cycle-ASRをcycle-specific referenceで完走
-7. 各cycleのCER / MER / deletion / substitutionを確認
-8. M3/M4の完了判定
-9. Milestone 5 forced alignmentへ進む
+1. M5 Jugemu forced-alignment workflowの実音源結果を確認
+2. word / phone / mora件数、failed-spans、MFA logをレビュー
+3. Japanese phone→mora対応を音響境界ベースへ精密化するか判断
+4. Whisper AO English alignmentを実音源で検証
+5. M5完了後はM6 voice qualityへ進む
 
 ---
 

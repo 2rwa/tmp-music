@@ -40,6 +40,7 @@ STAGES = (
     "tuning",
     "pitch-compare",
     "cycle-asr",
+    "align",
     "asr",
     "full",
 )
@@ -116,6 +117,8 @@ def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> P
         return REPO_ROOT / "analysis" / track.id / "measurements" / f"cycle-asr-{model}"
     if stage == "structure":
         return REPO_ROOT / "analysis" / track.id / "measurements" / "structure"
+    if stage == "align":
+        return REPO_ROOT / "analysis" / track.id / "measurements" / "alignment-mfa"
     if stage in {"pitch", "targets", "tuning"}:
         root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / source
         if stage == "pitch":
@@ -313,6 +316,34 @@ def stage_command(
             "compute_type": cycle_cfg.get("compute_type", "int8"),
             "reference_cycle_lines": cycle_cfg.get("reference_cycle_lines", 10),
         }, {"faster-whisper": model}, ["faster-whisper", "av", "mutagen", "pykakasi"]
+    if stage == "align":
+        align_cfg = track.config.get("analysis", {}).get("alignment", {})
+        dictionary = align_cfg.get("dictionary")
+        acoustic_model = align_cfg.get("acoustic_model")
+        if not dictionary or not acoustic_model:
+            raise ValueError(f"alignment model config missing for track: {track.id}")
+        structure_json = REPO_ROOT / "analysis" / track.id / "measurements" / "structure" / "structure.json"
+        command = [
+            py, "scripts/align_lyrics.py", track.source_rel,
+            "--out", str(out.relative_to(REPO_ROOT)),
+            "--language", str(align_cfg.get("language", track.language)),
+            "--dictionary", str(dictionary), "--acoustic-model", str(acoustic_model),
+        ]
+        if align_cfg.get("g2p_model"):
+            command += ["--g2p-model", str(align_cfg["g2p_model"])]
+        if align_cfg.get("segment_source") == "structure_cycles":
+            command += ["--structure-json", str(structure_json.relative_to(REPO_ROOT)),
+                        "--boundary-source", str(align_cfg.get("boundary_source", "aligned_cycles")),
+                        "--reference-cycle-lines", str(align_cfg.get("reference_cycle_lines", 10))]
+        parameters = {"language": align_cfg.get("language", track.language),
+                      "segment_source": align_cfg.get("segment_source", "full_track"),
+                      "structure_json": str(structure_json.relative_to(REPO_ROOT))
+                          if align_cfg.get("segment_source") == "structure_cycles" else None,
+                      "boundary_source": align_cfg.get("boundary_source"),
+                      "reference_cycle_lines": align_cfg.get("reference_cycle_lines")}
+        models = {"backend": "montreal-forced-aligner", "dictionary": dictionary,
+                  "acoustic_model": acoustic_model, "g2p_model": align_cfg.get("g2p_model")}
+        return command, parameters, models, ["montreal-forced-aligner", "mutagen", "pykakasi"]
     if stage == "pitch-compare":
         mix_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "mix"
         vocal_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "vocals"

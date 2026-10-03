@@ -1,0 +1,104 @@
+name: Milestone 5 forced alignment
+
+on:
+  workflow_run:
+    workflows: ["Milestone 3 structure smoke"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      structure_run_id:
+        description: "Completed Milestone 3 structure run ID"
+        required: true
+        type: string
+      source_sha:
+        description: "Commit SHA used by the structure run"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  statuses: write
+
+jobs:
+  jugemu-mfa:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Resolve source
+        id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            echo "run_id=${EVENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
+            echo "sha=${EVENT_SHA}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "run_id=${{ inputs.structure_run_id }}" >> "${GITHUB_OUTPUT}"
+            echo "sha=${{ inputs.source_sha }}" >> "${GITHUB_OUTPUT}"
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: tmp-music-mfa
+          python-version: "3.12"
+          miniforge-version: latest
+          auto-activate-base: false
+      - name: Install MFA and project dependencies
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          conda install -y -c conda-forge montreal-forced-aligner=3.4.2 ffmpeg
+          python -m pip install -r requirements-core.txt -r requirements-alignment.txt
+          python -m pip check
+          mfa version
+          mfa model download dictionary japanese_mfa
+          mfa model download acoustic japanese_mfa
+          mfa model download g2p japanese_mfa
+      - name: Download structure artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: structure-jugemu
+          path: analysis/jugemu/measurements/structure
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+      - name: Run known-lyrics alignment
+        shell: bash -el {0}
+        run: python scripts/cli.py align --track jugemu
+      - name: Validate forced alignment
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          root="analysis/jugemu/measurements/alignment-mfa"
+          test -s "${root}/alignment.json"
+          test -s "${root}/alignment.tsv"
+          test -s "${root}/failed-spans.json"
+          test -s "${root}/mfa.log"
+          test -s "${root}/provenance.json"
+          test -s "${root}/status.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("analysis/jugemu/measurements/alignment-mfa")
+          result = json.loads((root / "alignment.json").read_text())
+          status = json.loads((root / "status.json").read_text())
+          assert status["status"] == "success", status
+          assert result["segment_count"] == 8, result
+          assert result["aligned_segment_count"] > 0, result
+          assert result["unit_counts"]["words"] > 0, result
+          assert result["unit_counts"]["phones"] > 0, result
+          assert result["unit_counts"]["morae"] > 0, result
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forced-alignment-jugemu
+          path: analysis/jugemu/measurements/alignment-mfa
+          if-no-files-found: error
+          retention-days: 14

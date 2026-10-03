@@ -1377,10 +1377,10 @@ Whisper AO / じゅげむで:
 
 ---
 
-## Milestone 3 — Structure/cycles — TEMPO FIX PENDING
+## Milestone 3 — Structure/cycles — COMPLETE
 
 - [x] multi-view SSM
-- [ ] tempo candidates — 実装済みだが0.25 s structure gridによる120/60/240 BPM量子化を修正する
+- [x] tempo candidates — structure gridから独立した高時間分解能onset envelopeで98.68/197.37 BPM候補を実測
 - [x] cycle boundaries
 - [x] DTW
 - [x] cycle-distance
@@ -1393,7 +1393,7 @@ Whisper AO / じゅげむで:
 
 ---
 
-## Milestone 4 — Japanese lyrics — IMPLEMENTED / E2E REVALIDATION PENDING
+## Milestone 4 — Japanese lyrics — COMPLETE
 
 - [x] Japanese normalization
 - [x] mora tokenizer
@@ -1412,16 +1412,16 @@ Whisper AO / じゅげむで:
 
 を比較できる。
 
-旧reference方式のcycle-ASRはrun `37086549657` で success。現在はcycle-specific contiguous reference partitionへ改善済みでcheap CI `37087076630` success。**Milestone完了判定は修正版referenceでの実音源E2E再実行後に行う。**
+旧reference方式のcycle-ASRはrun `37086549657` で success。cycle-specific contiguous reference partitionへ改善後、実音源run `37089898445` も success。8 cycleすべてでCER/MER/deletion/substitutionを保存し、M4完了。
 
 ---
 
-## Milestone 5 — Forced alignment
+## Milestone 5 — Forced alignment — IN PROGRESS
 
-- [ ] English alignment
-- [ ] Japanese alignment
-- [ ] failed-span保存
-- [ ] phoneme/mora timestamps
+- [ ] English alignment — MFA english_us_arpa設定済み、実音源検証待ち
+- [ ] Japanese alignment — MFA japanese_mfa実装済み、実音源検証中
+- [x] failed-span保存 — `failed-spans.json`
+- [ ] phoneme/mora timestamps — phone boundary実装済み、moraは初版projectionなので精密化余地あり
 
 ### 完了条件
 

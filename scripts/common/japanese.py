@@ -58,6 +58,16 @@ def contains_kanji_or_unconverted_japanese(text: str) -> bool:
     return False
 
 
+def to_hiragana_reading(text: str) -> str:
+    """Convert surface Japanese to normalized Hiragana reading."""
+    if not contains_kanji_or_unconverted_japanese(text):
+        return normalize_kana(text)
+    import pykakasi
+
+    converter = pykakasi.kakasi()
+    return normalize_kana("".join(str(chunk["hira"]) for chunk in converter.convert(text)))
+
+
 def morae_from_kana(text: str) -> list[str]:
     """Split normalized kana into mora-like units.
 
