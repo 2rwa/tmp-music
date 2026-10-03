@@ -5,6 +5,15 @@ on:
     workflows: ["Milestone 2 Demucs separation"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Completed Demucs workflow run ID"
+        required: true
+        type: string
+      source_sha:
+        description: "Commit SHA used by the Demucs run"
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -35,8 +44,8 @@ jobs:
             echo "run_id=${EVENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
             echo "sha=${EVENT_HEAD_SHA}" >> "${GITHUB_OUTPUT}"
           else
-            echo "run_id=${CURRENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
-            echo "sha=${CURRENT_SHA}" >> "${GITHUB_OUTPUT}"
+            echo "run_id=${{ inputs.source_run_id }}" >> "${GITHUB_OUTPUT}"
+            echo "sha=${{ inputs.source_sha }}" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Publish pending status
@@ -90,7 +99,6 @@ jobs:
           python -m pip install -r requirements-pitch-ml.txt
 
       - name: Download Demucs stem artifact
-        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
         with:
           name: demucs-${{ matrix.track }}
