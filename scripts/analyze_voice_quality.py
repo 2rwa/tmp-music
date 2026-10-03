@@ -208,8 +208,9 @@ def main() -> int:
         "measurement_status": "ok",
         "candidate_count": len(register_candidates),
         "definition": (
-            "Candidate boundaries require changes in at least two features and never use "
-            "F0 alone as sufficient evidence of a register transition."
+            "Candidate boundaries require an F0 discontinuity plus at least two independent "
+            "voice-quality changes among CPPS, Praat HNR, autocorrelation HNR and spectral tilt; "
+            "formants/intensity/vibrato are supporting context only."
         ),
         "candidates": register_candidates,
     }
@@ -287,8 +288,8 @@ def main() -> int:
                 "reported only as glissando candidates."
             ),
             "register_transitions": (
-                "Candidate boundaries requiring at least two thresholded feature changes; "
-                "F0 alone is explicitly insufficient."
+                "Candidate boundaries requiring an F0 discontinuity plus at least two "
+                "independent voice-quality changes; formants are supporting context only."
             ),
         },
         "aggregate_segment_medians": {
