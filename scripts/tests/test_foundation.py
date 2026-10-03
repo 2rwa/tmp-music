@@ -84,6 +84,7 @@ class FoundationTests(unittest.TestCase):
         self.assertTrue(comparison_params["mix"].endswith("/pitch/mix"))
         self.assertTrue(comparison_params["vocals"].endswith("/pitch/vocals"))
         self.assertEqual(cycle_asr_params["boundary_source"], "aligned_cycles")
+        self.assertEqual(cycle_asr_params["reference_cycle_lines"], 10)
         self.assertEqual(cycle_asr_models["faster-whisper"], "small")
         self.assertEqual(cli.analysis_input(jugemu, "vocals"), "analysis/jugemu/stems/demucs/vocals.wav")
         self.assertEqual(asr_params["modes"], ["auto", "ja"])
