@@ -18,12 +18,22 @@
   const showSegments = $('#show-segments');
   const showMove = $('#show-movement');
   const showReg = $('#show-register');
+  const playbackInsights = $('#playback-insights');
+  const playbackState = $('#playback-state');
+  const playbackTime = $('#playback-time');
+  const playbackOverview = $('#playback-overview');
+  const insightF0 = $('#insight-f0');
+  const insightVoice = $('#insight-voice');
+  const insightSpectrum = $('#insight-spectrum');
+  const insightPitch = $('#insight-pitch');
+  const playheadLine = $('#playhead-line');
+  const playheadLabel = $('#playhead-label');
   const css = getComputedStyle(document.documentElement);
   const C = (n) => css.getPropertyValue(n).trim();
   const colors = {
     f0: C('--f0'), f0low: C('--f0low'), cpps: C('--cpps'), hnr: C('--hnr'),
     tilt: C('--tilt'), rms: C('--rms'), vib: C('--vib'), rate: C('--rate'),
-    reg: C('--reg'), move: C('--move'), line: C('--line'), muted: C('--muted'), text: C('--text')
+    reg: C('--reg'), move: C('--move'), playhead: C('--playhead'), line: C('--line'), muted: C('--muted'), text: C('--text')
   };
 
   const state = {
@@ -34,6 +44,10 @@
     objectUrl: null,
     abortToken: 0,
     analyzing: false,
+    playhead: 0,
+    playRaf: 0,
+    lastInsightAt: NaN,
+    layout: null,
   };
 
   const fmt = (v, d = 2) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : '—';
@@ -443,7 +457,9 @@
 
   function acceptAnalysis(d) {
     state.data = d; state.view = [0, d.duration_s]; state.hover = null; state.drag = null;
-    renderSummary(); renderProvenance(); draw(); exportBtn.disabled = false;
+    state.playhead = 0; state.lastInsightAt = NaN;
+    document.documentElement.dataset.playhead = '0.00';
+    renderSummary(); renderProvenance(); renderPlaybackInsights(0, false); draw(); exportBtn.disabled = false;
   }
 
   function setAnalyzing(on) {
@@ -469,6 +485,61 @@
     $('#provenance').innerHTML = `browser-local · source <code>${fmt(d.source_sample_rate_hz, 0)} Hz</code> · analysis <code>${fmt(d.analysis_sample_rate_hz, 0)} Hz</code> · FFT <code>${d.fft_size}</code> · hop <code>${fmt(d.frame_hop_ms, 1)} ms</code> · no upload`;
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function currentSoundSummary(q) {
+    if (!q) return 'この位置には解析フレームがありません。';
+    const quiet = q.rmsDb < -55;
+    const attackLike = q.rmsDb > -38 && q.confidence < .45 && q.hnr < 4;
+    const periodic = Number.isFinite(q.f0) && q.confidence >= .6 && q.hnr >= 5;
+    if (quiet) return 'かなり静かな区間です。RMSが低いため、F0やHNRなど他の値はノイズ床の影響を受けやすくなります。';
+    if (attackLike) return '音量はある一方で周期性が弱い区間です。ドラム／パーカッションのアタック、子音、ノイズ成分などで値が動いている可能性があります。';
+    if (periodic) return '明確な周期音が優勢な区間です。声の母音や歌声のほか、ベース・弦・管など持続する楽器音でも同じ傾向になります。';
+    if (q.confidence < .45) return 'F0の周期検出が不安定な区間です。無声音、複雑な和音、ノイズ、打撃音、音の立ち上がりなどが候補です。';
+    return '周期成分と非周期成分が混ざった区間です。単一の値では音源を断定せず、RMS・HNR・spectral tiltを合わせて見ます。';
+  }
+
+  function renderPlaybackInsights(t, playing = false) {
+    if (!state.data) return;
+    const q = nearest(state.data.frames, t);
+    playbackInsights.hidden = audio.hidden;
+    playbackState.textContent = playing ? '再生中' : (audio.ended ? '再生終了' : '一時停止 / 停止');
+    playbackTime.textContent = `${fmt(t, 2)} s`;
+    playbackOverview.textContent = currentSoundSummary(q);
+    if (!q) return;
+
+    let f0Text;
+    if (q.rmsDb < -55) f0Text = '静かなためF0は信用しにくい状態です。';
+    else if (Number.isFinite(q.f0) && q.confidence >= .6) f0Text = '周期がはっきりしています。母音・歌声・持続楽器で安定しやすい一方、音程のある打楽器でも反応します。';
+    else if (q.confidence < .45) f0Text = '周期が曖昧です。子音、ノイズ、ドラムやパーカッションのアタックではF0が消えたり飛んだりしやすくなります。';
+    else f0Text = '周期は拾えていますが確信度は中程度です。複数音やアタック直後では値が揺れます。';
+    insightF0.innerHTML = `<h3>F0 / confidence</h3><div class="metric-value">F0 ${fmt(q.f0,1)} Hz · conf ${fmt(q.confidence,2)}</div><p>F0は周期音の高さ、confidenceは周期検出の確からしさ。 ${f0Text}</p>`;
+
+    let voiceText;
+    if (q.hnr >= 12 && q.cppsLike >= 8) voiceText = '周期・調波構造がかなり明瞭です。母音や持続音で上がりやすい状態です。';
+    else if (q.hnr < 3 || q.cppsLike < 3) voiceText = '非周期成分が強めです。息、摩擦音、ノイズ、打撃音では低くなりやすい状態です。';
+    else voiceText = '周期成分はありますが、ノイズ成分や複数音も混ざっている可能性があります。';
+    insightVoice.innerHTML = `<h3>CPPS-like / HNR</h3><div class="metric-value">CPPS-like ${fmt(q.cppsLike,1)} dB · HNR ${fmt(q.hnr,1)} dB</div><p>高いほど周期構造が目立つ方向。 ${voiceText} CPPS-likeはPraat CPPSそのものではありません。</p>`;
+
+    const levelText = q.rmsDb < -55 ? 'ほぼ静音寄り' : q.rmsDb < -38 ? '小さめ' : q.rmsDb < -20 ? '中程度' : '大きめ';
+    let tiltText;
+    if (q.tilt > -3) tiltText = '高域が比較的強く、シンバル／ハイハット、歯擦音、鋭いアタックで動きやすい傾向です。';
+    else if (q.tilt < -9) tiltText = '高域の減衰が大きく、低域・中域寄りの柔らかい音色になりやすい傾向です。';
+    else tiltText = '高域の減り方は中程度です。';
+    insightSpectrum.innerHTML = `<h3>RMS / spectral tilt</h3><div class="metric-value">RMS ${fmt(q.rmsDb,1)} dBFS · tilt ${fmt(q.tilt,1)} dB/oct</div><p>RMSは現在の音量で「${levelText}」。ドラム等のアタックで瞬間的に跳ねます。spectral tiltは高域の減り方で、${tiltText}</p>`;
+
+    let pitchText = 'F0が安定していないため、この区間のピッチ揺れは解釈を控えます。';
+    if (q.confidence >= .55 && Number.isFinite(q.vibExtent)) {
+      const extent = q.vibExtent < 30 ? '小さい' : q.vibExtent < 100 ? '中程度' : '大きい';
+      pitchText = `短時間のピッチ揺れ幅は${extent}状態です。`;
+      if (Number.isFinite(q.vibRate)) pitchText += ` ${fmt(q.vibRate,2)} Hz付近の周期変動がありますが、ビブラートとは断定しません。`;
+      else pitchText += ' 明瞭な3–9 Hz周期は検出していません。';
+    }
+    const mov = state.data.movement.find((e) => t >= e.s && t <= e.e);
+    const reg = state.data.register.find((e) => Math.abs(e.t - t) <= .25);
+    if (mov) pitchText += ` pitch movement候補（${mov.dir}, ${fmt(mov.change,0)} cent）内です。`;
+    if (reg) pitchText += ` register変化候補にも近接しています。`;
+    insightPitch.innerHTML = `<h3>Local pitch modulation</h3><div class="metric-value">extent ${fmt(q.vibExtent,1)} cent · rate ${fmt(q.vibRate,2)} Hz</div><p>${pitchText}</p>`;
+  }
 
   function layout() {
     const dpr = Math.max(1, devicePixelRatio || 1), r = canvas.getBoundingClientRect();
@@ -608,11 +679,71 @@
     ctx.fillStyle = 'rgba(121,194,255,.12)'; ctx.fillRect(x1, L.f0.y, x2 - x1, L.vib.y + L.vib.h - L.f0.y);
   }
   function draw() {
-    const L = layout(); ctx.clearRect(0, 0, L.w, L.h);
+    const L = layout(); state.layout = L; ctx.clearRect(0, 0, L.w, L.h);
     if (!state.data) {
       ctx.fillStyle = colors.muted; ctx.font = '16px system-ui'; ctx.textAlign = 'center'; ctx.fillText('音声を選択すると解析結果をここに表示します', L.w / 2, 80); ctx.textAlign = 'start'; return;
     }
-    drawF0(L.f0); drawVoice(L.voice); drawSpectral(L.spectral); drawVib(L.vib); timeGrid(L.vib); crosshair(L); selection(L);
+    drawF0(L.f0); drawVoice(L.voice); drawSpectral(L.spectral); drawVib(L.vib); timeGrid(L.vib); crosshair(L); selection(L); updatePlayheadOverlay();
+  }
+
+  function updatePlayheadOverlay() {
+    if (!state.data || audio.hidden || !state.layout || !Number.isFinite(state.playhead)) { playheadLine.hidden = true; return; }
+    const L = state.layout;
+    const x = mapX(state.playhead, L.f0);
+    if (x < L.f0.x || x > L.f0.x + L.f0.w) { playheadLine.hidden = true; return; }
+    const canvasRect = canvas.getBoundingClientRect(), shellRect = canvas.parentElement.getBoundingClientRect();
+    playheadLine.hidden = false;
+    playheadLine.style.left = `${canvasRect.left - shellRect.left + x}px`;
+    playheadLine.style.top = `${canvasRect.top - shellRect.top + L.f0.y}px`;
+    playheadLine.style.height = `${L.vib.y + L.vib.h - L.f0.y}px`;
+    playheadLabel.textContent = `${fmt(state.playhead, 2)} s`;
+    const flip = x > L.f0.x + L.f0.w - 90;
+    playheadLabel.style.left = flip ? '-6px' : '6px';
+    playheadLabel.style.transform = flip ? 'translateX(-100%)' : 'none';
+  }
+
+  function keepPlayheadInView(t) {
+    if (!state.data) return false;
+    const duration = state.data.duration_s, [a, b] = state.view, span = b - a;
+    if (span >= duration - .001) return false;
+    const left = a + span * .08, right = b - span * .08;
+    if (t >= left && t <= right) return false;
+    let na = t - span * .15;
+    na = clamp(na, 0, Math.max(0, duration - span));
+    state.view = [na, Math.min(duration, na + span)];
+    return true;
+  }
+
+  function syncPlaybackUi(t = audio.currentTime, playing = !audio.paused && !audio.ended, forceInsight = false) {
+    if (!state.data || !Number.isFinite(Number(t))) return;
+    state.playhead = clamp(Number(t), 0, state.data.duration_s);
+    document.documentElement.dataset.playhead = state.playhead.toFixed(2);
+    const viewChanged = keepPlayheadInView(state.playhead);
+    if (forceInsight || !Number.isFinite(state.lastInsightAt) || Math.abs(state.playhead - state.lastInsightAt) >= .08) {
+      renderPlaybackInsights(state.playhead, playing);
+      state.lastInsightAt = state.playhead;
+    } else {
+      playbackState.textContent = playing ? '再生中' : (audio.ended ? '再生終了' : '一時停止 / 停止');
+      playbackTime.textContent = `${fmt(state.playhead, 2)} s`;
+    }
+    if (viewChanged) draw(); else updatePlayheadOverlay();
+  }
+
+  function playbackTick() {
+    state.playRaf = 0;
+    if (audio.hidden || audio.paused || audio.ended) { syncPlaybackUi(audio.currentTime, false, true); return; }
+    syncPlaybackUi(audio.currentTime, true, false);
+    state.playRaf = requestAnimationFrame(playbackTick);
+  }
+  function startPlaybackLoop() {
+    if (state.playRaf) cancelAnimationFrame(state.playRaf);
+    syncPlaybackUi(audio.currentTime, true, true);
+    state.playRaf = requestAnimationFrame(playbackTick);
+  }
+  function stopPlaybackLoop() {
+    if (state.playRaf) cancelAnimationFrame(state.playRaf);
+    state.playRaf = 0;
+    syncPlaybackUi(audio.currentTime, false, true);
   }
 
   function tooltipAt(t, cx, cy) {
@@ -646,7 +777,7 @@
   canvas.addEventListener('pointerup', (ev) => {
     if (!state.drag) return; const a = state.drag.start, b = state.drag.current; state.drag = null;
     if (Math.abs(a - b) > .35) state.view = [Math.min(a, b), Math.max(a, b)];
-    else if (!audio.hidden) { const t = pointTime(ev); if (Number.isFinite(t)) audio.currentTime = t; }
+    else if (!audio.hidden) { const t = pointTime(ev); if (Number.isFinite(t)) { audio.currentTime = t; syncPlaybackUi(t, !audio.paused, true); } }
     draw();
   });
   canvas.addEventListener('dblclick', resetView);
@@ -656,6 +787,12 @@
     let na = t - rel * ns, nb = na + ns; if (na < 0) { nb -= na; na = 0; } if (nb > state.data.duration_s) { na -= nb - state.data.duration_s; nb = state.data.duration_s; }
     state.view = [Math.max(0, na), Math.min(state.data.duration_s, nb)]; draw();
   }, { passive: false });
+
+  audio.addEventListener('play', startPlaybackLoop);
+  audio.addEventListener('pause', stopPlaybackLoop);
+  audio.addEventListener('ended', stopPlaybackLoop);
+  audio.addEventListener('seeking', () => syncPlaybackUi(audio.currentTime, !audio.paused, true));
+  audio.addEventListener('timeupdate', () => { if (audio.paused || audio.ended) syncPlaybackUi(audio.currentTime, false, false); });
 
   chooseFile.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => { const f = fileInput.files?.[0]; if (f) analyzeFile(f); });
@@ -674,7 +811,7 @@
     const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = `${state.data.name.replace(/\.[^.]+$/, '') || 'audio'}-browser-analysis.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(u), 1000);
   });
-  addEventListener('resize', draw);
+  addEventListener('resize', () => { draw(); updatePlayheadOverlay(); });
 
   draw();
   if (new URLSearchParams(location.search).get('selftest') === '1') runSynthetic(true);

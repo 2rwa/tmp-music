@@ -54,6 +54,23 @@
     <div class="stat"><b>—</b><small>analysis rate</small></div>
   </section>
 
+  <section class="playback-insights" id="playback-insights" hidden>
+    <div class="insight-header">
+      <div>
+        <div class="insight-kicker">LIVE INTERPRETATION</div>
+        <h2>現在位置の読み方</h2>
+      </div>
+      <div class="playback-clock"><span id="playback-state">停止中</span><b id="playback-time">0.00 s</b></div>
+    </div>
+    <p id="playback-overview">再生すると、現在位置の複数指標を組み合わせて読み方を表示します。</p>
+    <div class="insight-grid">
+      <article class="insight-card" id="insight-f0"><h3>F0 / confidence</h3><p>基本周波数と周期検出の確からしさ。</p></article>
+      <article class="insight-card" id="insight-voice"><h3>CPPS-like / HNR</h3><p>周期構造・調波性の強さを見る指標。</p></article>
+      <article class="insight-card" id="insight-spectrum"><h3>RMS / spectral tilt</h3><p>音量と、高域成分がどれくらい強いかを見る指標。</p></article>
+      <article class="insight-card" id="insight-pitch"><h3>Pitch modulation</h3><p>短時間のピッチ揺れと3–9 Hzの周期変動。</p></article>
+    </div>
+  </section>
+
   <section class="chart-shell">
     <div class="legend">
       <span><i class="swatch f0"></i>F0</span>
@@ -65,18 +82,20 @@
       <span><i class="swatch rate"></i>local modulation rate</span>
       <span><i class="swatch move"></i>pitch movement</span>
       <span><i class="swatch reg"></i>register candidate</span>
+      <span><i class="swatch playhead"></i>再生位置</span>
     </div>
     <canvas id="timeline" aria-label="Browser-local audio analysis timeline"></canvas>
+    <div id="playhead-line" class="playhead-line" hidden><span id="playhead-label">0.00 s</span></div>
     <div id="tooltip" class="tooltip" hidden></div>
-    <p class="hint">ドラッグ: 範囲ズーム · ホイール: カーソル中心ズーム · クリック: 再生位置移動 · ダブルクリック / Reset view: 全体表示</p>
+    <p class="hint">黄色の縦線: 現在の再生位置 · ドラッグ: 範囲ズーム · ホイール: カーソル中心ズーム · クリック: 再生位置移動 · ダブルクリック / Reset view: 全体表示</p>
   </section>
 
   <section class="notes">
     <h2>ブラウザ版の指標</h2>
-    <div class="note"><strong>F0 / HNR:</strong> FFT自己相関からYIN風のperiod候補を選択。confidenceは周期性の強さを表すブラウザ内推定値。</div>
-    <div class="note"><strong>CPPS-like:</strong> log power spectrumの実ケプストラムから周期ピークのprominenceを測る軽量proxy。Praat calibrated CPPSと同値ではない。</div>
-    <div class="note"><strong>Spectral tilt:</strong> 200–5000 Hzのlog-frequency / log-power線形回帰の傾き（dB/octave）。解析用PCMは最大24 kHzへ軽量リサンプルする。</div>
-    <div class="note"><strong>Local pitch modulation:</strong> 0.8 s窓のdetrended F0 p95−p05と3–9 Hz最大成分。意図的なビブラートを断定しない。</div>
+    <div class="note"><strong>F0 / confidence:</strong> F0は周期音の高さ、confidenceはその周期をどれだけ安定して拾えているか。母音・歌声・ベース・弦などで安定しやすく、無音、子音、ノイズ、ドラムやパーカッションのアタックでは低下・乱高下しやすい。F0が出ても「人声」とは限らない。</div>
+    <div class="note"><strong>CPPS-like / HNR:</strong> どちらも周期的・調波的な構造の強さを見る。母音や持続する有声音・楽器音では上がりやすく、息・摩擦音・ノイズ・打撃音では下がりやすい。CPPS-likeは軽量proxyで、Praat calibrated CPPSと同値ではない。</div>
+    <div class="note"><strong>RMS / spectral tilt:</strong> RMSは音量の目安で、無音・静かな区間では低く、ドラムなどのアタックで瞬間的に跳ねやすい。spectral tiltは200–5000 Hzの高域の減り方で、0に近いほど高域が強く、シンバル、ハイハット、歯擦音、鋭いアタックの影響を受けやすい。</div>
+    <div class="note"><strong>Local pitch modulation:</strong> 0.8 s窓のF0揺れ幅と3–9 Hzの周期変動。値が大きいとビブラート、しゃくり、グリッサンド、不安定な発声などの候補になるが、F0誤検出でも増えるため単独では断定しない。</div>
     <div class="note"><strong>Movement / register:</strong> timeline-v2の見方に合わせた候補イベントの簡易ブラウザ実装。研究用Python/Praat pipelineの判定そのものではない。</div>
   </section>
   <footer id="provenance">No audio loaded.</footer>

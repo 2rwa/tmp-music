@@ -15,8 +15,16 @@ class ElementStub {
     this.textContent = '';
     this.files = [];
     this.parentElement = this;
+    this.currentTime = 0;
+    this.paused = true;
+    this.ended = false;
+    this.listeners = new Map();
   }
-  addEventListener() {}
+  addEventListener(name, fn) {
+    const xs = this.listeners.get(name) || [];
+    xs.push(fn); this.listeners.set(name, xs);
+  }
+  dispatch(name) { for (const fn of this.listeners.get(name) || []) fn({ type: name }); }
   setPointerCapture() {}
   click() {}
   getBoundingClientRect() { return { width: 1200, height: 820, left: 0, top: 0 }; }
@@ -25,7 +33,9 @@ class ElementStub {
 const ids = [
   'timeline', 'tooltip', 'file-input', 'choose-file', 'drop-zone', 'audio', 'status', 'progress',
   'cancel-analysis', 'export-json', 'synthetic-test', 'show-low', 'show-segments', 'show-movement',
-  'show-register', 'reset-view', 'summary', 'provenance'
+  'show-register', 'reset-view', 'summary', 'provenance', 'playback-insights', 'playback-state',
+  'playback-time', 'playback-overview', 'insight-f0', 'insight-voice', 'insight-spectrum',
+  'insight-pitch', 'playhead-line', 'playhead-label'
 ];
 const elements = new Map(ids.map((id) => [`#${id}`, new ElementStub(id)]));
 const canvasContext = {
@@ -66,6 +76,8 @@ const context = {
   Promise,
   setTimeout,
   clearTimeout,
+  requestAnimationFrame: (fn) => setTimeout(() => fn(Date.now()), 0),
+  cancelAnimationFrame: (id) => clearTimeout(id),
   getComputedStyle: () => ({ getPropertyValue: (name) => palette[name] || '', height: '820px' }),
   addEventListener: () => {},
 };
@@ -91,3 +103,22 @@ console.log(status);
 if (documentElement.dataset.selftest !== 'pass') process.exit(1);
 if (!/median F0 22\d\.\d Hz/.test(status)) throw new Error(`unexpected F0 status: ${status}`);
 if (!summary.includes('analysis frames') || !summary.includes('median HNR')) throw new Error('summary did not render expected fields');
+
+const audio = elements.get('#audio');
+audio.hidden = false;
+audio.currentTime = 1.20;
+audio.paused = false;
+audio.dispatch('play');
+await new Promise((resolve) => setTimeout(resolve, 40));
+audio.paused = true;
+audio.dispatch('pause');
+await new Promise((resolve) => setTimeout(resolve, 20));
+
+const playhead = Number(documentElement.dataset.playhead);
+if (Math.abs(playhead - 1.20) > 0.02) throw new Error(`playhead did not follow playback: ${playhead}`);
+if (elements.get('#playhead-line').hidden) throw new Error('playhead overlay stayed hidden during playback');
+if (!elements.get('#playback-overview').textContent) throw new Error('playback overview did not render');
+if (!elements.get('#insight-f0').innerHTML.includes('F0') || !elements.get('#insight-spectrum').innerHTML.includes('RMS')) {
+  throw new Error('live parameter explanations did not render');
+}
+console.log(`playhead regression: ${playhead.toFixed(2)} s · live explanations rendered`);

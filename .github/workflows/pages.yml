@@ -54,13 +54,18 @@ jobs:
               && curl -fsSL --max-time 15 "${BASE_URL}/timeline/" -o /tmp/timeline.html \
               && curl -fsSL --max-time 15 "${BASE_URL}/timeline/data/whisper-ao.json" -o /tmp/whisper.json \
               && curl -fsSL --max-time 15 "${BASE_URL}/timeline/data/jugemu.json" -o /tmp/jugemu.json \
-              && curl -fsSL --max-time 15 "${BASE_URL}/timeline/data/chichinu-fiija.json" -o /tmp/chichinu.json; then
+              && curl -fsSL --max-time 15 "${BASE_URL}/timeline/data/chichinu-fiija.json" -o /tmp/chichinu.json \
+              && curl -fsSL --max-time 15 "${BASE_URL}/timeline-browser/" -o /tmp/timeline-browser.html \
+              && curl -fsSL --max-time 15 "${BASE_URL}/timeline-browser/app.js" -o /tmp/timeline-browser-app.js; then
               grep -q "M6 Voice Quality" /tmp/m6-status.html
               grep -q "Level 1 timeline visualization" /tmp/m6-status.html
               grep -q "Voice-quality timeline" /tmp/timeline.html
               grep -q '"track":"whisper-ao"' /tmp/whisper.json
               grep -q '"track":"jugemu"' /tmp/jugemu.json
               grep -q '"track":"chichinu-fiija"' /tmp/chichinu.json
+              grep -q "Browser audio analyzer" /tmp/timeline-browser.html
+              grep -q "現在位置の読み方" /tmp/timeline-browser.html
+              grep -q "syncPlaybackUi" /tmp/timeline-browser-app.js
               if [ -s docs/m6-status/timeline-v2/data/whisper-ao.json ]; then
                 curl -fsSL --max-time 15 "${BASE_URL}/timeline-v2/" -o /tmp/timeline-v2.html
                 curl -fsSL --max-time 15 "${BASE_URL}/timeline-v2/data/whisper-ao.json" -o /tmp/v2-whisper.json
