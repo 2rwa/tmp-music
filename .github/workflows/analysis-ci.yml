@@ -81,21 +81,26 @@ jobs:
             scripts/common/provenance.py \
             scripts/common/separation.py \
             scripts/common/pitch.py \
+            scripts/common/structure.py \
             scripts/separate_vocals.py \
             scripts/analyze_pitch.py \
             scripts/detect_pitch_targets.py \
             scripts/analyze_tuning.py \
             scripts/compare_pitch_sources.py \
             scripts/synthetic/generate_pitch_fixtures.py \
-            scripts/synthetic/generate_rhythm_fixtures.py
+            scripts/synthetic/generate_rhythm_fixtures.py \
+            scripts/synthetic/generate_structure_fixtures.py
       - name: Unit tests
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Generate synthetic fixtures
         run: |
           python scripts/synthetic/generate_pitch_fixtures.py
           python scripts/synthetic/generate_rhythm_fixtures.py
+          python scripts/synthetic/generate_structure_fixtures.py
           test -s tests/fixtures/generated/pitch/manifest.json
           test -s tests/fixtures/generated/rhythm/manifest.json
+          test -s tests/fixtures/generated/structure/manifest.json
+          test -s tests/fixtures/generated/structure/s1-aaaa.npz
       - name: Verify benchmark sources and common CLI plan
         run: |
           python scripts/cli.py verify --track whisper-ao
