@@ -10,10 +10,12 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from common.voice_quality import autocorrelation_hnr_db
 from common.voice_quality_timeseries import (
     decimate_pitch_points,
     frame_voice_quality_series,
     local_pitch_modulation_metrics,
+    local_autocorrelation_hnr_db,
     parse_pitch_consensus,
 )
 
@@ -48,6 +50,19 @@ class VoiceQualityTimeSeriesTests(unittest.TestCase):
         metric = local_pitch_modulation_metrics(points, 0.5, window_s=0.8)
         self.assertIsNone(metric["extent_cents_p95_p05"])
         self.assertIsNone(metric["rate_hz"])
+
+
+    def test_fast_local_autocorrelation_matches_m6_definition(self):
+        sr = 16000
+        t = np.arange(int(0.08 * sr), dtype=float) / sr
+        tone = np.zeros_like(t)
+        for harmonic in range(1, 12):
+            tone += (0.6 / harmonic) * np.sin(2.0 * np.pi * 220.0 * harmonic * t)
+        reference = autocorrelation_hnr_db(tone, sr, 220.0)
+        fast = local_autocorrelation_hnr_db(tone, sr, 220.0)
+        self.assertIsNotNone(reference)
+        self.assertIsNotNone(fast)
+        self.assertAlmostEqual(fast, reference, places=10)
 
     def test_frame_series_reports_local_metrics(self):
         sr = 16000
