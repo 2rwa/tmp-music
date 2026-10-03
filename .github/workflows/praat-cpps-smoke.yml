@@ -1,0 +1,91 @@
+name: Praat CPPS smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/praat-cpps-smoke.yml"
+      - "scripts/praat/measure_cpps_hnr.praat"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  known-answer:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Praat
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y praat
+          praat --version
+
+      - name: Generate deterministic periodic/noisy fixtures
+        run: |
+          python - <<'PY'
+          import math, random, wave
+          from pathlib import Path
+
+          sr = 16000
+          n = sr
+          root = Path("/tmp/praat-cpps")
+          root.mkdir(parents=True, exist_ok=True)
+
+          def write(name, samples):
+              with wave.open(str(root / name), "wb") as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(sr)
+                  payload = bytearray()
+                  for x in samples:
+                      value = max(-1.0, min(1.0, x))
+                      q = int(round(value * 32767.0))
+                      payload += int(q).to_bytes(2, "little", signed=True)
+                  w.writeframes(bytes(payload))
+
+          periodic = []
+          for i in range(n):
+              t = i / sr
+              x = (
+                  0.45 * math.sin(2 * math.pi * 200 * t)
+                  + 0.22 * math.sin(2 * math.pi * 400 * t)
+                  + 0.12 * math.sin(2 * math.pi * 600 * t)
+                  + 0.07 * math.sin(2 * math.pi * 800 * t)
+              )
+              periodic.append(x)
+
+          rng = random.Random(20261003)
+          noisy = [0.45 * rng.uniform(-1.0, 1.0) for _ in range(n)]
+          write("periodic.wav", periodic)
+          write("noise.wav", noisy)
+          PY
+
+      - name: Run Praat CPPS/HNR known-answer smoke
+        run: |
+          set -euo pipefail
+          praat --run scripts/praat/measure_cpps_hnr.praat /tmp/praat-cpps/periodic.wav > /tmp/praat-cpps/periodic.txt
+          praat --run scripts/praat/measure_cpps_hnr.praat /tmp/praat-cpps/noise.wav > /tmp/praat-cpps/noise.txt
+          cat /tmp/praat-cpps/periodic.txt
+          cat /tmp/praat-cpps/noise.txt
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          def parse(path):
+              text = Path(path).read_text()
+              m = re.search(r"CPPS=([^\t\r\n]+)\tHNR=([^\r\n]+)", text)
+              if not m:
+                  raise SystemExit(f"unparseable Praat output: {text!r}")
+              return float(m.group(1)), float(m.group(2))
+
+          periodic = parse("/tmp/praat-cpps/periodic.txt")
+          noise = parse("/tmp/praat-cpps/noise.txt")
+          print({"periodic": periodic, "noise": noise})
+          assert periodic[0] > noise[0] + 3.0, (periodic, noise)
+          assert periodic[1] > noise[1] + 3.0, (periodic, noise)
+          PY
