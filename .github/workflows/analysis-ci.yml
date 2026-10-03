@@ -28,6 +28,11 @@ on:
       - ".github/workflows/milestone2-pitch-compare.yml"
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
+      - ".github/workflows/m6-timeline-export.yml"
+      - "scripts/export_m6_timeline.py"
+      - "docs/m6-status/timeline/index.html"
+      - "docs/m6-status/timeline/app.js"
+      - "docs/m6-status/timeline/style.css"
       - "docs/m6-status/**"
       - "m6-status/**"
   pull_request:
@@ -56,6 +61,11 @@ on:
       - ".github/workflows/milestone2-pitch-compare.yml"
       - ".github/workflows/m6-holdout-acoustic.yml"
       - ".github/workflows/analysis-ci.yml"
+      - ".github/workflows/m6-timeline-export.yml"
+      - "scripts/export_m6_timeline.py"
+      - "docs/m6-status/timeline/index.html"
+      - "docs/m6-status/timeline/app.js"
+      - "docs/m6-status/timeline/style.css"
       - "docs/m6-status/**"
       - "m6-status/**"
   workflow_dispatch:
@@ -148,6 +158,14 @@ jobs:
           python scripts/cli.py targets --track chichinu-fiija --source vocals --dry-run
           python scripts/cli.py tuning --track chichinu-fiija --source vocals --dry-run
           python scripts/cli.py voice-quality --track chichinu-fiija --source vocals --dry-run
+      - name: Validate M6 timeline source
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/export_m6_timeline.py
+          node --check docs/m6-status/timeline/app.js
+          test -s docs/m6-status/timeline/index.html
+          test -s docs/m6-status/timeline/style.css
+
       - name: Validate M6 status page
         run: |
           set -euo pipefail
