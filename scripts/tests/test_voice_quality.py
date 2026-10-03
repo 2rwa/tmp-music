@@ -69,6 +69,18 @@ class VoiceQualityTests(unittest.TestCase):
         self.assertGreaterEqual(len(detect_pitch_movement_events(ramp)), 1)
         self.assertEqual(detect_pitch_movement_events(vibrato), [])
 
+        low_confidence_ramp = [
+            {**row, "selected_confidence": 0.2}
+            for row in ramp
+        ]
+        self.assertEqual(detect_pitch_movement_events(low_confidence_ramp), [])
+
+        missing_confidence_ramp = [
+            {key: value for key, value in row.items() if key != "selected_confidence"}
+            for row in ramp
+        ]
+        self.assertEqual(detect_pitch_movement_events(missing_confidence_ramp), [])
+
     def test_register_transition_requires_multiple_features(self):
         before = {
             "stable_target_index": 1,

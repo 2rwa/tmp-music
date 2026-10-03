@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/m6-holdout-acoustic.yml"
+      - "scripts/analyze_voice_quality.py"
+      - "scripts/common/voice_quality.py"
+      - "scripts/cli.py"
       - "config/tracks/chichinu-fiija.yml"
       - "samples/chichinu-fiija/source/**"
   workflow_dispatch:
@@ -76,17 +79,23 @@ jobs:
           test -s "${ROOT}/measurements/voice-quality/vocals/pitch-movement-events.csv"
           test -s "${ROOT}/measurements/voice-quality/vocals/register-transitions.json"
           python - <<'PY'
-          import json, os
+          import csv, json, os
           from pathlib import Path
           root = Path(os.environ["ROOT"])
           pitch = json.loads((root / "measurements/pitch/vocals/summary.json").read_text())
           vq = json.loads((root / "measurements/voice-quality/vocals/summary.json").read_text())
           status = json.loads((root / "measurements/voice-quality/vocals/status.json").read_text())
+          movements = list(csv.DictReader(
+              (root / "measurements/voice-quality/vocals/pitch-movement-events.csv").open()
+          ))
           assert pitch["consensus"]["selected_frames"] > 0, pitch
           assert status["status"] == "success", status
           assert vq["measurement_status"] == "ok", vq
           assert vq["stable_target_count_measured"] > 0, vq
           assert vq["praat"]["enabled"] is True and vq["praat"]["version"], vq
+          min_conf = float(vq["pitch_movement"]["minimum_median_selected_confidence"])
+          assert min_conf == 0.5, vq["pitch_movement"]
+          assert all(float(row["median_confidence"]) >= min_conf for row in movements), movements
           print(json.dumps({
               "track": os.environ["TRACK"],
               "stable_targets": vq["stable_target_count_measured"],
