@@ -54,6 +54,9 @@ analysis:
     dictionary: japanese_mfa
     acoustic_model: japanese_mfa
     g2p_model: japanese_mfa
+    # Singing alignment needed a wider search than MFA's default 10/40 beam.
+    beam: 100
+    retry_beam: 400
   repetitions: true
   reference_lyrics: embedded
   repetition:
