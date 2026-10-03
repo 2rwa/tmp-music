@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/milestone2-separation.yml"
+      - "scripts/separate_vocals.py"
+      - "scripts/common/separation.py"
+      - "requirements-separation.txt"
   workflow_dispatch:
 
 permissions:
