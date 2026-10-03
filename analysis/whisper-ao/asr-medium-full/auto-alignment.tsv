@@ -1,118 +1,155 @@
 op	ref	hyp
-D	i	
-D	press	
-D	my	
-D	ear	
-D	to	
-D	the	
-D	waves	
-D	listening	
-D	for	
-D	a	
-D	voice	
-D	that	
-D	fades	
-D	tides	
-D	come	
-D	tides	
-D	go	
-D	unspoken	
-D	words	
-D	drift	
-D	below	
-D	midnight	
-D	sea	
-D	carry	
-D	my	
-D	heart	
-D	like	
-D	the	
-D	wind	
-D	like	
-D	a	
-D	dream	
-D	torn	
-D	apart	
-D	love	
-D	and	
-D	longing	
-D	joy	
-D	and	
-D	sorrow	
-D	all	
-D	dissolve	
-D	into	
-D	ao	
-D	moonlight	
-D	shivers	
-D	on	
-D	the	
-D	tide	
-D	memories	
-D	lost	
-D	in	
-D	the	
-D	rise	
-D	and	
-D	fall	
-D	fingers	
-D	reach	
-D	but	
-D	touch	
-D	the	
-D	void	
-D	echoes	
-D	slipping	
-D	far	
-D	beyond	
-D	shadows	
-D	dance	
-D	whisper	
-D	and	
-D	fade	
-D	waves	
-D	return	
-D	then	
-D	slip	
-D	away	
-D	love	
-D	that	
-D	lingers	
-D	love	
-D	unknown	
-D	still	
-D	drifts	
-D	upon	
-D	ao	
-D	mist	
-D	hides	
-D	the	
-D	distant	
-D	shore	
-D	yet	
-D	your	
-D	voice	
-D	lingers	
-D	more	
-D	tears	
-D	sink	
-D	into	
-D	the	
-D	deep	
-D	dreams	
-D	scatter	
-D	on	
-D	the	
+=	i	i
+S	press	paid
+S	my	his
+S	ear	money
+S	to	and
+I		i
+I		told
+=	the	the
+S	waves	views
+S	listening	this
+I		slang
+=	for	for
+S	a	all
+S	voice	eyes
+S	that	did
+S	fades	fuse
+S	tides	toys
+=	come	come
+S	tides	toys
+=	go	go
+S	unspoken	and
+I		spoke
+=	words	words
+S	drift	that
+I		are
+I		five
+=	below	below
+S	midnight	mad
+I		not
+I		at
+=	sea	sea
+=	carry	carry
+=	my	my
+=	heart	heart
+=	like	like
+S	the	a
+S	wind	band
+=	like	like
+=	a	a
+=	dream	dream
+S	torn	to
+S	apart	run
+S	love	the
+I		parade
+I		lo
+=	and	and
+S	longing	long
+I		and
+=	joy	joy
+=	and	and
+=	sorrow	sorrow
+=	all	all
+S	dissolve	these
+S	into	are
+S	ao	low
+S	moonlight	and
+S	shivers	toy
+I		oop
+I		moon
+I		low
+I		at
+I		shore
+I		bars
+=	on	on
+=	the	the
+S	tide	toy
+=	memories	memories
+=	lost	lost
+S	in	and
+=	the	the
+=	rise	rise
+=	and	and
+=	fall	fall
+=	fingers	fingers
+S	reach	rich
+S	but	bitch
+S	touch	the
+I		oil
+I		i
+I		paid
+I		his
+I		money
+I		and
+I		i
+I		told
+=	the	the
+S	void	views
+S	echoes	this
+S	slipping	slang
+S	far	for
+S	beyond	all
+S	shadows	eyes
+S	dance	did
+S	whisper	fuse
+I		toys
+I		come
+I		toys
+I		go
+=	and	and
+S	fade	spoke
+S	waves	words
+S	return	that
+S	then	are
+S	slip	five
+S	away	below
+S	love	mad
+S	that	not
+S	lingers	at
+S	love	sea
+S	unknown	carry
+S	still	my
+S	drifts	heart
+S	upon	like
+S	ao	a
+S	mist	band
+S	hides	like
+I		a
+I		dream
+I		to
+I		run
+=	the	the
+S	distant	parade
+S	shore	lo
+S	yet	and
+S	your	long
+S	voice	and
+S	lingers	joy
+S	more	and
+S	tears	sorrow
+S	sink	mad
+S	into	not
+S	the	at
+S	deep	sea
+S	dreams	carry
+S	scatter	my
+S	on	heart
+S	the	like
 D	breeze	
-D	a	
-D	final	
-D	glance	
-D	a	
-D	love	
-D	once	
-D	whole	
-D	now	
-D	sleeps	
-D	in	
-D	ao's	
-D	hold	
+=	a	a
+S	final	band
+S	glance	like
+=	a	a
+S	love	dream
+S	once	to
+S	whole	run
+S	now	the
+S	sleeps	parade
+S	in	lo
+S	ao's	and
+S	hold	long
+I		and
+I		joy
+I		and
+I		sorrow

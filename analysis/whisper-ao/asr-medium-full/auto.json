@@ -1,77 +1,154 @@
 {
-  "detected_language": "fa",
-  "language_probability": 0.3716616928577423,
-  "text": "باز پرین فیگ، ویوز ریترین، دین سلط و وی لو دیت لنگره از لو این نون ستلل داره فنتس او پونه او موست قلید دید دستن شور یک یورو ووه از لنگره از مور تیر سنک، انترو دیدیب درمزه سکی دور اون دی بریز و فاینل گولانز، و لو وینز هول نو سلبز این اوز هول نانی",
+  "detected_language": "en",
+  "language_probability": 0.3849869668483734,
+  "text": "I paid his money, and I told the views This slang for all eyes did fuse Toys come, toys go And spoke words that are five below Mad not at sea, carry my heart Like a band like a dream to run the parade Lo and long and joy and sorrow All these are low and toy oop Moon low at shore, bars on the toy Memories lost and the rise and fall Fingers rich, bitch the oil I paid his money, and I told the views This slang for all eyes did fuse Toys come, toys go And spoke words that are five below Mad not at sea, carry my heart Like a band like a dream to run the parade Lo and long and joy and sorrow Mad not at sea, carry my heart Like a band like a dream to run the parade Lo and long and joy and sorrow",
   "segments": [
     {
-      "start": 53.17,
-      "end": 57.45,
-      "text": " باز پرین فیگ، ویوز ریترین، دین سلط و وی",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 2.29,
+      "end": 25.1,
+      "text": " I paid his money, and I told the views",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 57.45,
-      "end": 59.67,
-      "text": " لو دیت لنگره از لو این نون",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 25.1,
+      "end": 27.54,
+      "text": " This slang for all eyes did fuse",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 59.67,
-      "end": 62.15,
-      "text": " ستلل داره فنتس او پونه او",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 27.54,
+      "end": 29.8,
+      "text": " Toys come, toys go",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 62.15,
-      "end": 64.61,
-      "text": " موست قلید دید دستن شور",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 29.8,
+      "end": 32.28,
+      "text": " And spoke words that are five below",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 64.61,
-      "end": 67.11,
-      "text": " یک یورو ووه از لنگره از مور",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 32.28,
+      "end": 34.84,
+      "text": " Mad not at sea, carry my heart",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 67.11,
-      "end": 69.63,
-      "text": " تیر سنک، انترو دیدیب",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 34.84,
+      "end": 37.76,
+      "text": " Like a band like a dream to run the parade",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 69.63,
-      "end": 71.89,
-      "text": " درمزه سکی دور اون دی بریز",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 37.76,
+      "end": 39.96,
+      "text": " Lo and long and joy and sorrow",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 71.89,
-      "end": 74.47,
-      "text": " و فاینل گولانز، و لو وینز هول",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 39.96,
+      "end": 42.56,
+      "text": " All these are low and toy oop",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 74.47,
-      "end": 76.91,
-      "text": " نو سلبز این اوز هول",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "start": 42.56,
+      "end": 45.0,
+      "text": " Moon low at shore, bars on the toy",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
     },
     {
-      "start": 76.91,
+      "start": 45.0,
+      "end": 47.34,
+      "text": " Memories lost and the rise and fall",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
+    },
+    {
+      "start": 47.34,
+      "end": 49.84,
+      "text": " Fingers rich, bitch the oil",
+      "avg_logprob": -0.6286912512134861,
+      "no_speech_prob": 0.6616813540458679
+    },
+    {
+      "start": 49.84,
+      "end": 54.57,
+      "text": " I paid his money, and I told the views",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 54.57,
+      "end": 57.31,
+      "text": " This slang for all eyes did fuse",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 57.31,
+      "end": 59.13,
+      "text": " Toys come, toys go",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 59.63,
+      "end": 61.99,
+      "text": " And spoke words that are five below",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 61.99,
+      "end": 66.55,
+      "text": " Mad not at sea, carry my heart",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 66.55,
+      "end": 71.81,
+      "text": " Like a band like a dream to run the parade",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 71.81,
+      "end": 74.91,
+      "text": " Lo and long and joy and sorrow",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 74.91,
+      "end": 77.03,
+      "text": " Mad not at sea, carry my heart",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 77.03,
+      "end": 78.07,
+      "text": " Like a band like a dream to run the parade",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
+    },
+    {
+      "start": 78.07,
       "end": 78.11,
-      "text": " نانی",
-      "avg_logprob": -0.4586315122098554,
-      "no_speech_prob": 0.9442955255508423
+      "text": " Lo and long and joy and sorrow",
+      "avg_logprob": -0.21377820244022444,
+      "no_speech_prob": 0.3074079751968384
     }
   ]
 }

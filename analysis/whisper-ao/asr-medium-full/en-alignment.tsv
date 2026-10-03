@@ -42,14 +42,14 @@ S	wind	band
 S	torn	to
 S	apart	run
 S	love	the
-S	and	parade
-S	longing	low
-S	joy	in
-I		line
-I		gang
-I		joe
+I		parade
+I		lo
 =	and	and
-S	sorrow	saroo
+S	longing	long
+I		and
+=	joy	joy
+=	and	and
+=	sorrow	sorrow
 =	all	all
 S	dissolve	these
 S	into	are
@@ -72,74 +72,84 @@ S	in	and
 =	rise	rise
 =	and	and
 =	fall	fall
-S	fingers	fang
-S	reach	is
-S	but	rich
-S	touch	bitch
+=	fingers	fingers
+S	reach	rich
+S	but	bitch
+S	touch	the
+I		oil
+I		i
+I		paid
+I		his
+I		money
+I		and
+I		i
+I		told
 =	the	the
-S	void	oil
-S	echoes	i
-S	slipping	paid
-S	far	his
-S	beyond	money
-S	shadows	and
-S	dance	i
-S	whisper	told
-S	and	the
-S	fade	views
-S	waves	this
-S	return	slang
-S	then	for
-S	slip	all
-S	away	eyes
-S	love	did
-S	that	fuse
-S	lingers	toys
-S	love	come
-S	unknown	toys
-S	still	go
-S	drifts	and
-S	upon	spoke
-S	ao	words
-S	mist	that
-S	hides	are
-S	the	five
-S	distant	below
-S	shore	mad
-S	yet	not
-S	your	at
-S	voice	sea
-S	lingers	carry
-S	more	my
-S	tears	heart
-S	sink	like
-S	into	a
-S	the	band
-S	deep	like
-S	dreams	a
-S	scatter	dream
-S	on	to
+S	void	views
+S	echoes	this
+S	slipping	slang
+S	far	for
+S	beyond	all
+S	shadows	eyes
+S	dance	did
+S	whisper	fuse
+I		toys
+I		come
+I		toys
+I		go
+=	and	and
+S	fade	spoke
+S	waves	words
+S	return	that
+S	then	are
+S	slip	five
+S	away	below
+S	love	mad
+S	that	not
+S	lingers	at
+S	love	sea
+S	unknown	carry
+S	still	my
+S	drifts	heart
+S	upon	like
+S	ao	a
+S	mist	band
+S	hides	like
+I		a
+I		dream
+I		to
 I		run
 =	the	the
-S	breeze	parade
-S	a	low
-S	final	in
-S	glance	line
-S	a	gang
-S	love	joe
-S	once	and
-S	whole	saroo
-S	now	all
-S	sleeps	these
-S	in	are
-S	ao's	low
-S	hold	and
-I		toy
-I		oop
-I		memories
-I		lost
+S	distant	parade
+S	shore	lo
+S	yet	and
+S	your	long
+S	voice	and
+S	lingers	joy
+S	more	and
+S	tears	sorrow
+S	sink	mad
+S	into	not
+S	the	at
+S	deep	sea
+S	dreams	carry
+S	scatter	my
+S	on	heart
+S	the	like
+D	breeze	
+=	a	a
+S	final	band
+S	glance	like
+=	a	a
+S	love	dream
+S	once	to
+S	whole	run
+S	now	the
+S	sleeps	parade
+S	in	lo
+S	ao's	and
+S	hold	long
 I		and
-I		the
-I		rise
+I		joy
 I		and
-I		fall
+I		sorrow
