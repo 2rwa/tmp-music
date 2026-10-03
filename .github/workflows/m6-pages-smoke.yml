@@ -1,0 +1,43 @@
+name: M6 Pages smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "docs/index.html"
+      - "docs/m6-status/**"
+      - "m6-status/**"
+      - ".github/workflows/m6-pages-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for Pages and validate M6 snapshot
+        env:
+          URL: https://2rwa.github.io/tmp-music/m6-status/
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            echo "attempt ${attempt}: ${URL}"
+            if curl -fsSL --max-time 15 "${URL}" -o /tmp/m6-status.html; then
+              if grep -q "M6 Voice Quality" /tmp/m6-status.html \
+                && grep -q "Chichinu Fiija" /tmp/m6-status.html \
+                && grep -q "M7 remains HOLD" /tmp/m6-status.html; then
+                echo "M6 Pages snapshot is live"
+                exit 0
+              fi
+              echo "page reachable but expected snapshot not published yet"
+            else
+              echo "page not reachable yet"
+            fi
+            sleep 10
+          done
+          echo "M6 Pages snapshot did not become available"
+          exit 1
