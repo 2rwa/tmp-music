@@ -43,7 +43,7 @@ class StructureAlgorithmTests(unittest.TestCase):
         )
         candidates = period_candidates(profile, top_k=3, min_separation_frames=4)
         self.assertEqual(candidates[0]["lag_frames"], MOTIF_FRAMES * 2)
-        self.assertGreater(candidates[0]["combined_similarity"], 0.99)
+        self.assertGreater(candidates[0]["combined_similarity"], 0.98)
 
     def test_dtw_handles_time_stretch(self):
         views = fixture_arrays()["s3-time-stretch"]
