@@ -39,6 +39,7 @@ analysis:
     top_k: 8
   cycle_asr:
     boundary_source: aligned_cycles
+    reference_cycle_lines: 10
     language: ja
     device: cpu
     compute_type: int8
