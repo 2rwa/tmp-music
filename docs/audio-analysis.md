@@ -310,3 +310,12 @@ PyAV 19 removed the `metadata_errors` argument from `av.open()`, while `faster-w
 `TypeError: open() got an unexpected keyword argument 'metadata_errors'`
 
 `requirements-asr.txt` pins `av<19` until faster-whisper releases a compatible decoder path.
+
+
+## Literature survey
+
+A deeper literature-backed survey of F0/melody, source separation, lyrics alignment, rap rhythm, voice quality, structure analysis, foundation models, and cross-cultural MIR is in:
+
+- docs/audio-analysis-research-survey.md
+
+Use that survey as the design reference for the next analysis pipeline revisions.
