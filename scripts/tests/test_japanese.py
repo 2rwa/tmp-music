@@ -8,7 +8,13 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from common.japanese import edit_alignment, mora_error, morae_from_kana, normalize_kana
+from common.japanese import (
+    edit_alignment,
+    mora_error,
+    morae_from_kana,
+    normalize_kana,
+    partition_repeated_reference_lines,
+)
 
 
 class JapaneseMetricTests(unittest.TestCase):
@@ -29,6 +35,21 @@ class JapaneseMetricTests(unittest.TestCase):
         self.assertEqual(metrics["insertions"], 0)
         self.assertAlmostEqual(metrics["error_rate"], 1 / 3)
         self.assertEqual([row["op"] for row in rows], ["=", "S", "="])
+
+    def test_repeated_reference_partition_preserves_deleted_line_cycle(self):
+        reference = "\n".join([
+            "あ", "い", "う",
+            "あ", "い", "う",
+            "あ", "う",
+        ])
+        chunks = partition_repeated_reference_lines(
+            reference,
+            3,
+            canonical_line_count=3,
+            max_line_deviation=1,
+        )
+        self.assertEqual([len(x.splitlines()) for x in chunks], [3, 3, 2])
+        self.assertEqual(chunks[2].splitlines(), ["あ", "う"])
 
     def test_edit_alignment_counts_insertion(self):
         metrics, _ = edit_alignment(["じゅ", "げ", "む"], ["じゅ", "げ", "む", "よ"])
