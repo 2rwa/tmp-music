@@ -112,44 +112,6 @@ def analysis_input(track: Track, source: str) -> str:
 def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> Path:
     if stage == "separate":
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
-    if stage == "voice-quality":
-        voice = track.config.get("analysis", {}).get("voice_quality", {})
-        input_path = analysis_input(track, source)
-        targets_root = stage_output(track, "targets", model, source)
-        stable_notes = targets_root / "stable-notes.csv"
-        command = [
-            py,
-            "scripts/analyze_voice_quality.py",
-            input_path,
-            str(stable_notes.relative_to(REPO_ROOT)),
-            "--out",
-            str(out.relative_to(REPO_ROOT)),
-            "--sr",
-            str(voice.get("sample_rate_hz", 16000)),
-            "--frame-length-ms",
-            str(voice.get("frame_length_ms", 60.0)),
-            "--hop-length-ms",
-            str(voice.get("hop_length_ms", 20.0)),
-            "--hnr-search-fraction",
-            str(voice.get("hnr_search_fraction", 0.15)),
-            "--tilt-min-hz",
-            str(voice.get("tilt_min_hz", 200.0)),
-            "--tilt-max-hz",
-            str(voice.get("tilt_max_hz", 5000.0)),
-            "--min-rms-dbfs",
-            str(voice.get("min_rms_dbfs", -70.0)),
-            "--praat-min-version",
-            str(voice.get("praat_min_version", "6.4.39")),
-        ]
-        if voice.get("require_praat", True):
-            command += ["--require-praat"]
-        parameters = {
-            "input": input_path,
-            "stable_notes": str(stable_notes.relative_to(REPO_ROOT)),
-            "source": source,
-            **voice,
-        }
-        return command, parameters, {"praat_min_version": voice.get("praat_min_version", "6.4.39")}, ["librosa", "numpy", "soundfile"]
     if stage == "pitch-compare":
         return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
     if stage == "cycle-asr":
@@ -326,6 +288,44 @@ def stage_command(
             ",".join(str(x) for x in edos),
         ]
         return command, {"input": str(input_path.relative_to(REPO_ROOT)), "source": source, "edos": edos}, {}, ["numpy"]
+    if stage == "voice-quality":
+        voice = track.config.get("analysis", {}).get("voice_quality", {})
+        input_path = analysis_input(track, source)
+        targets_root = stage_output(track, "targets", model, source)
+        stable_notes = targets_root / "stable-notes.csv"
+        command = [
+            py,
+            "scripts/analyze_voice_quality.py",
+            input_path,
+            str(stable_notes.relative_to(REPO_ROOT)),
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--sr",
+            str(voice.get("sample_rate_hz", 16000)),
+            "--frame-length-ms",
+            str(voice.get("frame_length_ms", 60.0)),
+            "--hop-length-ms",
+            str(voice.get("hop_length_ms", 20.0)),
+            "--hnr-search-fraction",
+            str(voice.get("hnr_search_fraction", 0.15)),
+            "--tilt-min-hz",
+            str(voice.get("tilt_min_hz", 200.0)),
+            "--tilt-max-hz",
+            str(voice.get("tilt_max_hz", 5000.0)),
+            "--min-rms-dbfs",
+            str(voice.get("min_rms_dbfs", -70.0)),
+            "--praat-min-version",
+            str(voice.get("praat_min_version", "6.4.39")),
+        ]
+        if voice.get("require_praat", True):
+            command += ["--require-praat"]
+        parameters = {
+            "input": input_path,
+            "stable_notes": str(stable_notes.relative_to(REPO_ROOT)),
+            "source": source,
+            **voice,
+        }
+        return command, parameters, {"praat_min_version": voice.get("praat_min_version", "6.4.39")}, ["librosa", "numpy", "soundfile"]
     if stage == "cycle-asr":
         cycle_cfg = track.config.get("analysis", {}).get("cycle_asr", {})
         structure_json = REPO_ROOT / "analysis" / track.id / "measurements" / "structure" / "structure.json"
