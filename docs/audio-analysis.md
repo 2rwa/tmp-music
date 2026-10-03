@@ -1,5 +1,9 @@
 # Audio analysis notes — Whisper AO
 
+> **Current implementation status:** see `docs/STATUS_20261003.md`.  
+> **Current continuation handoff:** see `docs/NEXT_CHAT.md`.  
+> This document preserves the original Whisper AO analysis rationale and methodology; some items described below as future/optional have since been implemented.
+
 ## Purpose
 
 This repository is a disposable workspace for reproducible analysis of unusual vocal/rap generation.
@@ -319,3 +323,23 @@ A deeper literature-backed survey of F0/melody, source separation, lyrics alignm
 - docs/audio-analysis-research-survey.md
 
 Use that survey as the design reference for the next analysis pipeline revisions.
+
+
+## 2026-10-03 implementation status note
+
+Several stages originally described above as proposed or optional are now implemented:
+
+- common CLI + source integrity/provenance/status
+- Demucs vocal separation
+- pYIN + torchcrepe pitch comparison
+- stable target and EDO residual analysis
+- mix-vs-vocal comparison
+- multi-view structure / DTW cycle analysis
+- Japanese normalization / mora metrics
+- cycle-level ASR
+
+Whisper AO mix-vs-vocal pitch comparison is validated in Actions run `37087024191`. Vocal separation increased selected-F0 coverage and stable-target duration substantially.
+
+The next major Whisper AO-specific research step is **Milestone 5 forced alignment**, where failed alignment spans should be preserved rather than discarded so unusual pronunciation can be localized in time.
+
+For the authoritative current progress state, use `docs/STATUS_20261003.md`; do not infer current implementation status from older “future” wording in this historical methodology document.
