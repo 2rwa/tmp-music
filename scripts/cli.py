@@ -21,14 +21,25 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from common.provenance import (  # noqa: E402
+from common.provenance import (
     build_provenance,
     collect_tool_versions,
     sha256_file,
     write_stage_state,
 )
 
-STAGES = ("verify", "metadata", "acoustic", "repetition", "separate", "asr", "full")
+STAGES = (
+    "verify",
+    "metadata",
+    "acoustic",
+    "repetition",
+    "separate",
+    "pitch",
+    "targets",
+    "tuning",
+    "asr",
+    "full",
+)
 
 
 @dataclass(frozen=True)
@@ -85,9 +96,22 @@ def verify_source(track: Track) -> dict[str, Any]:
     return {"sha256": actual_sha, "size_bytes": actual_size, "source": track.source_rel}
 
 
-def stage_output(track: Track, stage: str, model: str) -> Path:
+def analysis_input(track: Track, source: str) -> str:
+    if source == "mix":
+        return track.source_rel
+    if source == "vocals":
+        return str(Path("analysis") / track.id / "stems" / "demucs" / "vocals.wav")
+    raise ValueError(f"unknown analysis source: {source}")
+
+
+def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> Path:
     if stage == "separate":
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
+    if stage in {"pitch", "targets", "tuning"}:
+        root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / source
+        if stage == "pitch":
+            return root
+        return root / stage
     suffix = f"asr-{model}" if stage == "asr" else stage
     return REPO_ROOT / "analysis" / track.id / "measurements" / suffix
 
@@ -100,9 +124,15 @@ def _list_outputs(out_dir: Path) -> list[str]:
     )
 
 
-def stage_command(track: Track, stage: str, model: str) -> tuple[list[str], dict[str, Any], dict[str, Any], list[str]]:
+def stage_command(
+    track: Track,
+    stage: str,
+    model: str,
+    source: str = "mix",
+    estimators: str | None = None,
+) -> tuple[list[str], dict[str, Any], dict[str, Any], list[str]]:
     py = sys.executable
-    out = stage_output(track, stage, model)
+    out = stage_output(track, stage, model, source)
     if stage == "metadata":
         command = [py, "scripts/analyze_audio.py", track.source_rel, "--out", str(out.relative_to(REPO_ROOT)), "--skip-pitch"]
         return command, {"skip_pitch": True}, {}, ["librosa", "numpy", "scipy", "matplotlib", "mutagen"]
@@ -133,6 +163,78 @@ def stage_command(track: Track, stage: str, model: str) -> tuple[list[str], dict
             device,
         ]
         return command, {"device": device}, {"demucs": demucs_model}, ["demucs", "librosa", "numpy", "soundfile"]
+    if stage == "pitch":
+        pitch = track.config.get("analysis", {}).get("pitch", {})
+        input_path = analysis_input(track, source)
+        selected_estimators = estimators or str(pitch.get("estimators", "pyin,crepe"))
+        crepe_model = str(pitch.get("crepe_model", "full"))
+        command = [
+            py,
+            "scripts/analyze_pitch.py",
+            input_path,
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--estimators",
+            selected_estimators,
+            "--sr",
+            str(pitch.get("sample_rate_hz", 16000)),
+            "--hop-length",
+            str(pitch.get("hop_length", 160)),
+            "--fmin",
+            str(pitch.get("fmin_hz", 65.40639132514966)),
+            "--fmax",
+            str(pitch.get("fmax_hz", 2093.004522404789)),
+            "--crepe-model",
+            crepe_model,
+            "--device",
+            str(pitch.get("device", "cpu")),
+            "--crepe-periodicity-threshold",
+            str(pitch.get("crepe_periodicity_threshold", 0.21)),
+            "--strong-cents",
+            str(pitch.get("consensus_strong_cents", 25.0)),
+            "--weak-cents",
+            str(pitch.get("consensus_weak_cents", 50.0)),
+        ]
+        parameters = {"input": input_path, "source": source, "estimators": selected_estimators}
+        models = {"torchcrepe": crepe_model} if "crepe" in selected_estimators.split(",") else {}
+        return command, parameters, models, ["librosa", "numpy", "torchcrepe", "torch"]
+    if stage == "targets":
+        target_cfg = track.config.get("analysis", {}).get("pitch_targets", {})
+        pitch_root = stage_output(track, "pitch", model, source)
+        input_path = pitch_root / "consensus.csv"
+        command = [
+            py,
+            "scripts/detect_pitch_targets.py",
+            str(input_path.relative_to(REPO_ROOT)),
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--window-s",
+            str(target_cfg.get("window_s", 0.5)),
+            "--max-slope",
+            str(target_cfg.get("max_slope_cents_per_s", 100.0)),
+            "--max-residual-std",
+            str(target_cfg.get("max_detrended_std_cents", 40.0)),
+            "--min-duration",
+            str(target_cfg.get("min_duration_s", 0.15)),
+            "--min-confidence",
+            str(target_cfg.get("min_confidence", 0.5)),
+        ]
+        return command, {"input": str(input_path.relative_to(REPO_ROOT)), "source": source, **target_cfg}, {}, ["numpy"]
+    if stage == "tuning":
+        tuning_cfg = track.config.get("analysis", {}).get("tuning", {})
+        targets_root = stage_output(track, "targets", model, source)
+        input_path = targets_root / "stable-notes.csv"
+        edos = tuning_cfg.get("edos", [12, 19, 24, 31])
+        command = [
+            py,
+            "scripts/analyze_tuning.py",
+            str(input_path.relative_to(REPO_ROOT)),
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--edos",
+            ",".join(str(x) for x in edos),
+        ]
+        return command, {"input": str(input_path.relative_to(REPO_ROOT)), "source": source, "edos": edos}, {}, ["numpy"]
     if stage == "asr":
         asr = track.config.get("analysis", {}).get("asr", {})
         modes = asr.get("modes", ["auto", track.language])
@@ -155,11 +257,20 @@ def stage_command(track: Track, stage: str, model: str) -> tuple[list[str], dict
     raise ValueError(f"no analyzer mapping for stage: {stage}")
 
 
-def run_stage(track: Track, stage: str, source_sha: str, model: str, dry_run: bool) -> dict[str, Any]:
-    command, parameters, models, packages = stage_command(track, stage, model)
-    out = stage_output(track, stage, model)
+def run_stage(
+    track: Track,
+    stage: str,
+    source_sha: str,
+    model: str,
+    dry_run: bool,
+    source: str = "mix",
+    estimators: str | None = None,
+) -> dict[str, Any]:
+    command, parameters, models, packages = stage_command(track, stage, model, source, estimators)
+    out = stage_output(track, stage, model, source)
     plan = {
         "stage": stage,
+        "source": source,
         "out": str(out.relative_to(REPO_ROOT)),
         "command": command,
         "parameters": parameters,
@@ -177,7 +288,7 @@ def run_stage(track: Track, stage: str, source_sha: str, model: str, dry_run: bo
         models=models,
         tool_versions=collect_tool_versions(packages),
     )
-    write_stage_state(out, provenance=provenance, status="running")
+    write_stage_state(out, provenance=provenance, status="running", started_from=source)
     result = subprocess.run(command, cwd=REPO_ROOT, check=False)
     outputs = _list_outputs(out)
     if result.returncode != 0:
@@ -186,6 +297,7 @@ def run_stage(track: Track, stage: str, source_sha: str, model: str, dry_run: bo
             provenance=provenance,
             status="failed",
             warnings=[f"analyzer exited with code {result.returncode}"],
+            started_from=source,
             outputs=outputs,
             return_code=result.returncode,
         )
@@ -196,6 +308,7 @@ def run_stage(track: Track, stage: str, source_sha: str, model: str, dry_run: bo
             provenance=provenance,
             status="failed",
             warnings=["analyzer exited successfully but produced no outputs"],
+            started_from=source,
             outputs=[],
             return_code=result.returncode,
         )
@@ -204,6 +317,7 @@ def run_stage(track: Track, stage: str, source_sha: str, model: str, dry_run: bo
         out,
         provenance=provenance,
         status="success",
+        started_from=source,
         outputs=outputs,
         return_code=result.returncode,
     )
@@ -225,6 +339,8 @@ def main() -> int:
     parser.add_argument("stage", choices=STAGES)
     parser.add_argument("--track", required=True)
     parser.add_argument("--model", default=None, help="ASR model override")
+    parser.add_argument("--source", choices=("mix", "vocals"), default="mix")
+    parser.add_argument("--estimators", default=None, help="Pitch estimator override, e.g. pyin or pyin,crepe")
     parser.add_argument("--dry-run", action="store_true", help="verify source and print analyzer commands without running them")
     parser.add_argument("--config-dir", type=Path, default=REPO_ROOT / "config" / "tracks")
     args = parser.parse_args()
@@ -239,11 +355,22 @@ def main() -> int:
             "track": track.id,
             "integrity": integrity,
             "requested_stage": args.stage,
+            "source": args.source,
             "dry_run": args.dry_run,
             "stages": [],
         }
         for stage in stages:
-            result["stages"].append(run_stage(track, stage, integrity["sha256"], model, args.dry_run))
+            result["stages"].append(
+                run_stage(
+                    track,
+                    stage,
+                    integrity["sha256"],
+                    model,
+                    args.dry_run,
+                    source=args.source,
+                    estimators=args.estimators,
+                )
+            )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (FileNotFoundError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
