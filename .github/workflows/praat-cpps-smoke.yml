@@ -6,6 +6,10 @@ on:
     paths:
       - ".github/workflows/praat-cpps-smoke.yml"
       - "scripts/praat/measure_cpps_hnr.praat"
+  pull_request:
+    paths:
+      - ".github/workflows/praat-cpps-smoke.yml"
+      - "scripts/praat/measure_cpps_hnr.praat"
   workflow_dispatch:
 
 permissions:
