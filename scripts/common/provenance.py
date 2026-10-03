@@ -22,12 +22,13 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def _command_version(command: str) -> str | None:
+def _command_version(command: str, *version_args: str) -> str | None:
     if shutil.which(command) is None:
         return None
+    args = list(version_args) if version_args else ["-version"]
     try:
         result = subprocess.run(
-            [command, "-version"],
+            [command, *args],
             check=False,
             capture_output=True,
             text=True,
@@ -44,6 +45,7 @@ def collect_tool_versions(packages: Iterable[str] = ()) -> dict[str, str | None]
         "python": platform.python_version(),
         "ffmpeg": _command_version("ffmpeg"),
         "ffprobe": _command_version("ffprobe"),
+        "praat": _command_version("praat", "--version"),
     }
     for package in packages:
         try:

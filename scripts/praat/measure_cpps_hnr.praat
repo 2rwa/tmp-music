@@ -10,4 +10,11 @@ selectObject: sound
 harmonicity = To Harmonicity (cc): 0.01, 75.0, 0.1, 1.0
 hnr = Get mean: 0, 0
 
-writeInfoLine: "CPPS=", cpps, tab$, "HNR=", hnr
+selectObject: sound
+formant = To Formant (burg): 0.0, 5.0, 5500.0, 0.025, 50.0
+selectObject: formant
+f1 = Get mean: 1, 0, 0, "Hertz"
+f2 = Get mean: 2, 0, 0, "Hertz"
+f3 = Get mean: 3, 0, 0, "Hertz"
+
+writeInfoLine: "CPPS=", cpps, tab$, "HNR=", hnr, tab$, "F1=", f1, tab$, "F2=", f2, tab$, "F3=", f3

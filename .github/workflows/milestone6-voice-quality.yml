@@ -23,8 +23,8 @@ permissions:
 jobs:
   voice-quality:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +61,7 @@ jobs:
           body = json.dumps({
               "state": "pending",
               "context": f"voice-quality/{os.environ['TRACK']}",
-              "description": "stable-vocal voice-quality baseline is running",
+              "description": "M6 stable-vocal voice quality is running",
               "target_url": os.environ["STATUS_RUN_URL"],
           }).encode()
           req = urllib.request.Request(url, data=body, method="POST", headers={
@@ -89,7 +89,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg praat
+          praat --version
           python -m pip install --upgrade pip
           python -m pip install -r requirements-core.txt -r requirements-analysis.txt
           python -m pip check
@@ -140,6 +141,8 @@ jobs:
           root="analysis/${TRACK}/measurements/voice-quality/vocals"
           test -s "${root}/segments.csv"
           test -s "${root}/summary.json"
+          test -s "${root}/pitch-movement-events.csv"
+          test -s "${root}/register-transitions.json"
           test -s "${root}/provenance.json"
           test -s "${root}/status.json"
           python - <<'PY'
@@ -148,13 +151,27 @@ jobs:
           root = Path("analysis") / os.environ["TRACK"] / "measurements" / "voice-quality" / "vocals"
           summary = json.loads((root / "summary.json").read_text())
           status = json.loads((root / "status.json").read_text())
+          register = json.loads((root / "register-transitions.json").read_text())
           rows = list(csv.DictReader((root / "segments.csv").open()))
+          movements = list(csv.DictReader((root / "pitch-movement-events.csv").open()))
           assert status["status"] == "success", status
           assert summary["measurement_status"] == "ok", summary
           assert summary["stable_target_count_measured"] > 0, summary
           assert len(rows) == summary["stable_target_count_measured"], (len(rows), summary)
-          assert summary["aggregate_segment_medians"]["autocorrelation_hnr_db"]["count"] > 0, summary
-          assert summary["aggregate_segment_medians"]["spectral_tilt_db_per_octave"]["count"] > 0, summary
+          assert summary["praat"]["enabled"] is True, summary
+          assert summary["praat"]["version"], summary
+          aggregates = summary["aggregate_segment_medians"]
+          for metric in (
+              "autocorrelation_hnr_db", "spectral_tilt_db_per_octave",
+              "praat_cpps_db", "praat_hnr_cc_db",
+              "praat_f1_hz", "praat_f2_hz", "praat_f3_hz",
+              "vibrato_extent_cents_p95_p05",
+          ):
+              assert aggregates[metric]["count"] > 0, (metric, aggregates[metric])
+          assert summary["pitch_movement"]["measurement_status"] == "ok", summary
+          assert summary["pitch_movement"]["candidate_count"] == len(movements), summary
+          assert register["candidate_count"] == len(register["candidates"]), register
+          assert summary["register_transitions"]["candidate_count"] == register["candidate_count"], summary
           PY
 
       - uses: actions/upload-artifact@v4
@@ -181,7 +198,7 @@ jobs:
           body = json.dumps({
               "state": state,
               "context": f"voice-quality/{os.environ['TRACK']}",
-              "description": f"voice-quality baseline {state}",
+              "description": f"M6 voice quality {state}",
               "target_url": os.environ["STATUS_RUN_URL"],
           }).encode()
           req = urllib.request.Request(url, data=body, method="POST", headers={
