@@ -5,6 +5,9 @@ expected_size_bytes: 4992093
 language: en
 embedded_lyrics: true
 analysis:
+  separation:
+    model: htdemucs
+    device: cpu
   repetitions: false
   reference_lyrics: embedded
   trailing_silence_expected: true
