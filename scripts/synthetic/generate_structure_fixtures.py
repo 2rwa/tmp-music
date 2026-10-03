@@ -60,11 +60,14 @@ def fixture_arrays() -> dict[str, dict[str, np.ndarray]]:
     timbre[:, 1] *= 1.8
     timbre[:, 2] += 0.35 * timbre[:, 3]
     timbre_change = np.vstack([a, timbre, a])
+    spacer = np.tile(np.array([[4.0, -3.0, 2.0, -4.0]]), (4, 1))
+    start_jitter = np.vstack([a, spacer, a, a])
     return {
         "s1-aaaa": make_views(aaaa),
         "s2-abab": make_views(abab),
         "s3-time-stretch": make_views(stretched),
         "s4-timbre-change": make_views(timbre_change),
+        "s5-start-jitter": make_views(start_jitter),
     }
 
 
@@ -86,6 +89,11 @@ def main() -> None:
             "s4-timbre-change": {
                 "layout": "A-A(timbre changed)-A",
                 "cycle_lengths_frames": [MOTIF_FRAMES] * 3,
+            },
+            "s5-start-jitter": {
+                "layout": "A-pad-A-A",
+                "expected_grid_frames": [0, 32, 64],
+                "content_starts_frames": [0, 36, 68],
             },
         },
     }
