@@ -1,0 +1,104 @@
+name: Export M6 timeline snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/export_m6_timeline.py"
+      - "docs/m6-status/timeline/index.html"
+      - "docs/m6-status/timeline/app.js"
+      - "docs/m6-status/timeline/style.css"
+      - ".github/workflows/m6-timeline-export.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Whisper AO pitch artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pitch-vocals-whisper-ao
+          path: .timeline-artifacts/whisper-pitch
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37105726302
+
+      - name: Download Jugemu pitch artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pitch-vocals-jugemu
+          path: .timeline-artifacts/jugemu-pitch
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37105726302
+
+      - name: Download Whisper AO M6 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voice-quality-whisper-ao
+          path: .timeline-artifacts/whisper-m6
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37106744254
+
+      - name: Download Jugemu M6 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voice-quality-jugemu
+          path: .timeline-artifacts/jugemu-m6
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37106744254
+
+      - name: Download Chichinu Fiija holdout artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m6-holdout-chichinu-fiija
+          path: .timeline-artifacts/chichinu-holdout
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37105533801
+
+      - name: Export compact timeline JSON
+        run: python scripts/export_m6_timeline.py
+
+      - name: Validate snapshot
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = {
+              "whisper-ao": (97, 82, 16),
+              "jugemu": (18, 45, 0),
+              "chichinu-fiija": (43, 41, 1),
+          }
+          for track, counts in expected.items():
+              p = Path("docs/m6-status/timeline/data") / f"{track}.json"
+              data = json.loads(p.read_text())
+              assert data["f0"], track
+              assert len(data["segments"]) == counts[0], (track, len(data["segments"]))
+              assert len(data["movement"]) == counts[1], (track, len(data["movement"]))
+              assert len(data["register"]) == counts[2], (track, len(data["register"]))
+          PY
+
+      - name: Commit snapshot data
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/m6-status/timeline/data; then
+            echo "timeline snapshot unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/m6-status/timeline/data
+          git commit -m "Update M6 timeline snapshot data"
+          git push
