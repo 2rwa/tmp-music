@@ -39,6 +39,7 @@ STAGES = (
     "targets",
     "tuning",
     "pitch-compare",
+    "cycle-asr",
     "asr",
     "full",
 )
@@ -111,6 +112,8 @@ def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> P
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
     if stage == "pitch-compare":
         return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
+    if stage == "cycle-asr":
+        return REPO_ROOT / "analysis" / track.id / "measurements" / f"cycle-asr-{model}"
     if stage == "structure":
         return REPO_ROOT / "analysis" / track.id / "measurements" / "structure"
     if stage in {"pitch", "targets", "tuning"}:
@@ -277,6 +280,34 @@ def stage_command(
             ",".join(str(x) for x in edos),
         ]
         return command, {"input": str(input_path.relative_to(REPO_ROOT)), "source": source, "edos": edos}, {}, ["numpy"]
+    if stage == "cycle-asr":
+        cycle_cfg = track.config.get("analysis", {}).get("cycle_asr", {})
+        structure_json = REPO_ROOT / "analysis" / track.id / "measurements" / "structure" / "structure.json"
+        command = [
+            py,
+            "scripts/analyze_cycle_asr.py",
+            track.source_rel,
+            str(structure_json.relative_to(REPO_ROOT)),
+            "--out",
+            str(out.relative_to(REPO_ROOT)),
+            "--model",
+            model,
+            "--language",
+            str(cycle_cfg.get("language", track.language)),
+            "--device",
+            str(cycle_cfg.get("device", "cpu")),
+            "--compute-type",
+            str(cycle_cfg.get("compute_type", "int8")),
+            "--boundary-source",
+            str(cycle_cfg.get("boundary_source", "aligned_cycles")),
+        ]
+        return command, {
+            "structure_json": str(structure_json.relative_to(REPO_ROOT)),
+            "boundary_source": cycle_cfg.get("boundary_source", "aligned_cycles"),
+            "language": cycle_cfg.get("language", track.language),
+            "device": cycle_cfg.get("device", "cpu"),
+            "compute_type": cycle_cfg.get("compute_type", "int8"),
+        }, {"faster-whisper": model}, ["faster-whisper", "av", "mutagen", "pykakasi"]
     if stage == "pitch-compare":
         mix_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "mix"
         vocal_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "vocals"
