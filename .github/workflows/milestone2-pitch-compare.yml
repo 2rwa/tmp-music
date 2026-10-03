@@ -4,6 +4,10 @@ on:
   workflow_run:
     workflows: ["Milestone 2 vocal pitch"]
     types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/milestone2-pitch-compare.yml"
   workflow_dispatch:
     inputs:
       vocal_run_id:
@@ -26,7 +30,7 @@ permissions:
 
 jobs:
   compare:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -39,13 +43,40 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          REPOSITORY: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [ "${EVENT_NAME}" = "workflow_run" ]; then
             echo "run_id=${EVENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
-          else
+          elif [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
             echo "run_id=${{ inputs.vocal_run_id }}" >> "${GITHUB_OUTPUT}"
+          else
+            python - <<'PY' >> "${GITHUB_OUTPUT}"
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          query = urllib.parse.urlencode({"status": "success", "per_page": 20})
+          url = (
+              f"https://api.github.com/repos/{os.environ['REPOSITORY']}"
+              f"/actions/workflows/milestone2-pitch-vocals.yml/runs?{query}"
+          )
+          req = urllib.request.Request(url, headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+          })
+          payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
+          runs = payload.get("workflow_runs", [])
+          if not runs:
+              raise SystemExit("no successful vocal pitch workflow run found")
+          print(f"run_id={runs[0]['id']}")
+          PY
           fi
+
+      - uses: actions/checkout@v4
 
       - name: Download vocal pitch artifact
         uses: actions/download-artifact@v4
@@ -144,10 +175,6 @@ jobs:
           urllib.request.urlopen(req, timeout=30).read()
           PY
 
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.source.outputs.sha }}
-
       - name: Download mix pitch artifact
         uses: actions/download-artifact@v4
         with:
@@ -160,11 +187,25 @@ jobs:
       - name: Compare mix and vocals
         run: |
           set -euo pipefail
-          python scripts/compare_pitch_sources.py             --track "${{ matrix.track }}"             --mix "analysis/${{ matrix.track }}/measurements/pitch/mix"             --vocals "analysis/${{ matrix.track }}/measurements/pitch/vocals"             --out "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals"
-          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/comparison.json"
-          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/measurements.md"
-          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/provenance.json"
-          test -s "analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals/status.json"
+          python scripts/cli.py pitch-compare --track "${{ matrix.track }}" --source mix-vocals
+          root="analysis/${{ matrix.track }}/comparisons/pitch-mix-vs-vocals"
+          test -s "${root}/comparison.json"
+          test -s "${root}/measurements.md"
+          test -s "${root}/provenance.json"
+          test -s "${root}/status.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path("analysis") / os.environ["TRACK"] / "comparisons" / "pitch-mix-vs-vocals"
+          status = json.loads((root / "status.json").read_text())
+          comparison = json.loads((root / "comparison.json").read_text())
+          assert status["status"] == "success", status
+          assert status["outputs"], status
+          assert comparison["track"] == os.environ["TRACK"], comparison
+          PY
+        env:
+          TRACK: ${{ matrix.track }}
 
       - uses: actions/upload-artifact@v4
         with:
