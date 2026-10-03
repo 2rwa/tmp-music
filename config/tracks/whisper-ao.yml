@@ -13,10 +13,11 @@ analysis:
     sample_rate_hz: 16000
     hop_length: 160
     fmin_hz: 65.40639132514966
-    fmax_hz: 2093.004522404789
+    fmax_hz: 2006.0
     crepe_model: full
     device: cpu
     crepe_periodicity_threshold: 0.21
+    pyin_fallback_confidence: 0.80
     consensus_strong_cents: 25.0
     consensus_weak_cents: 50.0
   pitch_targets:
