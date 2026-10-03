@@ -22,6 +22,7 @@ from common.structure import (
     multiview_lag_profile,
     pairwise_cycle_distances,
     period_candidates,
+    template_alignment_starts,
     view_agreement,
     zscore_features,
 )
@@ -102,6 +103,8 @@ def main() -> int:
     p.add_argument("--min-period", type=float, default=20.0)
     p.add_argument("--max-period", type=float, default=40.0)
     p.add_argument("--anchor-start", type=float, default=0.0)
+    p.add_argument("--alignment-template-duration", type=float, default=22.0)
+    p.add_argument("--alignment-search-radius", type=float, default=4.0)
     p.add_argument("--top-k", type=int, default=8)
     args = p.parse_args()
 
@@ -164,8 +167,46 @@ def main() -> int:
             "start_s": start * frame_step_s,
             "end_s": end * frame_step_s,
             "duration_s": (end - start) * frame_step_s,
+            "boundary_method": "period-grid",
         }
         for i, (start, end) in enumerate(zip(full_boundaries[:-1], full_boundaries[1:]))
+    ]
+
+    alignment_template_frames = max(1, round(args.alignment_template_duration / frame_step_s))
+    alignment_radius_frames = max(0, round(args.alignment_search_radius / frame_step_s))
+    alignment_rows = template_alignment_starts(
+        views,
+        anchor_frame=anchor_frame,
+        period_frames=selected_frames,
+        template_frames=alignment_template_frames,
+        search_radius_frames=alignment_radius_frames,
+        view_names=("mfcc", "chroma"),
+    )
+    alignment_rows = [
+        {
+            **row,
+            "expected_s": float(row["expected_frame"]) * frame_step_s,
+            "aligned_s": float(row["aligned_frame"]) * frame_step_s,
+            "offset_s": float(row["offset_frames"]) * frame_step_s,
+        }
+        for row in alignment_rows
+    ]
+    aligned_starts = [int(row["aligned_frame"]) for row in alignment_rows]
+    aligned_boundaries = list(aligned_starts)
+    minimum_tail = max(1, round(selected_frames * 0.5))
+    if aligned_boundaries and frames - aligned_boundaries[-1] >= minimum_tail:
+        aligned_boundaries.append(frames)
+    aligned_cycles = [
+        {
+            "id": f"cycle-{i + 1:02d}",
+            "start_frame": start,
+            "end_frame": end,
+            "start_s": start * frame_step_s,
+            "end_s": min(duration_s, end * frame_step_s),
+            "duration_s": (end - start) * frame_step_s,
+            "boundary_method": "template-aligned",
+        }
+        for i, (start, end) in enumerate(zip(aligned_boundaries[:-1], aligned_boundaries[1:]))
     ]
 
     out = args.out.resolve()
@@ -180,6 +221,7 @@ def main() -> int:
     write_lag_profile(out / "lag-profile.csv", profile, frame_step_s)
 
     distance_summary: dict[str, object] = {}
+    aligned_distance_summary: dict[str, object] = {}
     for name, feature in views.items():
         matrix = pairwise_cycle_distances(feature, full_boundaries)
         write_matrix_csv(out / f"cycle-distance-{name}.csv", matrix)
@@ -190,6 +232,16 @@ def main() -> int:
             "median_pairwise_distance": float(np.median(off_diagonal)) if len(off_diagonal) else None,
             "max_pairwise_distance": float(np.max(off_diagonal)) if len(off_diagonal) else None,
         }
+        if len(aligned_boundaries) >= 3:
+            aligned_matrix = pairwise_cycle_distances(feature, aligned_boundaries)
+            write_matrix_csv(out / f"aligned-cycle-distance-{name}.csv", aligned_matrix)
+            aligned_off_diagonal = aligned_matrix[np.triu_indices_from(aligned_matrix, k=1)]
+            aligned_distance_summary[name] = {
+                "cycle_count": int(aligned_matrix.shape[0]),
+                "mean_pairwise_distance": float(np.mean(aligned_off_diagonal)) if len(aligned_off_diagonal) else None,
+                "median_pairwise_distance": float(np.median(aligned_off_diagonal)) if len(aligned_off_diagonal) else None,
+                "max_pairwise_distance": float(np.max(aligned_off_diagonal)) if len(aligned_off_diagonal) else None,
+            }
 
     agreement = view_agreement(
         {
@@ -235,8 +287,13 @@ def main() -> int:
         "selected_period_s": selected_period_s,
         "anchor_start_requested_s": args.anchor_start,
         "anchor_start_effective_s": anchor_frame * frame_step_s,
+        "alignment_template_duration_s": args.alignment_template_duration,
+        "alignment_search_radius_s": args.alignment_search_radius,
+        "cycle_alignment_starts": alignment_rows,
         "cycles": cycles,
+        "aligned_cycles": aligned_cycles,
         "cycle_distance_summary": distance_summary,
+        "aligned_cycle_distance_summary": aligned_distance_summary,
         "interpretation_warning": (
             "A recurrence period and low DTW distance describe repeated signal structure. "
             "They do not identify lyrical, cultural, or compositional meaning."
