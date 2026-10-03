@@ -171,6 +171,10 @@ def stage_command(
             str(structure.get("max_period_s", 40.0)),
             "--anchor-start",
             str(structure.get("anchor_start_s", 0.0)),
+            "--alignment-template-duration",
+            str(structure.get("alignment_template_duration_s", 22.0)),
+            "--alignment-search-radius",
+            str(structure.get("alignment_search_radius_s", 4.0)),
             "--top-k",
             str(structure.get("top_k", 8)),
         ]
