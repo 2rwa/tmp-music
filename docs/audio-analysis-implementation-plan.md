@@ -3,7 +3,10 @@
 作成日: 2026-10-03  
 対象リポジトリ: `2rwa/tmp-music`  
 参照調査: `docs/audio-analysis-research-survey.md`  
-実装原則: `chatgpt-workspace/docs/build-test-fix.md`
+実装原則: `chatgpt-workspace/docs/build-test-fix.md`  
+現状スナップショット: `docs/STATUS_20261003.md`
+
+> 進捗更新: 2026-10-03。M1/M2は実音源検証まで完了。M3はtempo regressionのみ未解決。M4は実装済みでcycle-specific reference版のE2E再検証待ち。
 
 ---
 
@@ -1335,29 +1338,31 @@ artifactのみ:
 
 依存関係込みの順序。
 
-## Milestone 1 — Analyzer foundation
+## Milestone 1 — Analyzer foundation — COMPLETE
 
-- [ ] P0-1 common CLI
-- [ ] P0-2 track config
-- [ ] P0-3 common provenance/status schema
-- [ ] P0-4 cheap CI
-- [ ] synthetic pitch/rhythm fixtures
-- [ ] existing analyzersをCLI経由で実行
+- [x] P0-1 common CLI
+- [x] P0-2 track config
+- [x] P0-3 common provenance/status schema
+- [x] P0-4 cheap CI
+- [x] synthetic pitch/rhythm fixtures
+- [x] existing analyzersをCLI経由で実行
 
 ### 完了条件
 
 2曲の既存解析結果を新CLIから再生成できる。
 
+**Validation:** cheap CI `37083242829`、real-audio smoke `37083316389` とも success。
+
 ---
 
-## Milestone 2 — Vocal/pitch
+## Milestone 2 — Vocal/pitch — COMPLETE
 
-- [ ] A1 Demucs separation
-- [ ] A2 CREPE
-- [ ] pYIN/CREPE consensus
-- [ ] stable target
-- [ ] tuning model comparison
-- [ ] mix vs vocal比較
+- [x] A1 Demucs separation
+- [x] A2 CREPE
+- [x] pYIN/CREPE consensus
+- [x] stable target
+- [x] tuning model comparison
+- [x] mix vs vocal比較
 
 ### 完了条件
 
@@ -1368,29 +1373,33 @@ Whisper AO / じゅげむで:
 
 両方のF0比較レポートが出る。
 
+**Validation:** Demucs `37085412905`、mix pitch `37085412917`、vocal pitch `37085675663`、mix-vocal comparison `37087024191` は両曲 success。
+
 ---
 
-## Milestone 3 — Structure/cycles
+## Milestone 3 — Structure/cycles — TEMPO FIX PENDING
 
-- [ ] multi-view SSM
-- [ ] tempo candidates
-- [ ] cycle boundaries
-- [ ] DTW
-- [ ] cycle-distance
+- [x] multi-view SSM
+- [ ] tempo candidates — 実装済みだが0.25 s structure gridによる120/60/240 BPM量子化を修正する
+- [x] cycle boundaries
+- [x] DTW
+- [x] cycle-distance
 
 ### 完了条件
 
 じゅげむの全主要反復をcycle単位に分割できる。
 
+**Current measurement:** selected period 28.75 s、aligned starts `12.00, 40.75, 69.50, 98.50, 127.25, 156.00, 184.75, 213.50` s。structure/cycle本体はrun `37086468933` で success。Jules追加tempo validationはrun `37086741133`, `37087024183` で regression を検出。
+
 ---
 
-## Milestone 4 — Japanese lyrics
+## Milestone 4 — Japanese lyrics — IMPLEMENTED / E2E REVALIDATION PENDING
 
-- [ ] Japanese normalization
-- [ ] mora tokenizer
-- [ ] cycle-level Whisper
-- [ ] CER/MER
-- [ ] cycle-to-cycle ASR comparison
+- [x] Japanese normalization
+- [x] mora tokenizer
+- [x] cycle-level Whisper
+- [x] CER/MER
+- [x] cycle-to-cycle ASR comparison
 
 ### 完了条件
 
@@ -1402,6 +1411,8 @@ Whisper AO / じゅげむで:
 - substitution
 
 を比較できる。
+
+旧reference方式のcycle-ASRはrun `37086549657` で success。現在はcycle-specific contiguous reference partitionへ改善済みでcheap CI `37087076630` success。**Milestone完了判定は修正版referenceでの実音源E2E再実行後に行う。**
 
 ---
 
@@ -1564,6 +1575,7 @@ Whisper AOで「元歌詞のどの音素が崩れるか」、
 - `docs/audio-analysis.md` — 現行解析手順
 - `docs/audio-analysis-research-survey.md` — 文献調査と技術選定根拠
 - `docs/jugemu-analysis.md` — じゅげむ固有の観測
+- `docs/STATUS_20261003.md` — 現在の実装・実測・既知課題
 - `scripts/README.md` — 現行スクリプト実行方法
 
 この計画書は、調査書の「何が有効か」を、tmp-music上で「何をどの順に作り、どう検証するか」へ変換したものとして扱う。
