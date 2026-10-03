@@ -17,6 +17,7 @@ from common.structure import (
     multiview_lag_profile,
     pairwise_cycle_distances,
     period_candidates,
+    template_alignment_starts,
     view_agreement,
 )
 from synthetic.generate_structure_fixtures import MOTIF_FRAMES, fixture_arrays, main as generate_main
@@ -74,6 +75,19 @@ class StructureAlgorithmTests(unittest.TestCase):
         best = max(groups, key=lambda row: row["view_count"])
         self.assertEqual(best["period_frames"], 32)
         self.assertEqual(best["view_count"], 3)
+
+    def test_template_alignment_recovers_local_start_jitter(self):
+        views = fixture_arrays()["s5-start-jitter"]
+        rows = template_alignment_starts(
+            {"mfcc": views["mfcc"]},
+            anchor_frame=0,
+            period_frames=MOTIF_FRAMES,
+            template_frames=20,
+            search_radius_frames=6,
+        )
+        self.assertEqual([row["expected_frame"] for row in rows[:3]], [0, 32, 64])
+        self.assertEqual([row["aligned_frame"] for row in rows[:3]], [0, 36, 68])
+        self.assertEqual([row["offset_frames"] for row in rows[:3]], [0, 4, 4])
 
     def test_generator_writes_known_answer_files(self):
         with tempfile.TemporaryDirectory() as td:
