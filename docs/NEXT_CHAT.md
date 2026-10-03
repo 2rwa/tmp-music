@@ -96,6 +96,15 @@ Pages用スナップショットは `docs/m6-status/`。M7は引き続きHOLD。
 - register候補がformant変化だけで過検出し得る → F0 + 2 voice-quality変化を必須化。
 - provenanceにPraat実versionが無い → `tool_versions.praat` を追加。
 
+## M2 comparison orchestration
+
+PR #7 / main `20338662062c09237d608c894c4a07aac08df653` でrace conditionを修正。
+
+- compare run `37109153026` — success
+- counterpart pitch runが無ければ deferred success
+- 両方揃った場合のみartifactを取得して比較する
+- Pages snapshot: `https://2rwa.github.io/tmp-music/m6-status/`
+
 ## M5について
 
 M5はCOMPLETE扱いを維持。run `37097371836` のWhisper AO failureはMFA remote model downloadの `ModelsConnectionError`。既知成功runは `37095819243`, `37096648316`。
