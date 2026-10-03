@@ -44,7 +44,8 @@ const ids = [
   'playback-time', 'playback-overview', 'insight-f0', 'insight-voice', 'insight-spectrum',
   'insight-pitch', 'playhead-line', 'playhead-label', 'overview-panel', 'overview-timeline',
   'overview-playhead', 'overview-playhead-label', 'overview-readout', 'chronicle-panel', 'chronicle-log',
-  'chronicle-count', 'follow-log', 'jump-current-log'
+  'chronicle-count', 'follow-log', 'jump-current-log', 'chronicle-col-overview', 'chronicle-col-f0',
+  'chronicle-col-harmonic', 'chronicle-col-spectrum', 'chronicle-col-pitch', 'chronicle-col-events'
 ];
 const elements = new Map(ids.map((id) => [`#${id}`, new ElementStub(id)]));
 const canvasContext = {
@@ -157,6 +158,16 @@ const logCount = Number(documentElement.dataset.chronicleEntries);
 if (!Number.isFinite(logCount) || logCount < 1) throw new Error(`chronicle entries missing: ${documentElement.dataset.chronicleEntries}`);
 const chronicleHtml = elements.get('#chronicle-log').innerHTML;
 if (!chronicleHtml.includes('生フレーム') || !chronicleHtml.includes('周期音')) throw new Error('chronicle did not render readable state logs');
+for (const col of ['overview','f0','harmonic','spectrum','pitch','events']) {
+  if (!chronicleHtml.includes('data-chronicle-column="' + col + '"')) throw new Error('chronicle column missing: ' + col);
+}
+if (documentElement.dataset.chronicleColumns !== 'overview,f0,harmonic,spectrum,pitch,events') throw new Error('unexpected default columns: ' + documentElement.dataset.chronicleColumns);
+const f0Toggle = elements.get('#chronicle-col-f0');
+f0Toggle.checked = false; f0Toggle.dispatch('change');
+if (documentElement.dataset.chronicleColumns.includes('f0')) throw new Error('F0 column toggle did not update visible columns');
+if (elements.get('#chronicle-log').dataset.hideF0 !== '1') throw new Error('F0 column hide state was not applied');
+f0Toggle.checked = true; f0Toggle.dispatch('change');
+if (!documentElement.dataset.chronicleColumns.includes('f0')) throw new Error('F0 column could not be restored');
 if (!documentElement.dataset.chronicleCurrent) throw new Error('chronicle current playback item was not tracked');
 if (!elements.get('#chronicle-count').textContent.includes('logs')) throw new Error('chronicle count missing');
 console.log(`chronicle regression: ${logCount} logs · current ${documentElement.dataset.chronicleCurrent}`);

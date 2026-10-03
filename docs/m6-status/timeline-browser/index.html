@@ -88,10 +88,23 @@
         <span id="chronicle-count">0 logs</span>
       </div>
     </div>
-    <div id="chronicle-log" class="chronicle-log">
+    <details class="chronicle-column-controls">
+      <summary>表示列</summary>
+      <div class="chronicle-column-toggles">
+        <label><input id="chronicle-col-overview" type="checkbox" checked> 総論</label>
+        <label><input id="chronicle-col-f0" type="checkbox" checked> F0 / confidence</label>
+        <label><input id="chronicle-col-harmonic" type="checkbox" checked> HNR / CPPS-like</label>
+        <label><input id="chronicle-col-spectrum" type="checkbox" checked> RMS / tilt</label>
+        <label><input id="chronicle-col-pitch" type="checkbox" checked> Pitch modulation</label>
+        <label><input id="chronicle-col-events" type="checkbox" checked> Events</label>
+      </div>
+    </details>
+    <div class="chronicle-scroll">
+      <div id="chronicle-log" class="chronicle-log">
       <div class="chronicle-empty">音声を解析すると、ここに縦型の解析年表を生成します。</div>
+      </div>
     </div>
-    <p class="hint">▶ NOW PLAYING: 現在再生中の区間 · 項目クリック: その時刻へシーク · 「生フレーム」を開くと区間内の20ms解析値を全件表示</p>
+    <p class="hint">▶ NOW PLAYING: 現在再生中の区間 · 横方向: 同じ時刻を各指標で読む · 項目クリック: その時刻へシーク · 「生フレーム」で20ms解析値を全件表示</p>
   </section>
 
   <section class="playback-insights" id="playback-insights" hidden>

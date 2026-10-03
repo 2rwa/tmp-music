@@ -13,6 +13,8 @@
   const chronicleCount = $('#chronicle-count');
   const followLog = $('#follow-log');
   const jumpCurrentLog = $('#jump-current-log');
+  const chronicleColumnKeys = ['overview','f0','harmonic','spectrum','pitch','events'];
+  const chronicleColumnToggles = chronicleColumnKeys.map((key) => $('#chronicle-col-' + key));
   const tooltip = $('#tooltip');
   const fileInput = $('#file-input');
   const chooseFile = $('#choose-file');
@@ -612,7 +614,10 @@
           f0:median(f0s),
           conf:median(slice.map((q)=>q.confidence)),
           hnr:median(slice.map((q)=>q.hnr)),
+          cpps:median(slice.map((q)=>q.cppsLike)),
           tilt:median(slice.map((q)=>q.tilt)),
+          vibExtent:median(slice.map((q)=>q.vibExtent)),
+          vibRate:median(slice.map((q)=>q.vibRate)),
         }
       });
       start = i;
@@ -632,6 +637,7 @@
         id:`register-${i}`, type:'register', kind:'register', s:r.t, e:r.t,
         title:'register変化候補',
         text:`F0のジャンプに加えて ${r.features.join(' / ')} が同時に変化。`,
+        features:[...r.features],
         metrics:{jump:r.jump}
       });
     }
@@ -639,49 +645,115 @@
     return entries;
   }
 
-  function chronicleMetricText(entry) {
-    if (entry.type === 'state') {
-      const m = entry.metrics;
-      return `RMS ${fmt(m.rms,1)} dBFS · F0 ${fmt(m.f0,1)} Hz · conf ${fmt(m.conf,2)} · HNR ${fmt(m.hnr,1)} dB · tilt ${fmt(m.tilt,1)} dB/oct`;
-    }
-    if (entry.type === 'movement') return `${fmt(entry.metrics.change,0)} cent · r² ${fmt(entry.metrics.r2,2)}`;
-    return `F0 jump ${fmt(entry.metrics.jump,0)} cent`;
-  }
-
   function chronicleTimeText(entry) {
     const a = fmt(entry.s,2);
-    if (entry.e - entry.s < .03) return `${a} s`;
-    return `${a}–${fmt(entry.e,2)} s`;
+    if (entry.e - entry.s < .03) return a + ' s';
+    return a + '–' + fmt(entry.e,2) + ' s';
+  }
+
+  function f0Reading(entry) {
+    if (entry.type === 'register') return {title:'F0 jump', text:fmt(entry.metrics.jump,0) + ' centの急変。register候補判定の中心となる変化。', metric:fmt(entry.metrics.jump,0) + ' cent'};
+    if (entry.type !== 'state') return {title:'—',text:'このイベントではF0の区間要約なし。',metric:''};
+    const m=entry.metrics;
+    if (entry.kind === 'quiet') return {title:'F0は参考外',text:'静かな区間では周期検出がノイズ床に左右される。',metric:'conf ' + fmt(m.conf,2)};
+    if (!Number.isFinite(m.f0) || m.conf < .45) return {title:'周期検出が不安定',text:'無声音・複雑な和音・ノイズ・打撃などでF0が飛びやすい状態。',metric:'F0 ' + fmt(m.f0,1) + ' Hz · conf ' + fmt(m.conf,2)};
+    if (m.conf >= .7) return {title:fmt(m.f0,1) + ' Hz付近で明瞭',text:'周期検出の確からしさが高い。声の母音や持続楽器などで現れやすい。',metric:'conf ' + fmt(m.conf,2)};
+    return {title:fmt(m.f0,1) + ' Hz付近',text:'周期は検出できるが、安定度は中程度。',metric:'conf ' + fmt(m.conf,2)};
+  }
+
+  function harmonicReading(entry) {
+    if (entry.type === 'register') return {title:'同時変化',text:entry.features?.length ? entry.features.join(' / ') + ' に変化がありregister候補を補強。' : '調波指標の区間要約なし。',metric:''};
+    if (entry.type !== 'state') return {title:'—',text:'このイベントではHNR/CPPS-likeの区間要約なし。',metric:''};
+    const m=entry.metrics;
+    const metric='HNR ' + fmt(m.hnr,1) + ' dB · CPPS-like ' + fmt(m.cpps,1);
+    if (entry.kind === 'quiet') return {title:'低音量のため注意',text:'HNR/CPPS-likeは静音時に安定した意味を持ちにくい。',metric};
+    if (m.hnr >= 10 && m.cpps >= 7) return {title:'調波構造が強い',text:'周期性・調波性が明瞭。母音や持続する有声音・楽器音で上がりやすい。',metric};
+    if (m.hnr < 3 || m.cpps < 3) return {title:'非周期成分が強い',text:'息・摩擦音・ノイズ・打撃音などの影響を受けやすい状態。',metric};
+    return {title:'周期性は中程度',text:'周期成分と非周期成分が混在している。',metric};
+  }
+
+  function spectrumReading(entry) {
+    if (entry.type !== 'state') return {title:'—',text:'このイベントではRMS/tiltの区間要約なし。',metric:''};
+    const m=entry.metrics;
+    const loud=m.rms < -55 ? 'ほぼ静音' : m.rms < -38 ? '静か' : m.rms < -20 ? '音量中程度' : '音量大きめ';
+    const tilt=m.tilt > -3 ? '高域が比較的強く、シンバル・歯擦音・鋭いアタックの影響候補。' : m.tilt < -9 ? '高域の減衰が大きく、低中域寄り・柔らかい音色の傾向。' : '高域量は中間的。';
+    return {title:loud,text:tilt,metric:'RMS ' + fmt(m.rms,1) + ' dBFS · tilt ' + fmt(m.tilt,1) + ' dB/oct'};
+  }
+
+  function pitchReading(entry) {
+    if (entry.type === 'movement') return {title:entry.title,text:entry.text,metric:fmt(entry.metrics.change,0) + ' cent · r² ' + fmt(entry.metrics.r2,2)};
+    if (entry.type !== 'state') return {title:'—',text:'このイベントではpitch modulationの区間要約なし。',metric:''};
+    const m=entry.metrics;
+    const overlaps=state.data.movement.filter((x)=>x.e>=entry.s && x.s<=entry.e);
+    if (entry.kind === 'quiet' || m.conf < .5 || !Number.isFinite(m.vibExtent)) return {title:'解釈保留',text:'安定したF0が不足しており、ピッチ揺れの解釈は難しい。',metric:'extent ' + fmt(m.vibExtent,1) + ' cent · rate ' + fmt(m.vibRate,2) + ' Hz'};
+    const extent=m.vibExtent < 30 ? '揺れ小' : m.vibExtent < 100 ? '揺れ中程度' : '揺れ大きめ';
+    const text=overlaps.length ? overlaps.length + '件のpitch movement候補と重なる。周期揺れだけでなく上昇・下降も確認。' : Number.isFinite(m.vibRate) ? '3–9 Hz帯に周期的なF0変動。ビブラート等の候補だが単独では断定しない。' : '明瞭な3–9 Hz周期変動は検出されていない。';
+    return {title:extent,text,metric:'extent ' + fmt(m.vibExtent,1) + ' cent · rate ' + fmt(m.vibRate,2) + ' Hz'};
+  }
+
+  function eventsReading(entry) {
+    if (entry.type === 'movement') return [{title:entry.title,text:fmt(entry.metrics.change,0) + ' cent / r² ' + fmt(entry.metrics.r2,2)}];
+    if (entry.type === 'register') return [{title:'register変化候補',text:fmt(entry.metrics.jump,0) + ' cent jump · ' + (entry.features?.join(' / ') || '')}];
+    if (entry.type !== 'state') return [];
+    const events=[];
+    state.data.movement.forEach((m,i)=>{if(m.s>=entry.s && m.s<=entry.e) events.push({title:m.dir==='up'?'pitch up':'pitch down',text:fmt(m.change,0) + ' cent · #' + (i+1)});});
+    state.data.register.forEach((r,i)=>{if(r.t>=entry.s && r.t<=entry.e) events.push({title:'register候補',text:fmt(r.jump,0) + ' cent · #' + (i+1)});});
+    return events;
+  }
+
+  function readingCell(column, reading) {
+    return '<span class="chronicle-cell" data-chronicle-column="' + column + '"><div class="chronicle-title">' + escapeHtml(reading.title) + '</div><div class="chronicle-text">' + escapeHtml(reading.text) + '</div>' + (reading.metric ? '<div class="chronicle-metrics">' + escapeHtml(reading.metric) + '</div>' : '') + '</span>';
+  }
+
+  function overviewCell(entry) {
+    const tag=entry.type === 'state' ? 'STATE' : entry.type.toUpperCase();
+    const metrics=entry.type==='state' ? 'duration ' + fmt(entry.e-entry.s,2) + ' s' : entry.type==='movement' ? fmt(entry.metrics.change,0) + ' cent' : fmt(entry.metrics.jump,0) + ' cent jump';
+    return '<span class="chronicle-cell" data-chronicle-column="overview"><span class="chronicle-type">' + tag + '</span><div class="chronicle-title">' + escapeHtml(entry.title) + '</div><div class="chronicle-text">' + escapeHtml(entry.text) + '</div><div class="chronicle-metrics">' + metrics + '</div></span>';
+  }
+
+  function eventsCell(entry) {
+    const events=eventsReading(entry);
+    const body=events.length ? '<div class="chronicle-event-list">' + events.map((e)=>'<span class="chronicle-event"><b>' + escapeHtml(e.title) + '</b><small>' + escapeHtml(e.text) + '</small></span>').join('') + '</div>' : '<span class="chronicle-none">この区間で新規イベントなし</span>';
+    return '<span class="chronicle-cell" data-chronicle-column="events">' + body + '</span>';
+  }
+
+  function applyChronicleColumns() {
+    const visible=[];
+    chronicleColumnToggles.forEach((input,i)=>{
+      const key=chronicleColumnKeys[i], shown=input.checked;
+      const prop='hide' + key[0].toUpperCase() + key.slice(1);
+      chronicleLog.dataset[prop]=shown?'0':'1';
+      if(shown) visible.push(key);
+    });
+    if(!visible.length){
+      chronicleColumnToggles[0].checked=true;
+      chronicleLog.dataset.hideOverview='0';
+      visible.push('overview');
+    }
+    chronicleLog.style['--chronicle-visible']=String(visible.length);
+    chronicleLog.style.minWidth=(110 + visible.length * 220) + 'px';
+    document.documentElement.dataset.chronicleColumns=visible.join(',');
   }
 
   function renderChronicle() {
     state.chronicleEntries = buildChronicleEntries();
     const entries = state.chronicleEntries;
-    chronicleCount.textContent = `${entries.length.toLocaleString()} logs`;
+    chronicleCount.textContent = entries.length.toLocaleString() + ' logs';
     jumpCurrentLog.disabled = !entries.length;
     document.documentElement.dataset.chronicleEntries = String(entries.length);
     if (!entries.length) {
       chronicleLog.innerHTML = '<div class="chronicle-empty">解析ログはありません。</div>';
       return;
     }
-    chronicleLog.innerHTML = entries.map((entry) => {
+    const head='<div class="chronicle-grid-head"><span class="chronicle-head-cell">TIME</span><span class="chronicle-head-cell" data-chronicle-column="overview">総論</span><span class="chronicle-head-cell" data-chronicle-column="f0">F0 / confidence</span><span class="chronicle-head-cell" data-chronicle-column="harmonic">HNR / CPPS-like</span><span class="chronicle-head-cell" data-chronicle-column="spectrum">RMS / spectral tilt</span><span class="chronicle-head-cell" data-chronicle-column="pitch">Pitch modulation</span><span class="chronicle-head-cell" data-chronicle-column="events">Events</span></div>';
+    chronicleLog.innerHTML = head + entries.map((entry) => {
       const frameDetails = entry.type === 'state'
-        ? `<details data-frame-start="${entry.frameStart}" data-frame-end="${entry.frameEnd}"><summary>生フレーム ${(entry.frameEnd-entry.frameStart+1).toLocaleString()}件</summary><div class="raw-frame-placeholder">開くと20ms解析値を読み込みます。</div></details>`
+        ? '<details data-frame-start="' + entry.frameStart + '" data-frame-end="' + entry.frameEnd + '"><summary>生フレーム ' + (entry.frameEnd-entry.frameStart+1).toLocaleString() + '件</summary><div class="raw-frame-placeholder">開くと20ms解析値を読み込みます。</div></details>'
         : '';
-      const cls = entry.type === 'state' ? `state-${entry.kind}` : `type-${entry.type}`;
-      return `<article class="chronicle-item ${cls}" data-log-id="${entry.id}" data-s="${entry.s}" data-e="${entry.e}">
-        <button class="chronicle-main" type="button" data-seek="${entry.s}">
-          <span class="chronicle-time">${chronicleTimeText(entry)}</span>
-          <span>
-            <span class="chronicle-type">${entry.type === 'state' ? 'STATE' : entry.type.toUpperCase()}</span>
-            <div class="chronicle-title">${escapeHtml(entry.title)}</div>
-            <div class="chronicle-text">${escapeHtml(entry.text)}</div>
-            <div class="chronicle-metrics">${escapeHtml(chronicleMetricText(entry))}</div>
-          </span>
-        </button>
-        ${frameDetails}
-      </article>`;
+      const cls = entry.type === 'state' ? 'state-' + entry.kind : 'type-' + entry.type;
+      return '<article class="chronicle-item ' + cls + '" data-log-id="' + entry.id + '" data-s="' + entry.s + '" data-e="' + entry.e + '"><button class="chronicle-main" type="button" data-seek="' + entry.s + '"><span class="chronicle-time">' + chronicleTimeText(entry) + '</span>' + overviewCell(entry) + readingCell('f0',f0Reading(entry)) + readingCell('harmonic',harmonicReading(entry)) + readingCell('spectrum',spectrumReading(entry)) + readingCell('pitch',pitchReading(entry)) + eventsCell(entry) + '</button>' + frameDetails + '</article>';
     }).join('');
+    applyChronicleColumns();
     syncChronicle(state.playhead, false);
   }
 
@@ -1106,6 +1178,7 @@
   }, true);
   jumpCurrentLog.addEventListener('click', () => syncChronicle(state.playhead,true));
   followLog.addEventListener('change', () => { if (followLog.checked) syncChronicle(state.playhead,true); });
+  chronicleColumnToggles.forEach((input) => input.addEventListener('change', applyChronicleColumns));
 
   overviewCanvas.addEventListener('pointermove', (ev) => {
     const t = overviewTimeAtEvent(ev); if (t == null) return;
