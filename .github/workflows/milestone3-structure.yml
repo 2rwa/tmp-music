@@ -48,10 +48,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            requirements-core.txt
-            requirements-analysis.txt
 
       - name: Install dependencies
         run: |
@@ -77,6 +73,9 @@ jobs:
           test -s "${root}/cycle-distance-mfcc.csv"
           test -s "${root}/cycle-distance-chroma.csv"
           test -s "${root}/cycle-distance-rhythm.csv"
+          test -s "${root}/aligned-cycle-distance-mfcc.csv"
+          test -s "${root}/aligned-cycle-distance-chroma.csv"
+          test -s "${root}/aligned-cycle-distance-rhythm.csv"
           test -s "${root}/provenance.json"
           test -s "${root}/status.json"
           python - <<'PY'
@@ -89,6 +88,9 @@ jobs:
           assert status["outputs"], status
           assert 20.0 <= result["selected_period_s"] <= 40.0, result
           assert len(result["cycles"]) >= 5, result
+          assert len(result["aligned_cycles"]) >= 5, result
+          assert len(result["cycle_alignment_starts"]) >= 6, result
+          assert all(abs(x["offset_s"]) <= 4.0 for x in result["cycle_alignment_starts"]), result
           assert len(result["period_candidates"]) >= 1, result
           assert set(result["views"]) == {"mfcc", "chroma", "rhythm"}, result
           PY
