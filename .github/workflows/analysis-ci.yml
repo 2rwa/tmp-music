@@ -10,6 +10,7 @@ on:
       - "scripts/tests/**"
       - "config/tracks/**"
       - "requirements-core.txt"
+      - "requirements-pitch-ml.txt"
       - ".github/workflows/analysis-ci.yml"
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - "scripts/tests/**"
       - "config/tracks/**"
       - "requirements-core.txt"
+      - "requirements-pitch-ml.txt"
       - ".github/workflows/analysis-ci.yml"
   workflow_dispatch:
 
@@ -68,7 +70,11 @@ jobs:
             scripts/common/schema.py \
             scripts/common/provenance.py \
             scripts/common/separation.py \
+            scripts/common/pitch.py \
             scripts/separate_vocals.py \
+            scripts/analyze_pitch.py \
+            scripts/detect_pitch_targets.py \
+            scripts/analyze_tuning.py \
             scripts/synthetic/generate_pitch_fixtures.py \
             scripts/synthetic/generate_rhythm_fixtures.py
       - name: Unit tests
