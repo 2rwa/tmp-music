@@ -28,6 +28,13 @@ analysis:
     min_confidence: 0.5
   tuning:
     edos: [12, 19, 24, 31]
+  structure:
+    sample_rate_hz: 16000
+    frame_step_s: 0.25
+    min_period_s: 20.0
+    max_period_s: 40.0
+    anchor_start_s: 12.0
+    top_k: 8
   repetitions: true
   reference_lyrics: embedded
   repetition:
