@@ -57,6 +57,23 @@ M7 Cultural comparison は引き続き HOLD。次の目標はM6実測結果を�
 - formant / intensity / vibrato はregister判定の補助情報であり、単独では候補成立に使わない。
 - source separation と singing acoustics がformant推定へ影響し得る。
 
+## 追加holdout validation
+
+`chichinu-fiija` を第三の実音源として追加。M4/M5へは入れず、言語非依存のacoustic pipelineだけを検証する。
+
+- config: `config/tracks/chichinu-fiija.yml` (`language: und`)
+- workflow: `.github/workflows/m6-holdout-acoustic.yml`
+- PR #5 / main `18fbd7e11f1f1ce3530e5007ac02455d8d2da0f9`
+- main cheap CI `37104332010` — success
+- holdout E2E `37104331999` — success
+- artifact `11267267610`
+- stable targets 40 / measured 12.85 s
+- CPPS 13.70 dB / Praat HNR 19.81 dB / autocorr HNR 12.93 dB / tilt -2.66 dB/oct
+- F1/F2/F3 = 715 / 1480 / 2617 Hz
+- vibrato extent 15.68 cent / pitch movement 58 / register candidate 1
+
+M6の既存acceptanceを変更するものではなく、post-completion holdoutとしてgeneralizationを確認した。
+
 ## 解消した既知failure
 
 - cheap CI `37097290629`: Praat regex過剰escape → 修正、version regexも同時修正。

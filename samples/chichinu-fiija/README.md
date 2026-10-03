@@ -15,3 +15,26 @@ forced-alignment validation.
 
 M6 remains complete based on the original Whisper AO / Jugemu acceptance runs; this
 fixture is a post-completion holdout for generalization checks.
+
+## Validation result — 2026-10-03
+
+The dedicated holdout workflow completed successfully.
+
+- workflow: `M6 holdout acoustic validation`
+- run: `37104331999`
+- artifact: `m6-holdout-chichinu-fiija` (`11267267610`)
+- artifact digest: `sha256:ea221dd81d08bfa4a7e2d7f8ab26546836f298f7798d49fe71e35bb370756858`
+- Praat: 6.4.49
+- stable targets: 40
+- measured stable-vocal duration: 12.85 s
+- CPPS median: 13.70 dB
+- Praat HNR(cc) median: 19.81 dB
+- autocorrelation HNR median: 12.93 dB
+- spectral tilt median: -2.66 dB/oct
+- F1/F2/F3 median: 715 / 1480 / 2617 Hz
+- vibrato extent median: 15.68 cent
+- pitch-movement candidates: 58
+- register-transition candidates: 1
+
+These are measurement outputs and candidate counts, not a linguistic or vocal-quality
+classification.
