@@ -46,6 +46,7 @@ analysis:
     compute_type: int8
   alignment:
     backend: mfa
+    mfa_version: "3.4.2"
     language: ja
     segment_source: structure_cycles
     boundary_source: aligned_cycles
