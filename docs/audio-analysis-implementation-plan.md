@@ -6,7 +6,7 @@
 実装原則: `chatgpt-workspace/docs/build-test-fix.md`  
 現状スナップショット: `docs/STATUS_20261003.md`
 
-> 進捗更新: 2026-10-03。M1/M2は実音源検証まで完了。M3はtempo regressionのみ未解決。M4は実装済みでcycle-specific reference版のE2E再検証待ち。
+> 進捗更新: 2026-10-03。M1〜M5は完了。現在はM6 Voice quality完了を唯一の次目標とし、M7はM6完了後に再検討する。
 
 ---
 
@@ -1416,38 +1416,46 @@ Whisper AO / じゅげむで:
 
 ---
 
-## Milestone 5 — Forced alignment — IN PROGRESS
+## Milestone 5 — Forced alignment — COMPLETE
 
-- [ ] English alignment — MFA english_us_arpa設定済み、実音源検証待ち
-- [ ] Japanese alignment — MFA japanese_mfa実装済み、実音源検証中
+- [x] English alignment — Whisper AO 0.0–77.5 s、117 words / 407 phones
+- [x] Japanese alignment — Jugemu 8/8 cycles、396 words / 1956 phones
 - [x] failed-span保存 — `failed-spans.json`
-- [x] phoneme/mora timestamps — phone boundary + phone-supported span mora projection。phone無しwordはfailed spanとして保持。厳密な音韻対応は独立改善余地あり
+- [x] phoneme/mora timestamps — 969 mora。phone support無しwordはfailed spanとして保持
 
 ### 完了条件
 
-Whisper AOで「元歌詞のどの音素が崩れるか」、
-じゅげむで「同じモーラが周回ごとにどう変わるか」
-を時刻付きで示せる。
+Whisper AOで元歌詞のword/phoneを、Jugemuで各cycleのword/phone/moraを時刻付きで保存できる。
+
+**Validation:** `37095819243`, `37096648316` は両曲 success。最新のWhisper AO単独failure `37097371836` はMFA model downloadの `ModelsConnectionError` であり、alignment実装回帰ではない。
 
 ---
 
-## Milestone 6 — Voice quality
+## Milestone 6 — Voice quality — IN PROGRESS / CURRENT GOAL
 
-- [ ] CPPS
-- [ ] HNR
-- [ ] tilt
-- [ ] formants
-- [ ] vibrato
-- [ ] glissando
+- [ ] calibrated CPPS — Praat 6.4.49 known-answer smoke成功。本体E2E修正中
+- [ ] Praat HNR — known-answer smoke成功。本体E2E修正中
+- [x] autocorrelation HNR baseline — stable vocal preflight済み
+- [x] spectral tilt baseline — stable vocal preflight済み
+- [ ] F1/F2/F3 formants
+- [ ] vibrato — M2情報をM6へ統合
+- [ ] glissando — M2情報をM6へ統合
 - [ ] register transitions
 
+### 現在の既知failure
+
+- cheap CI `37097290629`: Praat output regex escape過剰
+- M6 `37098551676`: `NameError: py is not defined`。CLI voice-quality blockの配置ミス
+
+詳細: `docs/M6_HANDOFF_20261003.md`
+
 ### 完了条件
 
-「裏返り」「声質変化」をF0だけでなく複数音響特徴で示せる。
+CPPS / HNR / tilt / formants / F0系特徴をstable vocal区間で取得し、register transition候補を複数特徴のbefore/afterとして示せる。Whisper AO / Jugemu両方でE2E successし、cheap CI・provenance・artifact・既存milestone regressionまで確認する。
 
 ---
 
-## Milestone 7 — Cultural comparison
+## Milestone 7 — Cultural comparison — HOLD UNTIL M6 COMPLETE
 
 - [ ] reference corpus manifest
 - [ ] MERT
