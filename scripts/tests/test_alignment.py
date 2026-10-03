@@ -11,6 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from align_lyrics import main as align_main
 from align_lyrics import parse_alignment, prepare_segments, project_morae_from_words
 
 
@@ -81,6 +82,40 @@ class ForcedAlignmentTests(unittest.TestCase):
                     reference_cycle_lines=10,
                     segment_start_s=10.0,
                     segment_end_s=5.0,
+                )
+
+    def test_mfa_log_is_printed_on_failure(self):
+        import io
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            audio = root / "dummy.wav"
+            audio.write_text("dummy audio", encoding="utf-8")
+            out = root / "out"
+
+            with patch("align_lyrics.reference_text", return_value="dummy lyrics\n"), \
+                 patch("align_lyrics.clip_audio"), \
+                 patch("sys.argv", [
+                     "align_lyrics.py", str(audio), "--out", str(out),
+                     "--language", "en", "--dictionary", "dummy_dict",
+                     "--acoustic-model", "dummy_model",
+                 ]), \
+                 patch("subprocess.run") as mock_run, \
+                 patch("sys.stderr", new_callable=io.StringIO) as mock_stderr:
+                mock_run.return_value.returncode = 1
+                mock_run.return_value.stdout = "dummy mfa stdout"
+                mock_run.return_value.stderr = "dummy mfa stderr"
+
+                with self.assertRaisesRegex(RuntimeError, "MFA exited with code 1; log content printed to stderr"):
+                    align_main()
+
+                err_output = mock_stderr.getvalue()
+                self.assertIn("--- MFA LOG OUTPUT START ---", err_output)
+                self.assertIn("dummy mfa stdout\ndummy mfa stderr", err_output)
+                self.assertIn("--- MFA LOG OUTPUT END ---", err_output)
+                self.assertEqual(
+                    (out / "mfa.log").read_text(encoding="utf-8"),
+                    "dummy mfa stdout\ndummy mfa stderr",
                 )
 
     def test_mora_projection_declares_approximation(self):
