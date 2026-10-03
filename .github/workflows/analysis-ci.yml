@@ -132,6 +132,8 @@ jobs:
           python scripts/cli.py verify --track jugemu
           python scripts/cli.py full --track whisper-ao --dry-run
           python scripts/cli.py full --track jugemu --dry-run
+          python scripts/cli.py voice-quality --track whisper-ao --source vocals --dry-run
+          python scripts/cli.py voice-quality --track jugemu --source vocals --dry-run
       - name: Publish final status
         if: always()
         env:
