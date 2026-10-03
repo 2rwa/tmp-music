@@ -70,6 +70,57 @@ For repeated material such as Jugemu:
 
 The common CLI reads those template values from `config/tracks/jugemu.yml`.
 
+## Vocal separation
+
+Install the Demucs dependency separately from the cheap core:
+
+    python -m pip install -r requirements-separation.txt
+
+Run source separation through the common CLI:
+
+    python scripts/cli.py separate --track whisper-ao
+    python scripts/cli.py separate --track jugemu
+
+Outputs are written to `analysis/<track>/stems/demucs/`:
+
+- `vocals.wav`
+- `accompaniment.wav`
+- `diagnostics.json`
+- common `provenance.json` / `status.json`
+
+The diagnostics validate duration, finite samples, RMS, clipping fraction, and source-vs-resummed-stems residual. A silent stem or a duration mismatch above the configured tolerance is not treated as success.
+
+## Multi-estimator pitch and tuning
+
+Install analysis dependencies plus torchcrepe:
+
+    python -m pip install -r requirements-analysis.txt
+    python -m pip install -r requirements-pitch-ml.txt
+
+Run pYIN + CREPE on the original mix:
+
+    python scripts/cli.py pitch --track jugemu --source mix
+    python scripts/cli.py targets --track jugemu --source mix
+    python scripts/cli.py tuning --track jugemu --source mix
+
+After Demucs has produced a vocal stem, run the same pipeline on vocals:
+
+    python scripts/cli.py pitch --track jugemu --source vocals
+    python scripts/cli.py targets --track jugemu --source vocals
+    python scripts/cli.py tuning --track jugemu --source vocals
+
+Pitch outputs live under `analysis/<track>/measurements/pitch/<source>/`.
+
+`consensus.csv` preserves both estimators and classifies agreement instead of silently averaging conflicting F0:
+
+- strong: <= 25 cent
+- weak: <= 50 cent
+- disagreement: > 50 cent
+
+Stable-target detection uses local linear slope plus detrended residual variation. This is intended to reject glissando while retaining moderate vibrato around a stable center.
+
+`tuning-models.json` compares residuals against 12-, 19-, 24-, and 31-EDO after estimating a global offset. A lower residual is only a fit statistic; it is not by itself an identification of the intended scale or tuning system.
+
 ## ASR / embedded-lyrics comparison
 
 Install the optional ASR dependency:
