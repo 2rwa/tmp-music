@@ -118,13 +118,19 @@ run `37089898445` success。cycle-specific referenceで8 cycleのCER/MER/substit
 
 ### M5 Forced alignment — IN PROGRESS
 
-MFA 3.4系ベースの初期実装。
+MFA 3.4.2ベースの初期実装とActions配線まで完了。
 
 - Jugemu: M3 cycle境界 + cycle別既知歌詞 → Japanese MFA word/phone alignment
 - Japanese mora timestampは初版ではword interval内への明示的projection
 - failed spansは削除せずJSON保存
 - Whisper AO用 english_us_arpa設定も追加
 - M3 successからM4/M5を並列chain
+- MFA / model install と `pip check` は通過
+- 最新run `37091037891` は英日ともMFA align本体が exit 1
+- diagnostics artifactは保存済み
+  - Whisper AO: `11262129070`
+  - Jugemu: `11261464750`
+- 次はartifact内の `mfa.log` を読んで実エラーを特定する。推測で修正しない
 
 ### M6 Voice quality — PARTIAL
 
@@ -154,10 +160,10 @@ M2内に:
 
 最優先:
 
-1. M5 Jugemu forced-alignment workflowの実音源結果を確認
-2. word / phone / mora件数、failed-spans、MFA logをレビュー
-3. Japanese phone→mora対応を音響境界ベースへ精密化するか判断
-4. Whisper AO English alignmentを実音源で検証
+1. M5 run `37091037891` の diagnostics artifact を取得し、Whisper AO / Jugemu の `mfa.log` を確認
+2. MFA align exit 1 の実原因を特定して最小修正
+3. M5を再実行し、word / phone / mora件数、failed-spansをレビュー
+4. Japanese phone→mora対応を音響境界ベースへ精密化するか判断
 5. M5完了後はM6 voice qualityへ進む
 
 ---
@@ -184,8 +190,9 @@ M2内に:
 
 - `analysis/common/failures/20261003-setup-python-cache-path.md`
 - `analysis/common/failures/20261003-jugemu-crepe-confidence.md`
-
-tempo量子化問題も修正時にfailure recordを追加する。
+- `analysis/common/failures/20261003-structure-tempo-quantization.md`
+- `analysis/common/failures/20261003-mfa-seaborn-pip-check.md`
+- M5 run `37091037891`: MFA環境/model取得後、英日ともalign本体がexit 1。diagnostics artifact保存済みで、root causeは`mfa.log`確認待ち。
 
 ---
 
