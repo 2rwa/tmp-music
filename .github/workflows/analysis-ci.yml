@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - "scripts/cli.py"
+      - "scripts/analyze_pitch.py"
+      - "scripts/detect_pitch_targets.py"
+      - "scripts/analyze_tuning.py"
+      - "scripts/compare_pitch_sources.py"
+      - "scripts/separate_vocals.py"
       - "scripts/common/**"
       - "scripts/synthetic/**"
       - "scripts/tests/**"
@@ -15,6 +20,11 @@ on:
   pull_request:
     paths:
       - "scripts/cli.py"
+      - "scripts/analyze_pitch.py"
+      - "scripts/detect_pitch_targets.py"
+      - "scripts/analyze_tuning.py"
+      - "scripts/compare_pitch_sources.py"
+      - "scripts/separate_vocals.py"
       - "scripts/common/**"
       - "scripts/synthetic/**"
       - "scripts/tests/**"
@@ -75,6 +85,7 @@ jobs:
             scripts/analyze_pitch.py \
             scripts/detect_pitch_targets.py \
             scripts/analyze_tuning.py \
+            scripts/compare_pitch_sources.py \
             scripts/synthetic/generate_pitch_fixtures.py \
             scripts/synthetic/generate_rhythm_fixtures.py
       - name: Unit tests
