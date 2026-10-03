@@ -62,7 +62,9 @@ class VoiceQualityTests(unittest.TestCase):
     def test_segment_summary_reports_usable_frames(self):
         sr = 16000
         t = np.arange(int(0.3 * sr), dtype=float) / sr
-        tone = 0.5 * np.sin(2.0 * np.pi * 180.0 * t)
+        tone = np.zeros_like(t)
+        for harmonic in range(1, 20):
+            tone += (0.5 / harmonic) * np.sin(2.0 * np.pi * 180.0 * harmonic * t)
         result = segment_voice_quality(tone, sr, 180.0)
         self.assertGreater(result["frame_count"], 0)
         self.assertEqual(result["usable_frame_count"], result["frame_count"])

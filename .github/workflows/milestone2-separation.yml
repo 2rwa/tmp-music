@@ -13,7 +13,6 @@ on:
       - ".github/workflows/milestone6-voice-quality.yml"
       - "scripts/analyze_voice_quality.py"
       - "scripts/common/voice_quality.py"
-      - "scripts/tests/test_voice_quality.py"
   workflow_dispatch:
 
 permissions:
