@@ -1,0 +1,157 @@
+name: Milestone 4 cycle ASR
+
+on:
+  workflow_run:
+    workflows: ["Milestone 3 structure smoke"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      structure_run_id:
+        description: "Completed Milestone 3 structure run ID"
+        required: true
+        type: string
+      source_sha:
+        description: "Commit SHA used by the structure run"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  statuses: write
+
+jobs:
+  cycle-asr:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Resolve source
+        id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            echo "run_id=${EVENT_RUN_ID}" >> "${GITHUB_OUTPUT}"
+            echo "sha=${EVENT_SHA}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "run_id=${{ inputs.structure_run_id }}" >> "${GITHUB_OUTPUT}"
+            echo "sha=${{ inputs.source_sha }}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Publish pending status
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ steps.source.outputs.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": "pending",
+              "context": "cycle-asr/jugemu",
+              "description": "cycle-level Japanese ASR is running",
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-asr.txt
+          python -m pip install -r requirements-japanese.txt
+          python -m pip check
+
+      - name: Download structure artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: structure-jugemu
+          path: analysis/jugemu/measurements/structure
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Run cycle ASR
+        run: |
+          set -euo pipefail
+          python scripts/cli.py cycle-asr --track jugemu --model small
+
+      - name: Validate cycle ASR
+        run: |
+          set -euo pipefail
+          root="analysis/jugemu/measurements/cycle-asr-small"
+          test -s "${root}/summary.json"
+          test -s "${root}/cycles.csv"
+          test -s "${root}/pairwise-mora-distance.csv"
+          test -s "${root}/provenance.json"
+          test -s "${root}/status.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("analysis/jugemu/measurements/cycle-asr-small")
+          result = json.loads((root / "summary.json").read_text())
+          status = json.loads((root / "status.json").read_text())
+          assert status["status"] == "success", status
+          assert len(result["cycles"]) >= 5, result
+          assert result["reference_mora_count"] > 0, result
+          assert all(row["hypothesis_morae"] > 0 for row in result["cycles"]), result
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycle-asr-jugemu
+          path: analysis/jugemu/measurements/cycle-asr-small
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish final status
+        if: always()
+        env:
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_REPOSITORY: ${{ github.repository }}
+          STATUS_SHA: ${{ steps.source.outputs.sha }}
+          STATUS_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -z "${STATUS_SHA}" ]; then exit 0; fi
+          python - <<'PY'
+          import json, os, urllib.request
+          state = "success" if os.environ["JOB_STATUS"] == "success" else "failure"
+          url = f"https://api.github.com/repos/{os.environ['STATUS_REPOSITORY']}/statuses/{os.environ['STATUS_SHA']}"
+          body = json.dumps({
+              "state": state,
+              "context": "cycle-asr/jugemu",
+              "description": f"cycle-level Japanese ASR {state}",
+              "target_url": os.environ["STATUS_RUN_URL"],
+          }).encode()
+          req = urllib.request.Request(url, data=body, method="POST", headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['STATUS_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          })
+          urllib.request.urlopen(req, timeout=30).read()
+          PY
