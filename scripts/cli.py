@@ -112,6 +112,8 @@ def analysis_input(track: Track, source: str) -> str:
 def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> Path:
     if stage == "separate":
         return REPO_ROOT / "analysis" / track.id / "stems" / "demucs"
+    if stage == "pitch-compare":
+        return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
     if stage == "voice-quality":
         voice = track.config.get("analysis", {}).get("voice_quality", {})
         input_path = analysis_input(track, source)
@@ -150,8 +152,6 @@ def stage_output(track: Track, stage: str, model: str, source: str = "mix") -> P
             **voice,
         }
         return command, parameters, {"praat_min_version": voice.get("praat_min_version", "6.4.39")}, ["librosa", "numpy", "soundfile"]
-    if stage == "pitch-compare":
-        return REPO_ROOT / "analysis" / track.id / "comparisons" / "pitch-mix-vs-vocals"
     if stage == "cycle-asr":
         return REPO_ROOT / "analysis" / track.id / "measurements" / f"cycle-asr-{model}"
     if stage == "structure":
