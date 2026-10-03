@@ -116,7 +116,10 @@ jobs:
           status = json.loads((root / "status.json").read_text())
           assert status["status"] == "success", status
           assert len(result["cycles"]) >= 5, result
-          assert result["reference_mora_count"] > 0, result
+          assert result["reference_scope"] == "cycle-specific-contiguous-partition", result
+          assert result["reference_cycle_line_counts"] == [10, 10, 10, 10, 10, 9, 9, 9], result
+          assert all(x > 0 for x in result["reference_cycle_mora_counts"]), result
+          assert all(row["reference_morae"] > 0 for row in result["cycles"]), result
           assert all(row["hypothesis_morae"] > 0 for row in result["cycles"]), result
           PY
 
