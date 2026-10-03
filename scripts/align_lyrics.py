@@ -175,12 +175,14 @@ def main() -> int:
         if args.g2p_model:
             cmd += ["--g2p_model_path", args.g2p_model]
         proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        (args.out / "mfa.log").write_text((proc.stdout or "") + ("\n" if proc.stdout and proc.stderr else "") + (proc.stderr or ""), encoding="utf-8")
+        mfa_log_content = (proc.stdout or "") + ("\n" if proc.stdout and proc.stderr else "") + (proc.stderr or "")
+        (args.out / "mfa.log").write_text(mfa_log_content, encoding="utf-8")
         if proc.returncode != 0:
             failed = [{"segment_id": x["id"], "start_s": x["start_s"], "end_s": x["end_s"],
                        "reason": "mfa-command-failed", "return_code": proc.returncode} for x in segments]
             (args.out / "failed-spans.json").write_text(json.dumps(failed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            raise RuntimeError(f"MFA exited with code {proc.returncode}; see {args.out / 'mfa.log'}")
+            print(f"--- MFA LOG OUTPUT START ---\n{mfa_log_content}\n--- MFA LOG OUTPUT END ---", file=sys.stderr)
+            raise RuntimeError(f"MFA exited with code {proc.returncode}; log content printed to stderr and saved to {args.out / 'mfa.log'}")
 
         units, failed = parse_alignment(aligned, segments, language=args.language)
         (args.out / "failed-spans.json").write_text(json.dumps(failed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

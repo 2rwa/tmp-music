@@ -10,7 +10,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from align_lyrics import parse_alignment, project_morae_from_words
+from align_lyrics import parse_alignment, project_morae_from_words, main as align_main
 
 
 class ForcedAlignmentTests(unittest.TestCase):
@@ -53,6 +53,32 @@ class ForcedAlignmentTests(unittest.TestCase):
         self.assertEqual(len(rows), 3)
         self.assertEqual(rows[0]["timing_method"], "within-word-equal-projection-from-mfa-word")
         self.assertAlmostEqual(rows[-1]["end_s"], 1.6)
+
+    def test_mfa_log_is_printed_on_failure(self):
+        import io
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            audio = root / "dummy.wav"
+            audio.write_text("dummy audio", encoding="utf-8")
+
+            # mock mutagen reference text since clip_audio and other tools rely on it
+            with patch("align_lyrics.reference_text", return_value="dummy lyrics\n"), \
+                 patch("align_lyrics.clip_audio"), \
+                 patch("sys.argv", ["align_lyrics.py", str(audio), "--out", str(root / "out"), "--language", "en", "--dictionary", "dummy_dict", "--acoustic-model", "dummy_model"]), \
+                 patch("subprocess.run") as mock_run, \
+                 patch("sys.stderr", new_callable=io.StringIO) as mock_stderr:
+
+                mock_run.return_value.returncode = 1
+                mock_run.return_value.stdout = "dummy mfa stdout"
+                mock_run.return_value.stderr = "dummy mfa stderr"
+
+                with self.assertRaisesRegex(RuntimeError, "MFA exited with code 1; log content printed to stderr"):
+                    align_main()
+
+                err_output = mock_stderr.getvalue()
+                self.assertIn("--- MFA LOG OUTPUT START ---", err_output)
+                self.assertIn("dummy mfa stdout\ndummy mfa stderr", err_output)
 
 
 if __name__ == "__main__":
