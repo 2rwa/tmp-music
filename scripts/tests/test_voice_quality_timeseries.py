@@ -56,7 +56,11 @@ class VoiceQualityTimeSeriesTests(unittest.TestCase):
         cents = 20.0 * np.sin(2.0 * np.pi * 5.5 * times)
         f0 = 220.0 * (2.0 ** (cents / 1200.0))
         t_audio = np.arange(int(duration * sr), dtype=float) / sr
-        audio = 0.5 * np.sin(2.0 * np.pi * 220.0 * t_audio)
+        audio = np.zeros_like(t_audio)
+        for harmonic in range(1, 20):
+            audio += (0.5 / harmonic) * np.sin(
+                2.0 * np.pi * 220.0 * harmonic * t_audio
+            )
         points = [(float(t), float(freq), 0.95) for t, freq in zip(times, f0)]
         rows = frame_voice_quality_series(audio, sr, points, hop_s=0.02)
         self.assertGreater(len(rows), 20)
