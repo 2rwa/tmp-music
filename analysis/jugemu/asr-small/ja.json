@@ -1,182 +1,133 @@
 {
   "detected_language": "ja",
   "language_probability": 1,
-  "text": "Ch descri, всем ここの数リケル 引きじゃれ protesters 素杉絵松 乱 hyung松 ふう乱います 粉いてくれ so move the dese Yabura Kujiあの Buddha Kuji Payboo 빠ibu派ドンの呟杏 Ponpuku Pino Ponpuku いうのは Ch descri, yabura J говорю 個空の数 D lequel 幽ケじゃれ flow thezh 素上の 素上を待つ Hут strongly Fuhraimatsu 粉いてくれ so move the cast Yabura Kujiの ぼりるけじゃれすぎるの 待つこねるとこれそもっとく やぼらくじのぼらくじ ちょびむちょぎむ ごくのすりるけじゃれすぎるの",
+  "text": "極もう極む 僕の空理すりける 縮けたらすぎるのすぎるまず 今を生 Hisors Motsu どこまでもとこで あのいるえっ アブラック自身 アブラック自身 咳杯も咳杯も咳杯の 諸音が ポンポクB No ポン� surrendered 極もう極む 僕の空理すりくり けしあれすぎうのすぎるまつ 今の Whoa they matsu 4 へいまつくねるどことへ 済むどこ 授約で彼ら泣けたらすげるの 今つこねるとこれそもとか いやボラクジのボラクジ ジョギムジョギム ごこのすり行けるけじゃれすぎるの",
   "segments": [
     {
       "start": 9.46,
-      "end": 10.18,
-      "text": "Ch descri, всем",
-      "avg_logprob": -2.8736304446790344,
+      "end": 12.02,
+      "text": "極もう極む 僕の空理すりける",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 10.76,
-      "end": 12.68,
-      "text": "ここの数リケル 引きじゃれ protesters",
-      "avg_logprob": -2.8736304446790344,
+      "start": 12.02,
+      "end": 14.3,
+      "text": "縮けたらすぎるのすぎるまず",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 12.68,
-      "end": 14.2,
-      "text": "素杉絵松",
-      "avg_logprob": -2.8736304446790344,
+      "start": 14.3,
+      "end": 15.74,
+      "text": "今を生 Hisors Motsu",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 14.2,
-      "end": 15.54,
-      "text": "乱 hyung松",
-      "avg_logprob": -2.8736304446790344,
+      "start": 15.74,
+      "end": 19.2,
+      "text": "どこまでもとこで あのいるえっ",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 15.54,
-      "end": 16.76,
-      "text": "ふう乱います",
-      "avg_logprob": -2.8736304446790344,
+      "start": 19.2,
+      "end": 21.76,
+      "text": "アブラック自身 アブラック自身",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 16.76,
-      "end": 19.22,
-      "text": "粉いてくれ so move the dese",
-      "avg_logprob": -2.8736304446790344,
+      "start": 21.76,
+      "end": 23.58,
+      "text": "咳杯も咳杯も咳杯の 諸音が",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 19.22,
-      "end": 20.38,
-      "text": "Yabura Kujiあの",
-      "avg_logprob": -2.8736304446790344,
+      "start": 23.58,
+      "end": 28.97,
+      "text": "ポンポクB No",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 20.38,
-      "end": 21.42,
-      "text": " Buddha Kuji",
-      "avg_logprob": -2.8736304446790344,
+      "start": 28.97,
+      "end": 29.85,
+      "text": "ポン� surrendered",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 21.42,
-      "end": 23.42,
-      "text": "Payboo 빠ibu派ドンの呟杏",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 23.42,
-      "end": 28.93,
-      "text": "Ponpuku Pino",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 28.93,
-      "end": 30.43,
-      "text": "Ponpuku いうのは",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 67.04,
-      "end": 67.58,
-      "text": "Ch descri, yabura J говорю",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 67.58,
+      "start": 67.06,
       "end": 69.62,
-      "text": "個空の数 D lequel",
-      "avg_logprob": -2.8736304446790344,
+      "text": "極もう極む 僕の空理すりくり",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
       "start": 69.62,
-      "end": 70.54,
-      "text": "幽ケじゃれ flow thezh",
-      "avg_logprob": -2.8736304446790344,
+      "end": 72.0,
+      "text": "けしあれすぎうのすぎるまつ",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 70.54,
-      "end": 70.74,
-      "text": "素上の",
-      "avg_logprob": -2.8736304446790344,
+      "start": 72.0,
+      "end": 73.32,
+      "text": "今の Whoa they matsu",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 70.74,
-      "end": 72.06,
-      "text": "素上を待つ",
-      "avg_logprob": -2.8736304446790344,
+      "start": 73.32,
+      "end": 75.76,
+      "text": "4 へいまつくねるどことへ",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 72.06,
-      "end": 72.7,
-      "text": "Hут strongly",
-      "avg_logprob": -2.8736304446790344,
+      "start": 75.76,
+      "end": 76.8,
+      "text": "済むどこ",
+      "avg_logprob": -2.4200687408447266,
       "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 72.7,
-      "end": 74.32,
-      "text": "Fuhraimatsu",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 74.32,
-      "end": 76.78,
-      "text": "粉いてくれ so move the cast",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 76.78,
-      "end": 77.98,
-      "text": "Yabura Kujiの",
-      "avg_logprob": -2.8736304446790344,
-      "no_speech_prob": 0.5390322804450989
-    },
-    {
-      "start": 77.98,
+      "start": 76.8,
       "end": 157.2,
-      "text": "ぼりるけじゃれすぎるの",
-      "avg_logprob": -0.5253348760306835,
-      "no_speech_prob": 0.7682345509529114
+      "text": "授約で彼ら泣けたらすげるの",
+      "avg_logprob": -2.4200687408447266,
+      "no_speech_prob": 0.5390322804450989
     },
     {
-      "start": 157.2,
-      "end": 163.23,
-      "text": "待つこねるとこれそもっとく",
-      "avg_logprob": -0.5253348760306835,
-      "no_speech_prob": 0.7682345509529114
+      "start": 160.27,
+      "end": 163.19,
+      "text": "今つこねるとこれそもとか",
+      "avg_logprob": -0.6370556343060273,
+      "no_speech_prob": 0.7082093358039856
     },
     {
-      "start": 163.23,
-      "end": 165.43,
-      "text": "やぼらくじのぼらくじ",
-      "avg_logprob": -0.5253348760306835,
-      "no_speech_prob": 0.7682345509529114
+      "start": 163.19,
+      "end": 165.47,
+      "text": "いやボラクジのボラクジ",
+      "avg_logprob": -0.6370556343060273,
+      "no_speech_prob": 0.7082093358039856
     },
     {
-      "start": 165.43,
-      "end": 212.2,
-      "text": "ちょびむちょぎむ",
-      "avg_logprob": -0.5253348760306835,
-      "no_speech_prob": 0.7682345509529114
+      "start": 165.47,
+      "end": 212.22,
+      "text": "ジョギムジョギム",
+      "avg_logprob": -0.6370556343060273,
+      "no_speech_prob": 0.7082093358039856
     },
     {
-      "start": 212.2,
+      "start": 212.22,
       "end": 214.68,
-      "text": "ごくのすりるけじゃれすぎるの",
-      "avg_logprob": -0.5253348760306835,
-      "no_speech_prob": 0.7682345509529114
+      "text": "ごこのすり行けるけじゃれすぎるの",
+      "avg_logprob": -0.6370556343060273,
+      "no_speech_prob": 0.7082093358039856
     }
   ]
 }
