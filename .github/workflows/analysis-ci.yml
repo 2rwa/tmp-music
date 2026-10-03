@@ -8,6 +8,7 @@ on:
       - "scripts/analyze_pitch.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
+      - "scripts/analyze_cycle_asr.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -26,6 +27,7 @@ on:
       - "scripts/analyze_pitch.py"
       - "scripts/japanese_metrics.py"
       - "scripts/analyze_structure.py"
+      - "scripts/analyze_cycle_asr.py"
       - "scripts/detect_pitch_targets.py"
       - "scripts/analyze_tuning.py"
       - "scripts/compare_pitch_sources.py"
@@ -92,6 +94,7 @@ jobs:
             scripts/separate_vocals.py \
             scripts/analyze_pitch.py \
             scripts/analyze_structure.py \
+            scripts/analyze_cycle_asr.py \
             scripts/japanese_metrics.py \
             scripts/detect_pitch_targets.py \
             scripts/analyze_tuning.py \
