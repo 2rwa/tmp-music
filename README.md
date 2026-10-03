@@ -13,3 +13,5 @@ Documentation:
 - `docs/jugemu-analysis.md` — Jugemu-specific notes
 
 Analysis implementation is under `scripts/`; see `scripts/README.md`.
+
+Continuation / handoff: `docs/NEXT_CHAT.md`
