@@ -196,3 +196,34 @@ pairwise cycle-to-cycle mora-distance matrix.
 
 Cycle-to-cycle transcript differences are an inspection signal only: they
 combine actual pronunciation variation with acoustic variation and ASR error.
+
+
+## Current validation snapshot (2026-10-03)
+
+For detailed measurements and Actions run IDs, see `docs/STATUS_20261003.md`.
+
+Validated end-to-end:
+
+- Milestone 1 common analyzer foundation
+- Demucs separation for Whisper AO and Jugemu
+- mix and vocal-only pYIN/CREPE pitch analysis
+- stable pitch targets and EDO residual measurements
+- mix-vs-vocal pitch comparison
+- Jugemu multi-view recurrence / 28.75 s cycle structure
+- the first cycle-level ASR pipeline
+
+The latest cheap CI including Jules' cycle-reference changes is run `37087076630` and is successful.
+
+### Tempo caveat
+
+Do not currently use the tempo values emitted by the Jules-added structure tempo step as the final Jugemu tempo measurement.
+
+That implementation reuses the structure feature grid (`frame_step_s=0.25`), which quantizes beat tracking to 120/60/240 BPM on the real track. Earlier higher-resolution onset analysis measured approximately 98.68 BPM with an approximately 197.37 BPM double-time candidate.
+
+The next structure revision must use a separate, higher-resolution tempo hop while preserving primary/half/double ambiguity.
+
+### Cycle-reference caveat
+
+Cycle ASR originally compared every short cycle transcript with the entire embedded lyric. Jules added a contiguous cycle-specific reference partition so each cycle is compared with its corresponding lyric chunk.
+
+The new partition logic passes cheap tests, but its real-audio E2E run is still pending because the upstream structure workflow currently fails only on the tempo regression described above.
