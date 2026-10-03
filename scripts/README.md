@@ -140,3 +140,59 @@ The reference text comes from the MP3 `USLT::eng` frame. The script emits transc
 ## Interpretation rule
 
 Keep measurement separate from cultural interpretation. FFT/F0 alone cannot identify a country, ethnicity, or folk tradition.
+
+
+## Multi-view structure and cycles
+
+Jugemu structure analysis combines independent recurrence views instead of
+depending on one MFCC template:
+
+    python scripts/cli.py structure --track jugemu
+
+The analyzer computes:
+
+- MFCC self-similarity for timbre/phonetic recurrence;
+- chroma self-similarity for harmonic recurrence;
+- onset/tempogram self-similarity for rhythmic recurrence;
+- a preserved per-view lag profile plus a combined period score;
+- DTW cycle-distance matrices;
+- a fixed recurrence-period grid;
+- local template-alignment starts around that grid.
+
+The period estimate and local alignment are deliberately separate. A local
+start offset does not redefine the global period.
+
+For the first real Jugemu run, the strongest combined recurrence candidate
+was 28.75 s. The raw per-view evidence remains in `structure.json` and
+`lag-profile.csv`; do not discard disagreement between rhythm and the
+MFCC/chroma views.
+
+## Japanese reading and mora metrics
+
+The cheap Japanese core normalizes Unicode and Katakana/Hiragana and provides
+mora-like tokenization:
+
+    python -m unittest scripts.tests.test_japanese -v
+
+Kanji-to-reading conversion is an explicit optional dependency:
+
+    python -m pip install -r requirements-japanese.txt
+
+For a pair of text files:
+
+    python scripts/japanese_metrics.py \
+      --reference reference.txt \
+      --hypothesis hypothesis.txt \
+      --out analysis/japanese-metrics
+
+The outputs preserve the original surface strings as well as converted
+readings. This matters because a wrong dictionary reading must not be counted
+as if it were an ASR pronunciation error.
+
+After a successful Milestone 3 structure run, the cycle-ASR workflow uses
+the aligned Jugemu cycles, loads Faster-Whisper once, transcribes each cycle,
+and writes character CER, mora MER, substitutions/deletions/insertions, and a
+pairwise cycle-to-cycle mora-distance matrix.
+
+Cycle-to-cycle transcript differences are an inspection signal only: they
+combine actual pronunciation variation with acoustic variation and ASR error.
