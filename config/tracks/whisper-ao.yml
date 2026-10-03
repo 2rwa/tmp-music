@@ -8,6 +8,25 @@ analysis:
   separation:
     model: htdemucs
     device: cpu
+  pitch:
+    estimators: pyin,crepe
+    sample_rate_hz: 16000
+    hop_length: 160
+    fmin_hz: 65.40639132514966
+    fmax_hz: 2093.004522404789
+    crepe_model: full
+    device: cpu
+    crepe_periodicity_threshold: 0.21
+    consensus_strong_cents: 25.0
+    consensus_weak_cents: 50.0
+  pitch_targets:
+    window_s: 0.5
+    max_slope_cents_per_s: 100.0
+    max_detrended_std_cents: 40.0
+    min_duration_s: 0.15
+    min_confidence: 0.5
+  tuning:
+    edos: [12, 19, 24, 31]
   repetitions: false
   reference_lyrics: embedded
   trailing_silence_expected: true
