@@ -89,6 +89,7 @@ def _tier_entries(payload: dict[str, Any], kind: str) -> list[list[Any]]:
 
 
 def project_morae_from_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Legacy word-interval projection retained for deterministic cheap tests."""
     out = []
     for word in words:
         label = str(word["label"])
@@ -103,6 +104,69 @@ def project_morae_from_words(words: list[dict[str, Any]]) -> list[dict[str, Any]
                         "label": mora, "source_word": label,
                         "timing_method": "within-word-equal-projection-from-mfa-word"})
     return out
+
+
+def project_morae_from_phone_spans(
+    words: list[dict[str, Any]],
+    phones: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Project morae only across the acoustic phone-supported part of each word.
+
+    MFA can force an omitted known-lyrics word across a long silent interval.
+    Projecting morae across that whole word interval invents multi-second morae.
+    Words without positive phone overlap are therefore preserved as partial
+    failures and omitted from mora timing rather than fabricated.
+    """
+    out: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+    phones_by_segment: dict[str, list[dict[str, Any]]] = {}
+    for phone in phones:
+        phones_by_segment.setdefault(str(phone["segment_id"]), []).append(phone)
+
+    for word in words:
+        segment_id = str(word["segment_id"])
+        label = str(word["label"])
+        morae = morae_from_kana(to_hiragana_reading(label))
+        if not morae:
+            continue
+        word_start, word_end = float(word["start_s"]), float(word["end_s"])
+        support = [
+            phone for phone in phones_by_segment.get(segment_id, [])
+            if min(word_end, float(phone["end_s"])) - max(word_start, float(phone["start_s"])) > 1e-6
+        ]
+        if not support:
+            failed.append({
+                "segment_id": segment_id,
+                "start_s": word_start,
+                "end_s": word_end,
+                "reason": "no-phone-support-for-word",
+                "label": label,
+            })
+            continue
+
+        start_s = max(word_start, min(float(phone["start_s"]) for phone in support))
+        end_s = min(word_end, max(float(phone["end_s"]) for phone in support))
+        if end_s <= start_s:
+            failed.append({
+                "segment_id": segment_id,
+                "start_s": word_start,
+                "end_s": word_end,
+                "reason": "invalid-phone-supported-word-span",
+                "label": label,
+            })
+            continue
+
+        step = (end_s - start_s) / len(morae)
+        for index, mora in enumerate(morae):
+            out.append({
+                "segment_id": segment_id,
+                "start_s": start_s + step * index,
+                "end_s": start_s + step * (index + 1),
+                "label": mora,
+                "source_word": label,
+                "timing_method": "within-word-equal-projection-over-mfa-phone-span",
+            })
+    return out, failed
 
 
 def parse_alignment(aligned_dir: Path, segments: list[dict[str, Any]], *,
@@ -137,7 +201,10 @@ def parse_alignment(aligned_dir: Path, segments: list[dict[str, Any]], *,
                                           "end_s": offset + float(end), "label": str(label),
                                           "timing_method": "mfa-phone"})
     if language == "ja":
-        outputs["morae"] = project_morae_from_words(outputs["words"])
+        outputs["morae"], mora_failures = project_morae_from_phone_spans(
+            outputs["words"], outputs["phones"]
+        )
+        failed.extend(mora_failures)
     return outputs, failed
 
 
@@ -206,7 +273,10 @@ def main() -> int:
         units, failed = parse_alignment(aligned, segments, language=args.language)
         (args.out / "failed-spans.json").write_text(json.dumps(failed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         write_tsv(args.out / "alignment.tsv", units)
-        failed_segments = {x["segment_id"] for x in failed}
+        segment_failure_reasons = {"mfa-output-missing", "no-word-alignment", "no-phone-alignment"}
+        failed_segments = {
+            x["segment_id"] for x in failed if x.get("reason") in segment_failure_reasons
+        }
         result = {"backend": "montreal-forced-aligner", "language": args.language,
                   "dictionary": args.dictionary, "acoustic_model": args.acoustic_model,
                   "g2p_model": args.g2p_model, "beam": args.beam, "retry_beam": args.retry_beam,
@@ -214,9 +284,13 @@ def main() -> int:
                   "aligned_segment_count": len(segments) - len(failed_segments),
                   "failed_span_count": len(failed),
                   "unit_counts": {k: len(v) for k, v in units.items()},
-                  "mora_timing_note": ("Japanese mora timestamps are projections within MFA-aligned word intervals; "
-                                       "MFA phone timestamps remain the acoustic boundary measurement."
-                                       if args.language == "ja" else None),
+                  "mora_timing_note": (
+                      "Japanese mora timestamps are equal projections over the MFA-phone-supported "
+                      "span within each aligned word. Words with no positive phone overlap are "
+                      "preserved in failed-spans.json and omitted from mora projection; MFA phone "
+                      "timestamps remain the acoustic boundary measurement."
+                      if args.language == "ja" else None
+                  ),
                   "units": units}
         (args.out / "alignment.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(json.dumps({k: v for k, v in result.items() if k != "units"}, ensure_ascii=False, indent=2))

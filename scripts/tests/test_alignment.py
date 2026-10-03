@@ -12,7 +12,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from align_lyrics import main as align_main
-from align_lyrics import parse_alignment, prepare_segments, project_morae_from_words
+from align_lyrics import (
+    parse_alignment,
+    prepare_segments,
+    project_morae_from_phone_spans,
+    project_morae_from_words,
+)
 
 
 class ForcedAlignmentTests(unittest.TestCase):
@@ -117,6 +122,35 @@ class ForcedAlignmentTests(unittest.TestCase):
                     (out / "mfa.log").read_text(encoding="utf-8"),
                     "dummy mfa stdout\ndummy mfa stderr",
                 )
+
+    def test_mora_projection_uses_phone_supported_span(self):
+        rows, failed = project_morae_from_phone_spans(
+            [{"segment_id": "x", "start_s": 1.0, "end_s": 2.0, "label": "じゅげむ"}],
+            [
+                {"segment_id": "x", "start_s": 1.2, "end_s": 1.3, "label": "dʑ"},
+                {"segment_id": "x", "start_s": 1.3, "end_s": 1.5, "label": "ɯ"},
+                {"segment_id": "x", "start_s": 1.5, "end_s": 1.6, "label": "g"},
+                {"segment_id": "x", "start_s": 1.6, "end_s": 1.8, "label": "e"},
+            ],
+        )
+        self.assertEqual(failed, [])
+        self.assertEqual(len(rows), 3)
+        self.assertAlmostEqual(rows[0]["start_s"], 1.2)
+        self.assertAlmostEqual(rows[-1]["end_s"], 1.8)
+        self.assertEqual(
+            rows[0]["timing_method"],
+            "within-word-equal-projection-over-mfa-phone-span",
+        )
+
+    def test_mora_projection_preserves_word_without_phone_support(self):
+        rows, failed = project_morae_from_phone_spans(
+            [{"segment_id": "cycle-07", "start_s": 1.0, "end_s": 5.0, "label": "ぽん"}],
+            [{"segment_id": "cycle-07", "start_s": 5.0, "end_s": 5.1, "label": "p"}],
+        )
+        self.assertEqual(rows, [])
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(failed[0]["reason"], "no-phone-support-for-word")
+        self.assertEqual(failed[0]["label"], "ぽん")
 
     def test_mora_projection_declares_approximation(self):
         rows = project_morae_from_words([
