@@ -5,7 +5,10 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import librosa
@@ -17,8 +20,10 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from common.voice_quality import (
+    detect_pitch_movement_events,
+    detect_register_transition_candidates,
     finite_summary,
-    parse_praat_cpps_hnr,
+    parse_praat_voice_measurements,
     parse_praat_version,
     parse_version_triplet,
     segment_voice_quality,
@@ -33,10 +38,19 @@ def _f(value: str) -> float:
         return float("nan")
 
 
+def _finite_or_none(value: object) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if np.isfinite(number) else None
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("audio", type=Path)
     p.add_argument("stable_notes_csv", type=Path)
+    p.add_argument("--pitch-consensus", type=Path)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--sr", type=int, default=16000)
     p.add_argument("--frame-length-ms", type=float, default=60.0)
@@ -110,8 +124,13 @@ def main() -> int:
             if int(measurement["usable_frame_count"]) == 0:
                 continue
 
-            praat_cpps_db = None
-            praat_hnr_cc_db = None
+            praat_metrics = {
+                "praat_cpps_db": None,
+                "praat_hnr_cc_db": None,
+                "praat_f1_hz": None,
+                "praat_f2_hz": None,
+                "praat_f3_hz": None,
+            }
             if praat_path:
                 wav_path = praat_temp / f"segment-{index:04d}.wav"
                 sf.write(wav_path, segment, sr, subtype="PCM_16")
@@ -121,7 +140,7 @@ def main() -> int:
                     capture_output=True,
                     text=True,
                 )
-                praat_cpps_db, praat_hnr_cc_db = parse_praat_cpps_hnr(
+                praat_metrics = parse_praat_voice_measurements(
                     (proc.stdout or "") + ("\n" if proc.stdout and proc.stderr else "") + (proc.stderr or "")
                 )
 
@@ -137,8 +156,18 @@ def main() -> int:
                 "median_autocorrelation_peak": measurement["autocorrelation_peak"]["median"],
                 "median_autocorrelation_hnr_db": measurement["autocorrelation_hnr_db"]["median"],
                 "median_spectral_tilt_db_per_octave": measurement["spectral_tilt_db_per_octave"]["median"],
-                "praat_cpps_db": praat_cpps_db,
-                "praat_hnr_cc_db": praat_hnr_cc_db,
+                "vibrato_extent_cents_p95_p05": _finite_or_none(
+                    target.get("vibrato_extent_cents_p95_p05")
+                ),
+                "m2_median_abs_slope_cents_per_s": _finite_or_none(
+                    target.get("median_abs_slope_cents_per_s")
+                ),
+                "m2_median_detrended_std_cents": _finite_or_none(
+                    target.get("median_detrended_std_cents")
+                ),
+                "m2_median_confidence": _finite_or_none(target.get("median_confidence")),
+                "m2_evidence": target.get("evidence") or None,
+                **praat_metrics,
             })
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -146,17 +175,54 @@ def main() -> int:
         "stable_target_index", "start_s", "end_s", "duration_s", "median_f0_hz",
         "frame_count", "usable_frame_count", "median_rms_dbfs",
         "median_autocorrelation_peak", "median_autocorrelation_hnr_db",
-        "median_spectral_tilt_db_per_octave", "praat_cpps_db", "praat_hnr_cc_db",
+        "median_spectral_tilt_db_per_octave",
+        "vibrato_extent_cents_p95_p05", "m2_median_abs_slope_cents_per_s",
+        "m2_median_detrended_std_cents", "m2_median_confidence", "m2_evidence",
+        "praat_cpps_db", "praat_hnr_cc_db", "praat_f1_hz", "praat_f2_hz", "praat_f3_hz",
     ]
     with (args.out / "segments.csv").open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
 
+    pitch_movement_events: list[dict[str, object]] = []
+    pitch_movement_status = "not_requested"
+    if args.pitch_consensus is not None:
+        if not args.pitch_consensus.is_file():
+            raise FileNotFoundError(f"pitch consensus not found: {args.pitch_consensus}")
+        with args.pitch_consensus.open(newline="", encoding="utf-8") as f:
+            consensus_rows = list(csv.DictReader(f))
+        pitch_movement_events = detect_pitch_movement_events(consensus_rows)
+        pitch_movement_status = "ok"
+    movement_fields = [
+        "start_s", "end_s", "duration_s", "direction", "slope_cents_per_s",
+        "total_change_cents", "linear_fit_r2", "median_confidence", "interpretation",
+    ]
+    with (args.out / "pitch-movement-events.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=movement_fields)
+        writer.writeheader()
+        writer.writerows(pitch_movement_events)
+
+    register_candidates = detect_register_transition_candidates(rows)
+    register_payload = {
+        "measurement_status": "ok",
+        "candidate_count": len(register_candidates),
+        "definition": (
+            "Candidate boundaries require changes in at least two features and never use "
+            "F0 alone as sufficient evidence of a register transition."
+        ),
+        "candidates": register_candidates,
+    }
+    (args.out / "register-transitions.json").write_text(
+        json.dumps(register_payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
     summary = {
         "measurement_status": "ok" if rows else "insufficient_stable_voiced_audio",
         "audio": str(args.audio),
         "stable_notes_csv": str(args.stable_notes_csv),
+        "pitch_consensus_csv": str(args.pitch_consensus) if args.pitch_consensus else None,
         "sample_rate_hz": sr,
         "praat": {
             "enabled": bool(praat_path),
@@ -169,6 +235,16 @@ def main() -> int:
         "stable_target_count_input": len(targets),
         "stable_target_count_measured": len(rows),
         "measured_duration_s": float(sum(float(row["duration_s"]) for row in rows)),
+        "pitch_movement": {
+            "measurement_status": pitch_movement_status,
+            "candidate_count": len(pitch_movement_events),
+            "definition": "Sustained monotonic M2 F0 movement candidates; not asserted sung glissandi.",
+        },
+        "register_transitions": {
+            "measurement_status": "ok",
+            "candidate_count": len(register_candidates),
+            "definition": register_payload["definition"],
+        },
         "parameters": {
             "frame_length_ms": args.frame_length_ms,
             "hop_length_ms": args.hop_length_ms,
@@ -198,6 +274,22 @@ def main() -> int:
                 "Praat Sound: To Harmonicity (cc), 0.01 s step, 75 Hz pitch floor, "
                 "0.1 silence threshold, 1.0 period/window; whole-segment mean."
             ),
+            "praat_f1_hz/praat_f2_hz/praat_f3_hz": (
+                "Praat Burg formants measured per stable vocal segment with 5 formants, "
+                "5500 Hz ceiling, 0.025 s window and 50 Hz pre-emphasis. Source separation "
+                "and singing acoustics can bias these estimates."
+            ),
+            "vibrato_extent_cents_p95_p05": (
+                "Copied from the M2 stable-target detector: detrended F0 95th minus 5th percentile."
+            ),
+            "pitch_movement_events": (
+                "M2 selected-F0 windows with sustained approximately linear pitch motion; "
+                "reported only as glissando candidates."
+            ),
+            "register_transitions": (
+                "Candidate boundaries requiring at least two thresholded feature changes; "
+                "F0 alone is explicitly insufficient."
+            ),
         },
         "aggregate_segment_medians": {
             "rms_dbfs": finite_summary(row["median_rms_dbfs"] for row in rows),
@@ -208,6 +300,12 @@ def main() -> int:
             ),
             "praat_cpps_db": finite_summary(row["praat_cpps_db"] for row in rows),
             "praat_hnr_cc_db": finite_summary(row["praat_hnr_cc_db"] for row in rows),
+            "praat_f1_hz": finite_summary(row["praat_f1_hz"] for row in rows),
+            "praat_f2_hz": finite_summary(row["praat_f2_hz"] for row in rows),
+            "praat_f3_hz": finite_summary(row["praat_f3_hz"] for row in rows),
+            "vibrato_extent_cents_p95_p05": finite_summary(
+                row["vibrato_extent_cents_p95_p05"] for row in rows
+            ),
         },
     }
     (args.out / "summary.json").write_text(
