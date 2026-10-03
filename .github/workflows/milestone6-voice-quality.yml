@@ -8,6 +8,9 @@ on:
     branches: ["feat/m6-complete-20261003"]
     paths:
       - ".github/workflows/milestone6-voice-quality.yml"
+  pull_request:
+    paths:
+      - ".github/workflows/milestone6-voice-quality.yml"
   workflow_dispatch:
     inputs:
       pitch_run_id:
@@ -26,7 +29,7 @@ permissions:
 
 jobs:
   voice-quality:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 120
     strategy:
