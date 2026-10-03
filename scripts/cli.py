@@ -309,6 +309,7 @@ def stage_command(
             "language": cycle_cfg.get("language", track.language),
             "device": cycle_cfg.get("device", "cpu"),
             "compute_type": cycle_cfg.get("compute_type", "int8"),
+            "reference_cycle_lines": cycle_cfg.get("reference_cycle_lines", 10),
         }, {"faster-whisper": model}, ["faster-whisper", "av", "mutagen", "pykakasi"]
     if stage == "pitch-compare":
         mix_root = REPO_ROOT / "analysis" / track.id / "measurements" / "pitch" / "mix"
