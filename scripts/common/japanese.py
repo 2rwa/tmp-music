@@ -134,3 +134,81 @@ def edit_alignment(reference: Iterable[str], hypothesis: Iterable[str]) -> tuple
 
 def mora_error(reference_kana: str, hypothesis_kana: str) -> tuple[dict[str, float | int | None], list[dict[str, str]]]:
     return edit_alignment(morae_from_kana(reference_kana), morae_from_kana(hypothesis_kana))
+
+
+def _edit_error_count(reference: Iterable[str], hypothesis: Iterable[str]) -> int:
+    metrics, _ = edit_alignment(reference, hypothesis)
+    return int(metrics["substitutions"]) + int(metrics["deletions"]) + int(metrics["insertions"])
+
+
+def partition_repeated_reference_lines(
+    text: str,
+    cycle_count: int,
+    *,
+    canonical_line_count: int,
+    max_line_deviation: int = 3,
+) -> list[str]:
+    """Partition repeated line-oriented lyrics into contiguous cycle references.
+
+    The first cycle defines the canonical line sequence. Later cycles may have
+    line deletions/insertions; dynamic programming chooses contiguous chunks
+    that minimize line-level edit distance to that canonical cycle.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if cycle_count <= 0:
+        raise ValueError("cycle_count must be positive")
+    if canonical_line_count <= 0:
+        raise ValueError("canonical_line_count must be positive")
+    if len(lines) < canonical_line_count:
+        raise ValueError("reference is shorter than one canonical cycle")
+    if cycle_count == 1:
+        return ["\n".join(lines)]
+
+    canonical_surface = lines[:canonical_line_count]
+    canonical = [normalize_kana(line) for line in canonical_surface]
+    remaining_lines = lines[canonical_line_count:]
+    remaining_cycles = cycle_count - 1
+    minimum = max(1, canonical_line_count - max_line_deviation)
+    maximum = canonical_line_count + max_line_deviation
+
+    from functools import lru_cache
+
+    @lru_cache(maxsize=None)
+    def solve(cycles_left: int, position: int) -> tuple[int, tuple[int, ...]]:
+        if cycles_left == 0:
+            return (0, ()) if position == len(remaining_lines) else (10**9, ())
+        remaining = len(remaining_lines) - position
+        low = max(minimum, remaining - (cycles_left - 1) * maximum)
+        high = min(maximum, remaining - (cycles_left - 1) * minimum)
+        if low > high:
+            return 10**9, ()
+
+        best_cost = 10**9
+        best_lengths: tuple[int, ...] = ()
+        for length in range(low, high + 1):
+            chunk = remaining_lines[position:position + length]
+            normalized_chunk = [normalize_kana(line) for line in chunk]
+            chunk_cost = _edit_error_count(canonical, normalized_chunk)
+            rest_cost, rest_lengths = solve(cycles_left - 1, position + length)
+            total = chunk_cost + rest_cost
+            lengths = (length, *rest_lengths)
+            tie_break = tuple(abs(x - canonical_line_count) for x in lengths)
+            best_tie = tuple(abs(x - canonical_line_count) for x in best_lengths)
+            if total < best_cost or (total == best_cost and (not best_lengths or tie_break < best_tie)):
+                best_cost = total
+                best_lengths = lengths
+        return best_cost, best_lengths
+
+    cost, lengths = solve(remaining_cycles, 0)
+    if cost >= 10**9 or len(lengths) != remaining_cycles:
+        raise ValueError(
+            f"could not partition {len(lines)} lines into {cycle_count} cycles "
+            f"around {canonical_line_count} lines/cycle"
+        )
+
+    chunks = ["\n".join(canonical_surface)]
+    position = 0
+    for length in lengths:
+        chunks.append("\n".join(remaining_lines[position:position + length]))
+        position += length
+    return chunks
