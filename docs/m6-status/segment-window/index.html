@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eee7dc">
+<title>Segment Window — tmp-music</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <nav><a href="../sonic-chronicle/">← Sonic Chronicle</a> · <a href="../">M6 summary</a></nav>
+    <div class="brand-row">
+      <div>
+        <div class="eyebrow">tmp-music · browser-local</div>
+        <h1>Segment Window</h1>
+        <p class="tagline">区間を、窓で選ぶ。</p>
+      </div>
+      <div id="file-chip" class="file-chip" hidden></div>
+    </div>
+    <p class="intro">Sonic Chronicle と同じ解析区間を使い、連続した区間を素早く選択・試聴・書き出しするための専用ツールです。音声ファイルはブラウザ内だけで処理します。</p>
+  </header>
+
+  <section id="loader-panel" class="loader-panel">
+    <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="音声ファイルを選択またはドロップ">
+      <strong>音声ファイルをドロップ</strong>
+      <span>または</span>
+      <button id="choose-file" type="button">ファイルを選択</button>
+      <input id="file-input" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+      <small>MP3 / WAV / AAC / M4A / OGG など。解析区間は Sonic Chronicle と同じ状態分類から生成します。</small>
+    </div>
+    <div class="loader-actions">
+      <button id="synthetic-test" type="button">Synthetic demo</button>
+      <button id="cancel-analysis" type="button" disabled>Cancel</button>
+      <span id="status" aria-live="polite">音声を選択してください。</span>
+    </div>
+    <div class="progress-wrap"><div id="progress" class="progress"></div></div>
+  </section>
+
+  <audio id="audio" preload="metadata" hidden></audio>
+
+  <main id="workspace" class="workspace is-disabled" aria-label="区間選択ワークスペース">
+    <section class="wave-panel">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">FULL TRACK / SELECTED WINDOW</div>
+          <h2>全体波形</h2>
+        </div>
+        <div class="transport-clock"><b id="current-time">00:00.00</b><span>/</span><span id="duration-time">00:00.00</span></div>
+      </div>
+      <div id="wave-wrap" class="wave-wrap" tabindex="0" aria-label="波形。クリックで再生位置を移動">
+        <canvas id="waveform" height="240"></canvas>
+        <div class="wave-hint">クリックでシーク</div>
+      </div>
+      <div class="transport-row">
+        <button id="play-toggle" class="primary" type="button" disabled>▶ 再生</button>
+        <button id="play-selection" type="button" disabled>▶ 選択範囲</button>
+        <button id="play-context" type="button" disabled>前後2区間</button>
+        <button id="loop-toggle" type="button" disabled>↻ ループ OFF</button>
+        <label class="volume-control">音量
+          <input id="volume" type="range" min="0" max="100" step="1" value="100" disabled>
+          <output id="volume-value">100%</output>
+        </label>
+      </div>
+      <input id="seek" class="seek" type="range" min="0" max="1" step="0.001" value="0" disabled aria-label="再生位置">
+    </section>
+
+    <section class="selector-panel">
+      <div class="selection-readout" aria-live="polite">
+        <div class="readout-label">SELECTED WINDOW</div>
+        <div class="range-line"><span id="range-start">#—</span><span class="range-arrow">→</span><span id="range-end">#—</span></div>
+        <div class="range-meta"><strong id="range-count">0区間</strong><span id="range-time">00:00.00–00:00.00</span><span id="range-duration">0.00秒</span></div>
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-heading"><label for="start-slider">開始区間</label><output id="start-value">1</output></div>
+        <input id="start-slider" class="segment-slider" type="range" min="1" max="1" step="1" value="1" disabled>
+        <div class="slider-scale"><span>先頭</span><span id="start-max-label">#1</span></div>
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-heading"><label for="span-slider">区間数</label><output id="span-value">1</output></div>
+        <input id="span-slider" class="segment-slider" type="range" min="1" max="1" step="1" value="1" disabled>
+        <div id="span-presets" class="preset-row" aria-label="区間数プリセット">
+          <button type="button" data-span="1" disabled>1</button>
+          <button type="button" data-span="2" disabled>2</button>
+          <button type="button" data-span="4" disabled>4</button>
+          <button type="button" data-span="8" disabled>8</button>
+          <button type="button" data-span="16" disabled>16</button>
+          <button type="button" data-span="32" disabled>32</button>
+          <button type="button" data-span="all" disabled>ALL</button>
+        </div>
+      </div>
+
+      <div class="move-grid">
+        <div class="move-group">
+          <span>1区間ずつ</span>
+          <div><button id="prev-one" type="button" disabled>← 1</button><button id="next-one" type="button" disabled>1 →</button></div>
+        </div>
+        <div class="move-group">
+          <span>窓幅ぶん</span>
+          <div><button id="prev-window" type="button" disabled>← Window</button><button id="next-window" type="button" disabled>Window →</button></div>
+        </div>
+        <button id="from-current" class="current-button" type="button" disabled>◎ 現在位置を開始区間に</button>
+      </div>
+
+      <div class="selection-strip-wrap">
+        <div class="strip-head"><span>区間一覧</span><span id="segment-total">0区間</span></div>
+        <div id="segment-strip" class="segment-strip" role="list" aria-label="解析区間一覧"></div>
+      </div>
+
+      <div class="export-row">
+        <div class="export-note">選択窓だけを16-bit PCM WAVとして保存します。</div>
+        <button id="download-selection" class="download-button" type="button" disabled>↓ 選択範囲 WAV</button>
+      </div>
+    </section>
+  </main>
+
+  <footer id="provenance">No audio loaded.</footer>
+</div>
+<script src="./app.js"></script>
+</body>
+</html>
