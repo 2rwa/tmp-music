@@ -38,6 +38,9 @@ jobs:
             docs/m6-status/sonic-chronicle/index.html \
             docs/m6-status/sonic-chronicle/style.css
 
+      - name: Segment Forest regression
+        run: node tests/segment-forest-regression.mjs docs/m6-status/segment-forest/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
