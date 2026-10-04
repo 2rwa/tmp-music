@@ -259,6 +259,14 @@ try:
         # dynamic_axes on the legacy tracer, torch.export records shape
         # constraints and may preserve the shape-dependent neighborhood
         # attention indexing.
+        #
+        # Upstream caches neighborhood index tables with functools.lru_cache.
+        # A symbolic torch.export SymInt is deliberately not hashable, so for
+        # this probe remove only the cache wrapper and leave the math intact.
+        na_mod = importlib.import_module("allin1_infer.models.neighborhood_attention")
+        if hasattr(na_mod._na1d_indices, "__wrapped__"):
+            na_mod._na1d_indices = na_mod._na1d_indices.__wrapped__
+            report["dynamo_dynamic"]["removed_lru_cache"] = True
         dyn2 = report["dynamo_dynamic"]
         dyn2_path = OUT / "harmonix-fold0-section-function-dynamo-dynamic.onnx"
         try:
