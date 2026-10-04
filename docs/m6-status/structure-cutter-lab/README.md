@@ -12,10 +12,11 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 6. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
 7. `vocals / drums / bass / other` の実データを共通時間軸へ描画
 8. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
-9. Repetition はDemucs後にstem shareを特徴へ追加して再計算
-10. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
-11. 切断点は Exact / Nearest beat / Estimated bar / Recommended から選択
-12. 区間選択 / loop / WAV export
+9. vocals stemへadaptive RMS threshold + hysteresisを掛けてVocal Phrase開始/終了を生成
+10. Repetition はDemucs後にstem shareを特徴へ追加して再計算
+11. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
+12. 切断点は Exact / Nearest beat / Estimated bar / Vocal phrase edge / Recommended から選択
+13. 区間選択 / loop / WAV export
 
 ## 実音源
 
@@ -30,6 +31,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 - Repetition — M3-style recurrence / lag similarity / repeated-pair alignment
 - Beat / Bars — onset自己相関によるtempo/phase推定、4拍子bar-grid。意味的構成ではなく編集用snap layer
 - Stem Activity — HTDemucs 4-stem energy share change
+- Vocal Phrase — vocals stemのadaptive energy hysteresisによる歌唱区間start/end。semantic sectionではなく編集用edge
 
 ## Pending
 
@@ -66,3 +68,7 @@ Browser self-testでは実モデルdownloadを行わず、fake stem を `install
 ## Beat / cut alignment regression
 
 `tests/beat-core-test.mjs` は120 BPM・4拍ごと強拍のsynthetic click trackからtempo / beat grid / bar gridを回収し、3.08秒がRecommendedで3.00秒の近傍beatへsnapすることを検証する。barが遠い場合に約1秒飛ばさないことも回帰条件。
+
+## Vocal phrase regression
+
+`tests/vocal-core-test.mjs` は3つのsynthetic歌唱区間を約±0.2秒以内で回収する。browser self-testではfake HTDemucs vocalsに明示的な無音gapを作り、Vocal Phrase boundary生成と`Vocal phrase edge` alignmentの両方を確認する。

@@ -284,6 +284,7 @@ jobs:
           node tests/structure-cutter-lab-regression.mjs docs/m6-status/structure-cutter-lab
           node tests/repetition-core-test.mjs
           node tests/beat-core-test.mjs
+          node tests/vocal-core-test.mjs
 
       - name: Build Structure Cutter Lab
         working-directory: docs/m6-status/structure-cutter-lab

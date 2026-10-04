@@ -70,7 +70,7 @@
             <button type="button" class="mode-tab" data-mode="change-point">Change Point</button>
             <button type="button" class="mode-tab" data-mode="stem-activity">Stem Activity</button>
             <button type="button" class="mode-tab" data-mode="beat-bars">Beat / Bars</button>
-            <button type="button" class="mode-tab" data-mode="vocal-phrase" data-pending="true">Vocal Phrase</button>
+            <button type="button" class="mode-tab" data-mode="vocal-phrase">Vocal Phrase</button>
           </div>
         </div>
         <button id="toggle-compare" type="button" class="quiet-button">Compare engines</button>
@@ -102,7 +102,7 @@
       </section>
 
       <section id="compare-panel" class="compare-panel" hidden>
-        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point, Repetition, and estimated Beat / Bars are live immediately; Stem Activity becomes live after HTDemucs. Section AI remains pending.</span></div>
+        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point, Repetition, and estimated Beat / Bars are live immediately; Stem Activity and Vocal Phrase become live after HTDemucs. Section AI remains pending.</span></div>
         <div id="compare-grid" class="compare-grid"></div>
       </section>
 
@@ -119,6 +119,7 @@
               <option value="exact">Exact structure boundary</option>
               <option value="bar">Estimated bar</option>
               <option value="beat">Nearest beat</option>
+              <option value="vocal">Vocal phrase edge</option>
             </select>
           </label>
           <span id="alignment-note" class="muted">Beat grid appears after analysis.</span>
@@ -141,13 +142,14 @@
         <div class="pending-evidence"><span>Section AI</span><strong>pending</strong></div>
         <div><span>Repetition</span><strong id="evidence-repetition">—</strong></div>
         <div><span>Stem activity</span><strong id="evidence-stem">—</strong></div>
+        <div><span>Vocal phrase proximity</span><strong id="evidence-vocal">—</strong></div>
         <div><span>Bar-grid proximity</span><strong id="evidence-beat">—</strong></div>
       </div>
       <p class="inspector-note">Raw analysis boundary and final edit point remain separate in the data model.</p>
     </aside>
 
     <audio id="audio" preload="metadata"></audio>
-    <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + estimated beat/bar grid + HTDemucs 4-stem + three-source structural fusion. Section AI remains intentionally unsimulated.</footer>
+    <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + estimated beat/bar grid + HTDemucs 4-stem + vocal phrase edges + three-source structural fusion. Section AI remains intentionally unsimulated.</footer>
   </main>
   <script type="module" src="./app.js"></script>
 </body>

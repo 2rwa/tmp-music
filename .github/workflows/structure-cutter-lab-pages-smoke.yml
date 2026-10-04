@@ -28,6 +28,7 @@ jobs:
               if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${LAB_URL}/${ASSET}" -o /tmp/structure-cutter-bundle.js; then
                 grep -q "htdemucs" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeBeatGrid" /tmp/structure-cutter-bundle.js
+                grep -q "analyzeVocalPhrases" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeRepetition" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeStemActivity" /tmp/structure-cutter-bundle.js
                 grep -q "buildConsensusBoundaries" /tmp/structure-cutter-bundle.js

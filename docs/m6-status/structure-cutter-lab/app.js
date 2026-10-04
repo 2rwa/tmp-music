@@ -1,6 +1,7 @@
 import { Separator } from 'unblend';
 import { analyzeRepetition } from './repetition-core.js';
 import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js';
+import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
 
 (() => {
   'use strict';
@@ -38,7 +39,7 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     modeTabs: $('mode-tabs'), engineNotice: $('engine-notice'), toggleCompare: $('toggle-compare'), comparePanel: $('compare-panel'), compareGrid: $('compare-grid'),
     ruler: $('timeline-ruler'), sectionTrack: $('section-track'), mixTrack: $('mix-track'), waveform: $('waveform'), selectionOverlay: $('selection-overlay'), playhead: $('playhead'), boundaryLayer: $('boundary-layer'),
     selectionTitle: $('selection-title'), selectionTime: $('selection-time'), cutAlignment: $('cut-alignment'), alignmentNote: $('alignment-note'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
-    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'), evidenceBeat: $('evidence-beat'),
+    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'), evidenceVocal: $('evidence-vocal'), evidenceBeat: $('evidence-beat'),
     stemCanvases: { vocals: $('stem-vocals'), drums: $('stem-drums'), bass: $('stem-bass'), other: $('stem-other') }
   };
 
@@ -56,6 +57,8 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     repetitionPairs: [],
     repetitionPeriodSec: null,
     beatAnalysis: { bpm: null, confidence: 0, beatTimes: [], barTimes: [], boundaries: [] },
+    vocalPhrases: [],
+    vocalPhraseBoundaries: [],
     consensusBoundaries: [],
     stemProfiles: {},
     stems: {},
@@ -194,6 +197,8 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     state.stemProfiles = {};
     state.stemFrames = [];
     state.stemBoundaries = [];
+    state.vocalPhrases = [];
+    state.vocalPhraseBoundaries = [];
     state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries);
     stopStemAudition();
     clearStemVisuals();
@@ -311,6 +316,7 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     if (mode === 'stem-activity') return state.stemBoundaries.length ? state.stemBoundaries : state.mixBoundaries;
     if (mode === 'repetition') return state.repetitionBoundaries.length ? state.repetitionBoundaries : state.mixBoundaries;
     if (mode === 'beat-bars') return state.beatAnalysis.boundaries.length ? state.beatAnalysis.boundaries : state.mixBoundaries;
+    if (mode === 'vocal-phrase') return state.vocalPhraseBoundaries.length ? state.vocalPhraseBoundaries : state.mixBoundaries;
     return state.consensusBoundaries.length ? state.consensusBoundaries : state.mixBoundaries;
   }
 
@@ -356,6 +362,10 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     const activity = analyzeStemActivity(valid);
     state.stemFrames = activity.frames;
     state.stemBoundaries = activity.boundaries;
+    const vocal = analyzeVocalPhrases(valid.vocals, DEMUCS_RATE);
+    state.vocalPhrases = vocal.phrases;
+    state.vocalPhraseBoundaries = vocal.boundaries;
+    document.documentElement.dataset.vocalPhraseReady = state.vocalPhraseBoundaries.length ? 'true' : 'false';
     if (state.mono && state.audioBuffer) {
       const recurrence = analyzeRepetition(state.mono, state.audioBuffer.sampleRate, state.stemFrames);
       state.repetitionBoundaries = recurrence.boundaries;
@@ -510,6 +520,7 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
       ['Repetition', state.repetitionBoundaries, state.repetitionBoundaries.length ? 'live' : 'pending'],
       ['Change Point', state.mixBoundaries, 'live'],
       ['Stem Activity', state.stemBoundaries, state.stems.vocals ? 'live' : 'pending'],
+      ['Vocal Phrase', state.vocalPhraseBoundaries, state.vocalPhraseBoundaries.length ? 'live' : 'pending'],
       ['Beat / Bars', state.beatAnalysis.boundaries, state.beatAnalysis.boundaries.length ? 'live' : 'pending']
     ];
     el.compareGrid.innerHTML = rows.map(([name, boundaries, status]) => {
@@ -526,7 +537,18 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     const rawE = clamp(Math.max(s, e), 0, state.duration);
     const minRawE = rawE - rawS < .02 ? Math.min(state.duration, rawS + .02) : rawE;
     const mode = el.cutAlignment ? el.cutAlignment.value : 'recommended';
-    const aligned = alignCutRange(rawS, minRawE, state.beatAnalysis, mode);
+    let aligned;
+    if (mode === 'vocal') {
+      const startHit = nearestPhraseBoundary(rawS, state.vocalPhraseBoundaries, .9);
+      const endHit = nearestPhraseBoundary(minRawE, state.vocalPhraseBoundaries, .9);
+      const start = startHit ? startHit.time : rawS;
+      const end = endHit ? endHit.time : minRawE;
+      aligned = end > start + .02
+        ? { start, end, startKind: startHit ? 'vocal' : 'exact', endKind: endHit ? 'vocal' : 'exact' }
+        : { start: rawS, end: minRawE, startKind: 'exact', endKind: 'exact' };
+    } else {
+      aligned = alignCutRange(rawS, minRawE, state.beatAnalysis, mode);
+    }
     s = clamp(aligned.start, 0, state.duration);
     e = clamp(aligned.end, 0, state.duration);
     if (e - s < .02) { s = rawS; e = minRawE; }
@@ -563,6 +585,8 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
     el.evidenceChange.textContent = mixEvidence ? mixEvidence.toFixed(2) : '—';
     el.evidenceStem.textContent = stemEvidence ? stemEvidence.toFixed(2) : (state.stems.vocals ? '0.00' : 'pending');
     el.evidenceRepetition.textContent = repetitionEvidence ? repetitionEvidence.toFixed(2) : (state.repetitionBoundaries.length ? '0.00' : 'pending');
+    const nearestVocal = nearestPhraseBoundary(b.t, state.vocalPhraseBoundaries, Infinity);
+    el.evidenceVocal.textContent = nearestVocal ? 'Δ' + nearestVocal.distance.toFixed(2) + 's' : 'pending';
     const nearestBar = nearestGridTime(b.t, state.beatAnalysis.barTimes || [], Infinity);
     el.evidenceBeat.textContent = nearestBar ? 'Δ' + nearestBar.distance.toFixed(2) + 's' : 'pending';
     el.inspector.hidden = false;
@@ -685,11 +709,13 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
       for (let i = 0; i < demucsFrames; i++) {
         const t = i / DEMUCS_RATE, region = Math.min(3, Math.floor(t / segmentSec));
         const pattern = region === 2 ? 0 : region;
-        const amp = name === 'vocals' ? [.08, .48, .08, .12][pattern]
+        const amp = name === 'vocals' ? [.18, .48, .18, .24][pattern]
           : name === 'drums' ? [.34, .18, .34, .64][pattern]
           : name === 'bass' ? [.28, .12, .28, .2][pattern]
           : [.18, .42, .18, .24][pattern];
-        const v = amp * Math.sin(i * .047);
+        const local = t % segmentSec;
+        const phraseGate = name === 'vocals' && !(local > 1.0 && local < 5.2) ? 0 : 1;
+        const v = amp * phraseGate * Math.sin(i * .047);
         a[i * 2] = v; a[i * 2 + 1] = v;
       }
       fake[name] = a;
@@ -703,14 +729,21 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
       state.beatAnalysis.bpm && Math.abs(state.beatAnalysis.bpm - 120) < 4 &&
       state.beatAnalysis.boundaries.length >= 4 &&
       state.stemBoundaries.length >= 1 &&
+      state.vocalPhrases.length >= 3 &&
+      state.vocalPhraseBoundaries.length >= 6 &&
       state.consensusBoundaries.length >= 1 &&
       document.documentElement.dataset.consensusSources === '3' &&
       !el.selectionOverlay.hidden &&
       STEM_NAMES.every(name => state.stemProfiles[name] && state.stemProfiles[name].length);
-    document.documentElement.dataset.structureCutterSelftest = ok ? 'PASS' : 'FAIL';
     document.documentElement.dataset.repetitionReady = state.repetitionBoundaries.length ? 'true' : 'false';
     document.documentElement.dataset.beatGridReady = state.beatAnalysis.boundaries.length ? 'true' : 'false';
-    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok ? 'PASS' : 'FAIL');
+    document.documentElement.dataset.vocalPhraseReady = state.vocalPhraseBoundaries.length ? 'true' : 'false';
+    el.cutAlignment.value = 'vocal';
+    setSelection(1.18, 5.08, 'Vocal snap self-test');
+    const vocalSnapOk = state.selection && state.selection.startKind === 'vocal' && state.selection.endKind === 'vocal';
+    document.documentElement.dataset.vocalSnapSelftest = vocalSnapOk ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.structureCutterSelftest = ok && vocalSnapOk ? 'PASS' : 'FAIL';
+    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok && vocalSnapOk ? 'PASS' : 'FAIL');
   }
 
   el.sampleSelect.addEventListener('change', () => { el.loadSample.disabled = !el.sampleSelect.value; const s = REPO_SAMPLES[el.sampleSelect.value]; if (s) { el.trackName.textContent = s.title; el.trackMeta.textContent = `Repository source · ${s.path}`; } });
@@ -738,6 +771,10 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
       el.engineNotice.textContent = state.beatAnalysis.bpm
         ? 'Estimated beat/bar grid · ' + state.beatAnalysis.bpm.toFixed(1) + ' BPM · autocorrelation ' + state.beatAnalysis.confidence.toFixed(2) + '. Bars assume 4 beats and are editing aids, not semantic structure.'
         : 'Beat/bar grid could not be estimated reliably.';
+    } else if (state.mode === 'vocal-phrase') {
+      el.engineNotice.textContent = state.vocalPhrases.length
+        ? 'Showing ' + state.vocalPhrases.length + ' vocal phrases from adaptive energy hysteresis on the HTDemucs vocals stem.'
+        : 'Vocal Phrase becomes available after HTDemucs finishes.';
     } else {
       const sources = [state.mixBoundaries.length, state.repetitionBoundaries.length, state.stemBoundaries.length].filter(Boolean).length;
       el.engineNotice.textContent = 'Consensus fuses ' + sources + ' live evidence tracks: mix change point, repetition, and (after HTDemucs) stem activity.';
@@ -765,6 +802,6 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, alignCutRange, buildConsensusBoundaries, buildSections, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();
