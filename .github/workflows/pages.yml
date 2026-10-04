@@ -462,11 +462,11 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 12); do
-            echo "attempt \${attempt}: \${STUDIO_URL}"
-            if curl -fsSL --max-time 15 "\${STUDIO_URL}/" -o /tmp/stem-annotation-studio.html; then
+            echo "attempt ${attempt}: ${STUDIO_URL}"
+            if curl -fsSL --max-time 15 "${STUDIO_URL}/" -o /tmp/stem-annotation-studio.html; then
               grep -q "Stem Annotation Studio" /tmp/stem-annotation-studio.html
               ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/stem-annotation-studio.html | head -1 || true)"
-              if [ -n "\${ASSET}" ] && curl -fsSL --max-time 20 "\${STUDIO_URL}/\${ASSET}" -o /tmp/stem-annotation-studio-bundle.js; then
+              if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${STUDIO_URL}/${ASSET}" -o /tmp/stem-annotation-studio-bundle.js; then
                 grep -q "htdemucs" /tmp/stem-annotation-studio-bundle.js
                 grep -q "buildStemAnnotations" /tmp/stem-annotation-studio-bundle.js
                 echo "Stem Annotation Studio is live with bundled HTDemucs"
