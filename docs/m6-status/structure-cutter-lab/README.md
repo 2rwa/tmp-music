@@ -55,3 +55,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 - Pages live smoke
 
 Browser self-testでは実モデルdownloadを行わず、fake stem を `installStemResult` へ入れて、Stem Activity / Consensus / lane描画まで回帰確認する。
+
+## Repetition regression
+
+`tests/repetition-core-test.mjs` は A–B–A–C synthetic signal から約16秒の反復ラグ、反復ペア、反復境界を回収する既知解テスト。ブラウザself-testではこのRepetitionをsynthetic 4-stemと統合し、3-source Consensusまで確認する。
