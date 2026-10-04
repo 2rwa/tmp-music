@@ -6,11 +6,13 @@ on:
     paths:
       - "docs/m6-status/structure-cutter-lab/**"
       - "tests/structure-cutter-lab-regression.mjs"
+      - "tests/section-ai-postprocess-test.mjs"
       - ".github/workflows/structure-cutter-lab-ci.yml"
   pull_request:
     paths:
       - "docs/m6-status/structure-cutter-lab/**"
       - "tests/structure-cutter-lab-regression.mjs"
+      - "tests/section-ai-postprocess-test.mjs"
       - ".github/workflows/structure-cutter-lab-ci.yml"
   workflow_dispatch:
 
@@ -36,6 +38,7 @@ jobs:
           node tests/beat-core-test.mjs
           node tests/vocal-core-test.mjs
           node tests/cut-core-test.mjs
+          node tests/section-ai-postprocess-test.mjs
 
       - name: Build browser bundle
         working-directory: docs/m6-status/structure-cutter-lab

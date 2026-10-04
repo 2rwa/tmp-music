@@ -286,6 +286,7 @@ jobs:
           node tests/beat-core-test.mjs
           node tests/vocal-core-test.mjs
           node tests/cut-core-test.mjs
+          node tests/section-ai-postprocess-test.mjs
 
       - name: Build Structure Cutter Lab
         working-directory: docs/m6-status/structure-cutter-lab
