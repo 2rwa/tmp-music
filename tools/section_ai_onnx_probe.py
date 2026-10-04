@@ -30,6 +30,7 @@ report = {
     "ort_ok": False,
     "dynamic": {"export_ok": False, "cases": []},
     "fixed_scaling": [],
+    "dynamo_dynamic": {"export_ok": False, "cases": []},
 }
 
 def save():
@@ -252,6 +253,76 @@ try:
             dynamic["error"] = str(exc)[:4000]
             with TRACE.open("a", encoding="utf-8") as fh:
                 fh.write("\n== dynamic export ==\n")
+                fh.write(traceback.format_exc())
+
+        # New exporter probe with a true symbolic time dimension. Unlike
+        # dynamic_axes on the legacy tracer, torch.export records shape
+        # constraints and may preserve the shape-dependent neighborhood
+        # attention indexing.
+        dyn2 = report["dynamo_dynamic"]
+        dyn2_path = OUT / "harmonix-fold0-section-function-dynamo-dynamic.onnx"
+        try:
+            if dyn2_path.exists():
+                dyn2_path.unlink()
+            time_dim = torch.export.Dim("time", min=600, max=30000)
+            started = time.time()
+            torch.onnx.export(
+                wrapper,
+                (x,),
+                str(dyn2_path),
+                input_names=["spectrograms"],
+                output_names=["section_logits", "function_logits"],
+                opset_version=18,
+                dynamo=True,
+                dynamic_shapes=({2: time_dim},),
+                external_data=False,
+            )
+            dyn2["export_seconds"] = round(time.time() - started, 3)
+            dyn2["bytes"] = dyn2_path.stat().st_size
+            dyn2_graph = onnx.load(str(dyn2_path))
+            onnx.checker.check_model(dyn2_graph)
+            dyn2["input_shape"] = [
+                d.dim_param if d.dim_param else int(d.dim_value)
+                for d in dyn2_graph.graph.input[0].type.tensor_type.shape.dim
+            ]
+            dyn2_session = ort.InferenceSession(
+                str(dyn2_path),
+                providers=["CPUExecutionProvider"],
+            )
+            dyn2["export_ok"] = True
+
+            for frames in [600, 1200, 3000]:
+                case = {"frames": frames, "ok": False}
+                try:
+                    probe_x = torch.randn(1, 4, frames, 81, dtype=torch.float32)
+                    with torch.no_grad():
+                        ref_s, ref_f = wrapper(probe_x)
+                    started = time.time()
+                    got_s, got_f = dyn2_session.run(
+                        None,
+                        {"spectrograms": probe_x.numpy()},
+                    )
+                    case["ort_seconds"] = round(time.time() - started, 3)
+                    sec = float(np.max(np.abs(got_s - ref_s.numpy())))
+                    fun = float(np.max(np.abs(got_f - ref_f.numpy())))
+                    case["max_abs_diff"] = {"section": sec, "function": fun}
+                    case["output_shapes"] = [list(got_s.shape), list(got_f.shape)]
+                    case["ok"] = bool(
+                        got_s.shape[-1] == frames
+                        and got_f.shape[-1] == frames
+                        and sec < 5e-4
+                        and fun < 5e-4
+                    )
+                except Exception as exc:
+                    case["error_type"] = type(exc).__name__
+                    case["error"] = str(exc)[:4000]
+                dyn2["cases"].append(case)
+            dyn2["all_cases_ok"] = all(x.get("ok") for x in dyn2["cases"])
+        except Exception as exc:
+            dyn2["error_type"] = type(exc).__name__
+            dyn2["error"] = str(exc)[:4000]
+            with TRACE.open("a", encoding="utf-8") as fh:
+                fh.write("\n== dynamo dynamic export ==\n")
                 fh.write(traceback.format_exc())
 
         # Fixed-length scaling probe. Dynamic axes are not trustworthy because

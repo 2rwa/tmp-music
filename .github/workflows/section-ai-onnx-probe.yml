@@ -58,6 +58,7 @@ jobs:
           print("config:", p.get("config"))
           print("dynamic:", p.get("dynamic"))
           print("fixed_scaling:", p.get("fixed_scaling"))
+          print("dynamo_dynamic:", p.get("dynamo_dynamic"))
           for a in p.get("attempts", []):
               print(a)
           PY
