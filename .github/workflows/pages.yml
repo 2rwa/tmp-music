@@ -216,7 +216,6 @@ jobs:
           npm run build
           test -s dist/index.html
           test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
-          test -s models/harmonix-fold0-section-function-long.onnx
           cp -a dist/. .
           rm -rf node_modules dist
 
@@ -298,6 +297,7 @@ jobs:
           npm run build
           test -s dist/index.html
           test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          test -s models/harmonix-fold0-section-function-long.onnx
           cp -a dist/. .
           rm -rf node_modules dist
 
