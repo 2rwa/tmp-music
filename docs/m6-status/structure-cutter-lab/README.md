@@ -37,9 +37,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 
 結果を偽装せず、未接続の解析は pending のまま表示する。
 
-- Section AI
-- Beat / Downbeat
-- Vocal Phrase
+- Section AI — All-In-One Harmonix fold0 の ONNX export / ONNX Runtime 数値一致 probe は成功済み。次はブラウザ側81-bin log-filterbank前処理と ONNX Runtime Web 接続。
 
 ## Demucs
 
@@ -76,3 +74,7 @@ Browser self-testでは実モデルdownloadを行わず、fake stem を `install
 ## Low-energy cut regression
 
 `tests/cut-core-test.mjs` は±0.35秒の範囲で局所RMS最小点を探索し、synthetic troughへ約27–30 dB低い切断点を回収する。Recommendedはbeat/bar snapが成立しないedgeだけLow energyをfallbackとして使い、大きな位置移動を避ける。
+
+## Section AI ONNX probe
+
+Pinned upstream `openmirlab/all-in-one-infer@797f1d21b115955ed81ff9161440334fefea8855` の `harmonix-fold0` を Section/Function logits に限定して ONNX export。Actions probe で `export_ok=true` / `ort_ok=true`、legacy exporter、ONNX 3,199,894 bytes、input `[1, 4, 600, 81]` を確認。モデル接続前にブラウザ側の81-bin log-filterbank再現と実音源一致検証を行う。
