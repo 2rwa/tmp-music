@@ -22,14 +22,16 @@ jobs:
           set -euo pipefail
           for attempt in $(seq 1 12); do
             echo "attempt ${attempt}: ${LAB_URL}"
-            if curl -fsSL --max-time 15 "${LAB_URL}/" -o /tmp/structure-cutter.html               && curl -fsSL --max-time 15 "${LAB_URL}/app.js" -o /tmp/structure-cutter-app.js               && curl -fsSL --max-time 15 "${LAB_URL}/style.css" -o /tmp/structure-cutter-style.css; then
+            if curl -fsSL --max-time 15 "${LAB_URL}/" -o /tmp/structure-cutter.html; then
               grep -q "Structure Cutter Lab" /tmp/structure-cutter.html
-              grep -q "HTDemucs not connected yet" /tmp/structure-cutter.html
-              grep -q "samples/whisper-ao/source/whisper-ao.mp3" /tmp/structure-cutter-app.js
-              grep -q "analyzeChangePoints" /tmp/structure-cutter-app.js
-              grep -q ".timeline-card" /tmp/structure-cutter-style.css
-              echo "Structure Cutter Lab is live"
-              exit 0
+              ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/structure-cutter.html | head -1 || true)"
+              if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${LAB_URL}/${ASSET}" -o /tmp/structure-cutter-bundle.js; then
+                grep -q "htdemucs" /tmp/structure-cutter-bundle.js
+                grep -q "analyzeStemActivity" /tmp/structure-cutter-bundle.js
+                grep -q "buildConsensusBoundaries" /tmp/structure-cutter-bundle.js
+                echo "Structure Cutter Lab is live with HTDemucs bundle"
+                exit 0
+              fi
             fi
             sleep 5
           done

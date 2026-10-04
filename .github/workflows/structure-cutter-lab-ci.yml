@@ -20,14 +20,29 @@ permissions:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Static regression
         run: |
           node --check docs/m6-status/structure-cutter-lab/app.js
           node tests/structure-cutter-lab-regression.mjs docs/m6-status/structure-cutter-lab
+
+      - name: Build browser bundle
+        working-directory: docs/m6-status/structure-cutter-lab
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
 
       - name: Browser interaction self-test
         run: |
@@ -45,7 +60,9 @@ jobs:
             if curl -fsS http://127.0.0.1:4181/m6-status/structure-cutter-lab/ >/dev/null; then break; fi
             sleep 0.25
           done
-          "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=6000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
+          "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=9000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
           grep -q 'data-structure-cutter-selftest="PASS"' /tmp/structure-cutter-browser.html
+          grep -q 'data-demucs-ready="true"' /tmp/structure-cutter-browser.html
+          grep -q 'data-consensus-sources="2"' /tmp/structure-cutter-browser.html
           grep -q 'structure cutter self-test: PASS' /tmp/structure-cutter-browser.html
           echo "Structure Cutter Lab browser regression: PASS"

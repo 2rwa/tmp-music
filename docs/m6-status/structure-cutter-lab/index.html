@@ -38,14 +38,14 @@
     </section>
 
     <section id="progress-panel" class="progress-panel" hidden>
-      <div class="progress-head"><strong id="progress-title">Preparing audio</strong><span id="progress-percent">0%</span></div>
+      <div class="progress-head"><strong id="progress-title">Preparing audio</strong><div class="progress-head-actions"><span id="progress-percent">0%</span><button id="cancel-processing" class="micro-button" type="button" hidden>Cancel</button></div></div>
       <div class="progress-track"><span id="progress-fill"></span></div>
       <ol class="pipeline-list">
         <li data-step="decode">Audio decode</li>
         <li data-step="waveform">Waveform</li>
         <li data-step="change">Prototype change points</li>
-        <li class="pending" data-step="demucs">HTDemucs 4-stem · next integration</li>
-        <li class="pending" data-step="structure">Multi-engine structure · next integration</li>
+        <li class="pending" data-step="demucs">HTDemucs 4-stem</li>
+        <li class="pending" data-step="structure">Stem-aware consensus</li>
       </ol>
     </section>
 
@@ -74,7 +74,7 @@
         <button id="toggle-compare" type="button" class="quiet-button">Compare engines</button>
       </div>
 
-      <div id="engine-notice" class="engine-notice">Prototype consensus currently uses the real-audio change-point track only. Pending engines remain visibly separate instead of being faked.</div>
+      <div id="engine-notice" class="engine-notice">Consensus starts from the real-audio change-point track, then fuses HTDemucs stem-activity boundaries when GPU separation completes.</div>
 
       <section class="timeline-card" aria-label="Music structure timeline">
         <div class="timeline-ruler" id="timeline-ruler"></div>
@@ -93,14 +93,14 @@
             <div id="boundary-layer" class="boundary-layer"></div>
           </div>
         </div>
-        <div class="lane stem-lane"><div class="lane-label stem-vocal"><strong>VOCALS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
-        <div class="lane stem-lane"><div class="lane-label stem-drums"><strong>DRUMS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
-        <div class="lane stem-lane"><div class="lane-label stem-bass"><strong>BASS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
-        <div class="lane stem-lane"><div class="lane-label stem-other"><strong>OTHER</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-vocal stem-label-button" type="button" data-stem-audition="vocals"><strong>VOCALS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="vocals"><canvas id="stem-vocals"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-drums stem-label-button" type="button" data-stem-audition="drums"><strong>DRUMS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="drums"><canvas id="stem-drums"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-bass stem-label-button" type="button" data-stem-audition="bass"><strong>BASS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="bass"><canvas id="stem-bass"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-other stem-label-button" type="button" data-stem-audition="other"><strong>OTHER</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="other"><canvas id="stem-other"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
       </section>
 
       <section id="compare-panel" class="compare-panel" hidden>
-        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Only Change Point is live in this UI pass.</span></div>
+        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point and Stem Activity are live after HTDemucs; AI/repetition/beat engines remain pending.</span></div>
         <div id="compare-grid" class="compare-grid"></div>
       </section>
 
@@ -127,15 +127,15 @@
         <div><span>Change point</span><strong id="evidence-change">—</strong></div>
         <div class="pending-evidence"><span>Section AI</span><strong>pending</strong></div>
         <div class="pending-evidence"><span>Repetition</span><strong>pending</strong></div>
-        <div class="pending-evidence"><span>Stem activity</span><strong>pending</strong></div>
+        <div><span>Stem activity</span><strong id="evidence-stem">—</strong></div>
         <div class="pending-evidence"><span>Downbeat</span><strong>pending</strong></div>
       </div>
       <p class="inspector-note">Raw analysis boundary and final edit point remain separate in the data model.</p>
     </aside>
 
     <audio id="audio" preload="metadata"></audio>
-    <footer class="footer">UI prototype: real repository audio + real waveform/change-point calculation. Demucs and multi-engine structure analysis are intentionally not simulated.</footer>
+    <footer class="footer">GPU-first prototype: real repository audio + HTDemucs 4-stem + mix/stem boundary fusion. Section AI / repetition / beat engines remain intentionally unsimulated.</footer>
   </main>
-  <script src="./app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

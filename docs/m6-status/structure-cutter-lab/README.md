@@ -1,42 +1,55 @@
 # Structure Cutter Lab
 
-新規UIの第1段階。既存 `stem-annotation-studio` を改造せず、曲全体の時間軸を主役にした構成切り出しUIを別アプリとして作る。
+Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-annotation-studio` とは別実装。
 
-## この段階で実装済み
+## 現在の処理フロー
 
-- `tmp-music` の実音源3曲を直接ロード
-  - `samples/whisper-ao/source/whisper-ao.mp3`
-  - `samples/jugemu/source/jugemu.mp3`
-  - `samples/chichinu-fiija/source/chichinu-fiija.mp3`
-- Web Audio decode
-- 実音源からのoverview waveform
-- 簡易 change-point 候補（RMS + zero-crossing-rate変化）
-- 構成区間のクリック選択
-- 波形ドラッグによる連続時間選択
-- 選択区間loop
-- 選択区間WAV export
-- boundary inspector
-- algorithm comparison UI
-- `Consensus / Section AI / Repetition / Change Point / Stem Activity / Beat / Bars / Vocal Phrase` のUI契約
+1. repository sample / local audio を decode
+2. Mix waveform を生成
+3. Mix の RMS + zero-crossing-rate 変化から Change Point 候補を生成
+4. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
+5. `vocals / drums / bass / other` の実データを共通時間軸へ描画
+6. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
+7. Mix Change Point と Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
+8. 区間選択 / loop / WAV export
 
-## 意図的に未実装
+## 実音源
 
-初版UIで解析結果を偽装しないため、下記は `pending` と明示している。
+- `samples/whisper-ao/source/whisper-ao.mp3`
+- `samples/jugemu/source/jugemu.mp3`
+- `samples/chichinu-fiija/source/chichinu-fiija.mp3`
 
-- HTDemucs 4-stem
-- All-In-One相当のsection解析
-- repetition / recurrence解析
-- beat / downbeat
-- vocal phrase
-- 複数アルゴリズムのconsensus
+## UIでliveになった解析
 
-次段階で `Mix + vocals + drums + bass + other` の共通時間軸データモデルへ接続する。
+- Consensus — Mix Change Point + Stem Activity
+- Change Point — mix RMS/ZCR
+- Stem Activity — HTDemucs 4-stem energy share change
 
-## UI原則
+## Pending
 
-1. Treeを常設しない。
-2. 画面横幅は時間軸へ使う。
-3. main viewは transport / structure mode / unified timeline / selection の4層。
-4. 詳細は compare panel / boundary inspector に逃がす。
-5. raw boundary と final cut point は将来も別フィールドとして扱う。
-6. GPU-only最終版を前提にしつつ、このUI段階ではWebGPU未対応環境でも表示・self-test可能にする。
+結果を偽装せず、未接続の解析は pending のまま表示する。
+
+- Section AI
+- Repetition / recurrence
+- Beat / Downbeat
+- Vocal Phrase
+
+## Demucs
+
+- model: `htdemucs`
+- backend: `webgpu`
+- weights: `fp16`
+- source audio は `OfflineAudioContext` で stereo / 44.1 kHz に変換して曲全体を渡す
+- model cache を利用
+- 処理中のみ Cancel を表示
+- GPUなし環境では Mix Change Point までを利用可能とし、DemucsをCPU fallbackで長時間実行しない
+
+## テスト
+
+- static UI/behavior contract
+- JavaScript syntax
+- Vite bundle build
+- synthetic 4-stem を使う browser self-test
+- Pages live smoke
+
+Browser self-testでは実モデルdownloadを行わず、fake stem を `installStemResult` へ入れて、Stem Activity / Consensus / lane描画まで回帰確認する。

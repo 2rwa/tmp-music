@@ -278,6 +278,22 @@ jobs:
           grep -q 'stem studio self-test: PASS' /tmp/stem-annotation-studio-browser.html
           echo "Stem Annotation Studio browser regression: PASS"
 
+      - name: Structure Cutter Lab regression
+        run: |
+          node --check docs/m6-status/structure-cutter-lab/app.js
+          node tests/structure-cutter-lab-regression.mjs docs/m6-status/structure-cutter-lab
+
+      - name: Build Structure Cutter Lab
+        working-directory: docs/m6-status/structure-cutter-lab
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
