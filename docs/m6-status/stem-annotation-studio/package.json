@@ -1,0 +1,1 @@
+{"name":"tmp-music-stem-annotation-studio","private":true,"version":"0.0.0","type":"module","scripts":{"build":"vite build"},"dependencies":{"unblend":"1.0.0"},"devDependencies":{"vite":"8.3.2"}}

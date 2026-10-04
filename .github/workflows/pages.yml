@@ -249,6 +249,35 @@ jobs:
           grep -q 'htdemucs browser self-test: PASS' /tmp/vocal-htdemucs-browser.html
           echo "Vocal HTDemucs Probe browser regression: PASS"
 
+
+      - name: Stem Annotation Studio regression
+        run: node tests/stem-annotation-studio-regression.mjs docs/m6-status/stem-annotation-studio/index.html
+
+      - name: Build Stem Annotation Studio
+        working-directory: docs/m6-status/stem-annotation-studio
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
+
+      - name: Stem Annotation Studio browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then echo "Chrome/Chromium not found on runner"; exit 1; fi
+          python3 -m http.server 4178 --bind 127.0.0.1 --directory docs >/tmp/stem-annotation-studio-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do if curl -fsS http://127.0.0.1:4178/m6-status/stem-annotation-studio/ >/dev/null; then break; fi; sleep 0.25; done
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=15000 --dump-dom "http://127.0.0.1:4178/m6-status/stem-annotation-studio/?selftest=1" >/tmp/stem-annotation-studio-browser.html
+          grep -q 'data-stem-studio-selftest="PASS"' /tmp/stem-annotation-studio-browser.html
+          grep -q 'stem studio self-test: PASS' /tmp/stem-annotation-studio-browser.html
+          echo "Stem Annotation Studio browser regression: PASS"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -425,3 +454,27 @@ jobs:
           done
           echo "Vocal HTDemucs Probe live validation failed"
           exit 1
+
+
+      - name: Validate live Stem Annotation Studio
+        env:
+          STUDIO_URL: https://2rwa.github.io/tmp-music/m6-status/stem-annotation-studio
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt \${attempt}: \${STUDIO_URL}"
+            if curl -fsSL --max-time 15 "\${STUDIO_URL}/" -o /tmp/stem-annotation-studio.html; then
+              grep -q "Stem Annotation Studio" /tmp/stem-annotation-studio.html
+              ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/stem-annotation-studio.html | head -1 || true)"
+              if [ -n "\${ASSET}" ] && curl -fsSL --max-time 20 "\${STUDIO_URL}/\${ASSET}" -o /tmp/stem-annotation-studio-bundle.js; then
+                grep -q "htdemucs" /tmp/stem-annotation-studio-bundle.js
+                grep -q "buildStemAnnotations" /tmp/stem-annotation-studio-bundle.js
+                echo "Stem Annotation Studio is live with bundled HTDemucs"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          echo "Stem Annotation Studio live validation failed"
+          exit 1
+
