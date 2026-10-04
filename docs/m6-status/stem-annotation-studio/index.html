@@ -224,7 +224,7 @@ import { Separator } from 'unblend';
 const DEMUCS_MODEL='htdemucs',DEMUCS_RATE=44100,ORT_WASM_PATHS='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/';
 const LAYERS=['structure','vocal','performance','acoustic','stem'];
 let separatorLoader=(model,options)=>Separator.load(model,options);
-const $=s=>document.querySelector(s), $=s=>Array.from(document.querySelectorAll(s));
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const el={
   drop:$('#drop-zone'),choose:$('#choose-file'),file:$('#file-input'),synthetic:$('#synthetic-test'),cancel:$('#cancel-analysis'),status:$('#status'),progress:$('#progress'),fileChip:$('#file-chip'),
   audio:$('#audio'),waveWrap:$('#wave-wrap'),wave:$('#waveform'),play:$('#play-toggle'),playSelection:$('#play-selection'),loop:$('#loop-toggle'),volume:$('#volume'),volumeValue:$('#volume-value'),seek:$('#seek'),current:$('#current-time'),duration:$('#duration-time'),
