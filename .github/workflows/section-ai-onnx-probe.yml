@@ -8,6 +8,8 @@ on:
       - "tools/section-ai-ortweb-probe/**"
       - "tools/section-ai-feature-probe/**"
       - "tools/section_ai_feature_reference.py"
+      - "docs/m6-status/structure-cutter-lab/section-ai-features.js"
+      - "docs/m6-status/structure-cutter-lab/package.json"
       - ".github/workflows/section-ai-onnx-probe.yml"
   workflow_dispatch:
 
@@ -78,12 +80,12 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Validate browser feature parity
-        working-directory: tools/section-ai-feature-probe
+      - name: Validate production browser feature parity
+        working-directory: docs/m6-status/structure-cutter-lab
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
-          node feature-test.mjs ../../section-ai-probe/feature-reference
+          node ../../../tools/section-ai-feature-probe/feature-test.mjs ../../../section-ai-probe/feature-reference
 
       - name: Build ORT Web probe
         working-directory: tools/section-ai-ortweb-probe
