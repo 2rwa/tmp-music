@@ -80,6 +80,44 @@ jobs:
           grep -q 'browser self-test: PASS (mid-file crop + repeated separation reset)' /tmp/vocal-lab-browser.html
           echo "Vocal Separation Lab browser regression: PASS"
 
+      - name: Vocal Model Comparator regression
+        run: |
+          node --check docs/test/vocal-model-comparator/app.js
+          node tests/vocal-model-comparator-regression.mjs \
+            docs/test/vocal-model-comparator/index.html \
+            docs/test/vocal-model-comparator/app.js \
+            docs/test/vocal-model-comparator/style.css
+
+      - name: Vocal Model Comparator browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory docs >/tmp/vocal-comparator-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4174/test/vocal-model-comparator/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=10000 \
+            --dump-dom \
+            "http://127.0.0.1:4174/test/vocal-model-comparator/?selftest=1" \
+            > /tmp/vocal-comparator-browser.html
+          grep -q 'data-comparator-selftest="PASS"' /tmp/vocal-comparator-browser.html
+          grep -q 'comparator browser self-test: PASS' /tmp/vocal-comparator-browser.html
+          echo "Vocal Model Comparator browser regression: PASS"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -170,4 +208,25 @@ jobs:
             sleep 5
           done
           echo "Vocal Separation Lab live validation failed"
+          exit 1
+
+
+      - name: Validate live Vocal Model Comparator
+        env:
+          COMPARATOR_URL: https://2rwa.github.io/tmp-music/test/vocal-model-comparator
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${COMPARATOR_URL}"
+            if curl -fsSL --max-time 15 "${COMPARATOR_URL}/" -o /tmp/vocal-comparator.html \
+              && curl -fsSL --max-time 15 "${COMPARATOR_URL}/app.js" -o /tmp/vocal-comparator-app.js; then
+              grep -q "Vocal Model Comparator" /tmp/vocal-comparator.html
+              grep -q "runComparison" /tmp/vocal-comparator-app.js
+              grep -q "runBrowserSelfTest" /tmp/vocal-comparator-app.js
+              echo "Vocal Model Comparator is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Vocal Model Comparator live validation failed"
           exit 1
