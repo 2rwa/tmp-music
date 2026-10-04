@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ece6dc">
+<title>Annotation Explorer — tmp-music</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#ece6dc;--paper:#faf7f0;--paper2:#f2ece2;--ink:#29251f;--muted:#746e65;
+  --line:#d3c8b8;--line2:#ad9c87;--accent:#a55237;--accentSoft:#efd9cb;--gold:#c18b4f;
+  --dark:#24221e;--dark2:#302d27;--darkline:#554e43;--light:#f4eadb;
+  --structure:#856985;--vocal:#557966;--performance:#b4793b;--acoustic:#6c7781;
+  --quiet:#99938a;--periodic:#5d7a67;--transient:#b77939;--mixed:#786a79;
+  --shadow:0 14px 38px rgba(71,55,37,.08)
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif}
+body{line-height:1.55;background:radial-gradient(circle at 14% 0%,rgba(184,118,53,.08),transparent 32rem),linear-gradient(180deg,#f6f1e9 0,#ece6dc 50%,#e8ded0 100%)}
+button,input{font:inherit}button{cursor:pointer;border:1px solid var(--line2);border-radius:5px;background:#fffaf3;color:var(--ink);padding:.48rem .7rem;font-weight:700}
+button:hover:not(:disabled){background:#fff;border-color:#8e735f}button:disabled,input:disabled{opacity:.43;cursor:not-allowed}
+button:focus-visible,input:focus-visible,.drop-zone:focus-visible,.wave-wrap:focus-visible{outline:2px solid rgba(165,82,55,.48);outline-offset:2px}
+a{color:#8d432f;text-decoration-color:rgba(141,67,47,.3);text-underline-offset:.18em}
+.app{width:min(1240px,calc(100% - 28px));margin:auto;padding:22px 0 72px}
+.header{border-bottom:1px solid var(--line);padding:4px 2px}.header nav{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+.brand{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}.eyebrow{font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--accent)}
+h1,h2,h3{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;font-weight:600}
+h1{font-size:clamp(2.45rem,6vw,4.7rem);letter-spacing:-.05em;line-height:1;margin:.2rem 0}.tagline{margin:.45rem 0;font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif}
+.intro{max-width:900px;margin:.7rem 0 1rem;color:var(--muted);font-size:.88rem}.file-chip{max-width:46%;padding:.45rem .65rem;border:1px solid var(--line);border-radius:4px;background:rgba(250,247,240,.75);color:var(--muted);font:11px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loader{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:7px;background:rgba(250,247,240,.78);box-shadow:var(--shadow)}
+.drop-zone{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;border:1px dashed var(--line2);padding:15px;border-radius:4px;background:rgba(255,252,247,.6);text-align:center}
+.drop-zone.drag{border-color:var(--accent);background:#f6e7dc}.drop-zone small{width:100%;color:var(--muted);font-size:.71rem}
+.loader-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.loader-row #status{margin-left:auto;color:var(--muted);font-size:.76rem}.progress-wrap{height:3px;background:#ded4c7;margin-top:9px;overflow:hidden}.progress{width:0;height:100%;background:var(--accent)}
+.workspace{display:grid;grid-template-columns:255px minmax(0,1fr);gap:14px;margin-top:15px;align-items:start}
+.tree-panel,.main-panel{border:1px solid var(--line);border-radius:8px;background:rgba(250,247,240,.82);box-shadow:var(--shadow);min-width:0}
+.tree-panel{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto}.tree-head{padding:14px;border-bottom:1px solid var(--line)}.tree-head h2{font-size:1.2rem;margin:.05rem 0}.tree-head p{margin:.28rem 0 0;color:var(--muted);font-size:.71rem}
+.tree-actions{display:flex;gap:6px;margin-top:9px}.tree-actions button{font-size:.67rem;padding:.3rem .45rem}
+.tree{padding:8px}.tree details{border-bottom:1px solid var(--line)}.tree summary{cursor:pointer;list-style:none;padding:9px 7px;font-weight:800;font-size:.78rem}.tree summary::-webkit-details-marker{display:none}.tree summary:before{content:"▸";display:inline-block;width:1.1rem;color:var(--muted)}.tree details[open] summary:before{content:"▾"}
+.tree-children{padding:0 5px 9px 18px}.tree-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:5px;align-items:center;min-height:32px}.tree-row label{display:flex;align-items:center;gap:6px;font-size:.72rem;min-width:0}.tree-row input{accent-color:var(--accent)}.tree-row .count{font:9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}.tree-row button{padding:.16rem .35rem;font-size:.61rem}
+.occurrences{display:grid;gap:3px;margin:2px 0 7px 22px}.occurrence{display:flex;justify-content:space-between;gap:5px;text-align:left;padding:.28rem .4rem;background:var(--paper2);font-size:.62rem;font-weight:500}.occurrence span:last-child{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.condition-box{padding:11px 12px;border-top:1px solid var(--line);background:#f4ede4}.condition-title{font-size:.68rem;font-weight:800}.condition-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.condition-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:.2rem .45rem;background:#fff9f1;font-size:.61rem}.condition-chip button{border:0;background:transparent;padding:0;font-size:.7rem}
+.rule-note{margin-top:7px;color:var(--muted);font-size:.62rem}
+.main-panel{overflow:hidden}.top-controls{display:grid;grid-template-columns:minmax(0,1fr) 265px;border-bottom:1px solid var(--line)}
+.wave-panel{background:var(--dark);color:var(--light);padding:13px}.wave-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:8px}.wave-head h2{font-size:1.25rem;margin:.05rem 0}.clock{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#b8ad9e}.clock b{font-size:14px;color:#efb174}
+.wave-wrap{position:relative;height:220px;border:1px solid var(--darkline);background:#1d1c19;cursor:crosshair;touch-action:pan-y;overflow:hidden}.wave-wrap canvas{width:100%;height:220px;display:block}.wave-hint{position:absolute;right:8px;bottom:6px;color:#7f786e;font:9px ui-monospace,SFMono-Regular,Menlo,monospace;pointer-events:none}
+.transport{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px}.transport button{border-color:#595147;background:var(--dark2);color:var(--light)}.transport .primary{background:#603629;border-color:#90543c;color:#ffe3cf}.transport .is-on{background:#5b4630;border-color:#c58a55;color:#ffe4b8}.volume{display:flex;align-items:center;gap:5px;margin-left:auto;color:#bcb2a3;font-size:.7rem}.volume input{width:84px;accent-color:#d37a4e}.volume output{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:32px}
+.seek{width:100%;accent-color:#d37a4e;margin-top:5px}
+.time-panel{padding:13px;background:linear-gradient(180deg,#fffaf3,#f3ece2)}.time-panel .eyebrow{color:var(--accent)}.time-readout{font:600 clamp(1.7rem,4vw,2.8rem)/1.1 "Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;letter-spacing:-.04em;margin:.35rem 0}.time-meta{color:var(--muted);font:10px ui-monospace,SFMono-Regular,Menlo,monospace;margin-bottom:10px}
+.time-control{margin-top:10px}.time-control label{display:flex;justify-content:space-between;gap:8px;font-size:.72rem;font-weight:800}.time-control input[type=range]{width:100%;accent-color:var(--accent)}.time-number{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.time-number label{display:grid;gap:3px;color:var(--muted);font-size:.62rem}.time-number input{width:100%;border:1px solid var(--line2);background:#fffdf8;border-radius:4px;padding:.4rem .45rem;font-size:16px;color:var(--ink)}
+.selection-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.selection-actions button{font-size:.7rem}.selection-actions .full{grid-column:1/-1}
+.tree-matches{border-bottom:1px solid var(--line);padding:12px 14px;background:#f5efe6}.tree-match-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.tree-match-head h3{font-size:1rem;margin:0}.match-buttons{display:flex;gap:5px}.match-buttons button{font-size:.65rem;padding:.3rem .45rem}
+.match-list{display:flex;gap:5px;overflow-x:auto;padding-top:8px;scrollbar-width:thin}.match-item{flex:0 0 auto;padding:.36rem .55rem;background:#fff9f2;font:10px ui-monospace,SFMono-Regular,Menlo,monospace}.match-item.is-current{border-color:var(--accent);background:var(--accentSoft)}
+.timeline{padding:14px}.timeline-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:8px}.timeline-head h2{font-size:1.35rem;margin:.04rem 0}.timeline-head p{margin:0;color:var(--muted);font-size:.68rem}
+.scale{position:relative;height:24px;margin-left:94px;border-bottom:1px solid var(--line)}.tick{position:absolute;bottom:0;transform:translateX(-50%);font:9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+.lane-row{display:grid;grid-template-columns:86px minmax(0,1fr);gap:8px;align-items:center;margin:8px 0}.lane-label{font-size:.69rem;font-weight:800}.lane{position:relative;height:42px;border:1px solid var(--line);border-radius:5px;background:#eee7dc;overflow:hidden}.ann{position:absolute;top:5px;bottom:5px;min-width:2px;border:1px solid rgba(70,55,40,.22);border-radius:4px;padding:4px 6px;text-align:left;overflow:hidden;white-space:nowrap;font-size:.61rem;font-weight:700;color:#2d2924}.ann.structure{background:color-mix(in srgb,var(--structure) 34%,#fff)}.ann.vocal{background:color-mix(in srgb,var(--vocal) 34%,#fff)}.ann.performance{background:color-mix(in srgb,var(--performance) 35%,#fff)}.ann.acoustic{background:color-mix(in srgb,var(--acoustic) 32%,#fff)}.ann.is-active-key{outline:2px solid var(--accent);outline-offset:-2px}.ann.is-outside{opacity:.28}
+.lane-selection{position:absolute;top:0;bottom:0;background:rgba(165,82,55,.10);border-left:2px solid var(--accent);border-right:2px solid var(--accent);pointer-events:none;z-index:5}.lane-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);pointer-events:none;z-index:6}
+.inspector{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;border-top:1px solid var(--line);background:#f7f1e8}.inspector h3{font-size:1rem;margin:.04rem 0}.inspector p{margin:.25rem 0;color:var(--muted);font-size:.7rem}.inspect-list{display:grid;gap:5px;margin-top:8px}.inspect-row{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:6px;padding:7px 8px;border:1px solid var(--line);background:#fffaf3;border-radius:4px;font-size:.67rem}.inspect-row .layer{color:var(--muted)}.inspect-row .score{font:9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+.footer{padding:14px 2px;color:var(--muted);font:10px ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.tree-panel{position:relative;top:auto;max-height:none}.top-controls{grid-template-columns:1fr}.tree{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}.condition-box{grid-column:1/-1}.inspector{grid-template-columns:1fr}.brand{display:block}.file-chip{max-width:100%;margin-top:10px}}
+@media(max-width:560px){.app{width:min(100% - 16px,1240px);padding-top:12px}.tree{grid-template-columns:1fr}.wave-wrap{height:180px}.wave-wrap canvas{height:180px}.transport button{flex:1 1 42%}.volume{width:100%;margin-left:0}.volume input{flex:1}.lane-row{grid-template-columns:68px minmax(0,1fr)}.scale{margin-left:76px}.lane{height:46px}.time-number{grid-template-columns:1fr}.selection-actions{grid-template-columns:1fr}.selection-actions .full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="header">
+  <nav><a href="../segment-window/">Segment Window</a> · <a href="../segment-forest/">Segment Forest</a> · <a href="../">M6 summary</a></nav>
+  <div class="brand">
+    <div>
+      <div class="eyebrow">tmp-music · annotation / time explorer</div>
+      <h1>Annotation Explorer</h1>
+      <p class="tagline">意味をTreeで、場所を時間で選ぶ。</p>
+    </div>
+    <div id="file-chip" class="file-chip" hidden></div>
+  </div>
+  <p class="intro">Treeは「何を見たいか」、時間軸は「どこを見るか」。選択は秒単位の連続時間として保持し、解析区間や区間番号には丸めません。分類はブラウザ内の軽量推定で、Vocal・演奏状態・構造は候補として扱います。</p>
+</header>
+
+<section class="loader">
+  <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="音声ファイルを選択またはドロップ">
+    <strong>音声ファイルをドロップ</strong><span>または</span><button id="choose-file" type="button">ファイルを選択</button>
+    <input id="file-input" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+    <small>音声はブラウザ内だけで解析します。Treeの分類と時間選択は独立しています。</small>
+  </div>
+  <div class="loader-row">
+    <button id="synthetic-test" type="button">Synthetic demo</button>
+    <button id="cancel-analysis" type="button" disabled>Cancel</button>
+    <span id="status" aria-live="polite">音声を選択してください。</span>
+  </div>
+  <div class="progress-wrap"><div id="progress" class="progress"></div></div>
+</section>
+
+<audio id="audio" preload="metadata" hidden></audio>
+
+<main id="workspace" class="workspace">
+  <aside class="tree-panel">
+    <div class="tree-head">
+      <div class="eyebrow">CLASSIFICATION TREE</div>
+      <h2>何を見たい？</h2>
+      <p>チェックは時間選択を変えず、意味条件だけを追加します。</p>
+      <div class="tree-actions"><button id="clear-filters" type="button" disabled>条件クリア</button><button id="fit-first-match" type="button" disabled>最初の一致へ</button></div>
+    </div>
+    <div id="tree" class="tree"><p class="intro">解析後にTreeを生成します。</p></div>
+    <div class="condition-box">
+      <div class="condition-title">ACTIVE CONDITIONS</div>
+      <div id="condition-chips" class="condition-chips"><span class="rule-note">条件なし</span></div>
+      <div class="rule-note">同一Tree内はOR、Tree間はAND。結果は時間範囲の交差として計算します。</div>
+    </div>
+  </aside>
+
+  <section class="main-panel">
+    <div class="top-controls">
+      <section class="wave-panel">
+        <div class="wave-head">
+          <div><div class="eyebrow">RAW CONTINUOUS TIME</div><h2>波形から時間を選ぶ</h2></div>
+          <div class="clock"><b id="current-time">00:00.00</b> / <span id="duration-time">00:00.00</span></div>
+        </div>
+        <div id="wave-wrap" class="wave-wrap" tabindex="0" aria-label="波形。ドラッグして時間範囲を選択">
+          <canvas id="waveform" height="220"></canvas>
+          <div class="wave-hint">ドラッグ＝範囲選択 / クリック＝再生位置</div>
+        </div>
+        <div class="transport">
+          <button id="play-toggle" class="primary" type="button" disabled>▶ 再生</button>
+          <button id="play-selection" type="button" disabled>▶ 選択範囲</button>
+          <button id="loop-toggle" type="button" disabled>↻ ループ OFF</button>
+          <label class="volume">音量 <input id="volume" type="range" min="0" max="100" value="100" disabled><output id="volume-value">100%</output></label>
+        </div>
+        <input id="seek" class="seek" type="range" min="0" max="1" step="0.001" value="0" disabled aria-label="再生位置">
+      </section>
+
+      <section class="time-panel">
+        <div class="eyebrow">TIME SELECTION</div>
+        <div class="time-readout"><span id="selection-start-label">00:00.00</span><br>→ <span id="selection-end-label">00:00.00</span></div>
+        <div id="selection-duration" class="time-meta">0.00 s · raw continuous time</div>
+        <div class="time-control"><label><span>開始</span><output id="start-output">0.00s</output></label><input id="start-range" type="range" min="0" max="1" step="0.01" value="0" disabled></div>
+        <div class="time-control"><label><span>終了</span><output id="end-output">0.00s</output></label><input id="end-range" type="range" min="0" max="1" step="0.01" value="0" disabled></div>
+        <div class="time-number">
+          <label>開始秒<input id="start-number" type="number" min="0" step="0.01" value="0" disabled></label>
+          <label>終了秒<input id="end-number" type="number" min="0" step="0.01" value="0" disabled></label>
+        </div>
+        <div class="selection-actions">
+          <button id="current-to-start" type="button" disabled>現在位置→開始</button>
+          <button id="current-to-end" type="button" disabled>現在位置→終了</button>
+          <button id="download-selection" class="full" type="button" disabled>↓ 選択時間 WAV</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="tree-matches">
+      <div class="tree-match-head">
+        <div><h3>Tree → Time</h3><div id="match-note" class="rule-note">Tree条件を選ぶと一致する時間範囲を表示します。</div></div>
+        <div class="match-buttons"><button id="prev-match" type="button" disabled>← 一致</button><button id="next-match" type="button" disabled>一致 →</button></div>
+      </div>
+      <div id="match-list" class="match-list"></div>
+    </section>
+
+    <section class="timeline">
+      <div class="timeline-head">
+        <div><div class="eyebrow">MULTI-LAYER TIMELINE</div><h2>Treeと共通の時間軸</h2></div>
+        <p>ブロッククリックは、その注釈が持つ生の開始・終了時刻をそのまま選択します。</p>
+      </div>
+      <div id="lane-scale" class="scale"></div>
+      <div id="lane-grid"></div>
+    </section>
+
+    <section class="inspector">
+      <div>
+        <div class="eyebrow">TIME → TREE</div>
+        <h3>選択時間に重なる分類</h3>
+        <p>選択した連続時間と重なる注釈を、重なり時間の大きい順に表示します。</p>
+        <div id="selection-inspector" class="inspect-list"><span class="rule-note">まだ時間が選択されていません。</span></div>
+      </div>
+      <div>
+        <div class="eyebrow">PLAYHEAD → TREE</div>
+        <h3>今この瞬間</h3>
+        <p>再生位置に該当する分類。時間選択とは独立して追従します。</p>
+        <div id="playhead-inspector" class="inspect-list"><span class="rule-note">再生待ち。</span></div>
+      </div>
+    </section>
+  </section>
+</main>
+<footer id="provenance" class="footer">No audio loaded.</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const el={
+  drop:$('#drop-zone'),choose:$('#choose-file'),file:$('#file-input'),synthetic:$('#synthetic-test'),cancel:$('#cancel-analysis'),status:$('#status'),progress:$('#progress'),fileChip:$('#file-chip'),
+  audio:$('#audio'),waveWrap:$('#wave-wrap'),wave:$('#waveform'),play:$('#play-toggle'),playSelection:$('#play-selection'),loop:$('#loop-toggle'),volume:$('#volume'),volumeValue:$('#volume-value'),seek:$('#seek'),current:$('#current-time'),duration:$('#duration-time'),
+  tree:$('#tree'),clearFilters:$('#clear-filters'),fitFirst:$('#fit-first-match'),conditionChips:$('#condition-chips'),matchNote:$('#match-note'),matchList:$('#match-list'),prevMatch:$('#prev-match'),nextMatch:$('#next-match'),
+  startRange:$('#start-range'),endRange:$('#end-range'),startOutput:$('#start-output'),endOutput:$('#end-output'),startNumber:$('#start-number'),endNumber:$('#end-number'),selectionStartLabel:$('#selection-start-label'),selectionEndLabel:$('#selection-end-label'),selectionDuration:$('#selection-duration'),
+  currentToStart:$('#current-to-start'),currentToEnd:$('#current-to-end'),download:$('#download-selection'),laneScale:$('#lane-scale'),laneGrid:$('#lane-grid'),selectionInspector:$('#selection-inspector'),playheadInspector:$('#playhead-inspector'),provenance:$('#provenance')
+};
+const state={
+  data:null,annotations:{structure:[],vocal:[],performance:[],acoustic:[]},active:new Set(),matches:[],matchIndex:-1,
+  selectionStartSec:0,selectionEndSec:0,source:null,mono:null,objectUrl:null,abort:0,analyzing:false,loop:false,playRange:null,raf:0,draws:0,
+  dragAnchor:null,dragMoved:false
+};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+const median=a=>{const v=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!v.length)return NaN;const i=(v.length-1)/2,lo=Math.floor(i),hi=Math.ceil(i);return v[lo]+(v[hi]-v[lo])*(i-lo)};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function timeCode(sec){sec=Math.max(0,Number(sec)||0);const m=Math.floor(sec/60),s=sec-m*60;return `${String(m).padStart(2,'0')}:${s.toFixed(2).padStart(5,'0')}`}
+function setStatus(s){el.status.textContent=s}
+function setProgress(p){el.progress.style.width=`${clamp(p,0,1)*100}%`}
+function setAnalyzing(on){state.analyzing=on;el.cancel.disabled=!on;el.choose.disabled=on;el.file.disabled=on;el.synthetic.disabled=on}
+function downmix(buffer){const n=buffer.length,ch=buffer.numberOfChannels,out=new Float32Array(n);for(let c=0;c<ch;c++){const src=buffer.getChannelData(c);for(let i=0;i<n;i++)out[i]+=src[i]/ch}return out}
+function resample(input,src,dst){if(src<=dst+1)return{samples:input,rate:src};const ratio=src/dst,out=new Float32Array(Math.floor(input.length/ratio));for(let i=0;i<out.length;i++){const p=i*ratio,a=Math.floor(p),b=Math.min(input.length-1,a+1),f=p-a;out[i]=input[a]*(1-f)+input[b]*f}return{samples:out,rate:dst}}
+function frameFeatures(samples,sr,start,size,prevDb){
+  let sq=0,zc=0,diffSq=0,prev=samples[start]||0;
+  for(let i=0;i<size;i++){const x=samples[start+i]||0;sq+=x*x;if(i&&((x>=0)!=(prev>=0)))zc++;const d=x-prev;diffSq+=d*d;prev=x}
+  const rms=Math.sqrt(sq/size),rmsDb=20*Math.log10(rms+1e-12),zcr=zc/size,brightness=Math.sqrt(diffSq/Math.max(sq,1e-12));
+  const minLag=Math.max(2,Math.floor(sr/500)),maxLag=Math.min(Math.floor(sr/70),size-2);let best=0;
+  for(let lag=minLag;lag<=maxLag;lag+=2){let xy=0,xx=0,yy=0;for(let i=0;i<size-lag;i+=2){const a=samples[start+i]||0,b=samples[start+i+lag]||0;xy+=a*b;xx+=a*a;yy+=b*b}const c=xy/Math.sqrt(Math.max(1e-12,xx*yy));if(c>best)best=c}
+  const delta=Number.isFinite(prevDb)?rmsDb-prevDb:0;
+  const vocalScore=clamp((best-.28)/.48,0,1)*clamp((.24-zcr)/.18,0,1)*clamp((2.4-brightness)/1.7,0,1)*clamp((rmsDb+58)/26,0,1);
+  return{rmsDb,zcr,periodicity:clamp(best,0,1),brightness,delta,vocalScore};
+}
+async function analyzeSamples(samples,sr,meta,token){
+  const rr=resample(samples,sr,12000),x=rr.samples,rate=rr.rate,size=Math.max(512,Math.round(rate*.08)),hopS=Math.max(1,Math.round(rate*.04)),hop=hopS/rate,frames=[];
+  let prevDb=NaN;const count=Math.max(0,Math.floor((x.length-size)/hopS)+1);
+  for(let i=0;i<count;i++){if(token!==state.abort)throw new Error('cancelled');const start=i*hopS,f=frameFeatures(x,rate,start,size,prevDb);prevDb=f.rmsDb;frames.push({t:(start+size/2)/rate,...f});if((i&15)===0){setProgress(count?i/count:0);setStatus(`解析 ${i.toLocaleString()} / ${count.toLocaleString()}`);await new Promise(r=>setTimeout(r,0))}}
+  setProgress(1);return{name:meta.name||'audio',mime:meta.mime||'',duration:x.length/rate,sourceRate:meta.sourceRate||sr,analysisRate:rate,hop,frames};
+}
+function smoothLabels(raw){if(raw.length<5)return raw;return raw.map((k,i)=>{const c={quiet:0,periodic:0,transient:0,mixed:0};for(let j=Math.max(0,i-2);j<=Math.min(raw.length-1,i+2);j++)c[raw[j]]++;return Object.keys(c).reduce((a,b)=>c[b]>c[a]?b:a,k)})}
+function classifyFrames(data){
+  const frames=data.frames,floor=median(frames.map(f=>f.rmsDb).filter(Number.isFinite).sort((a,b)=>a-b).slice(0,Math.max(3,Math.floor(frames.length*.25))))||-60;
+  return smoothLabels(frames.map(f=>f.rmsDb<Math.min(-48,floor+7)?'quiet':(Math.abs(f.delta)>8&&f.periodicity<.45)?'transient':f.periodicity>.58?'periodic':'mixed'));
+}
+function mergeWindows(windows,key='label'){
+  const out=[];for(const w of windows.sort((a,b)=>a.s-b.s)){const p=out[out.length-1];if(p&&p[key]===w[key]&&w.s<=p.e+.08){p.e=Math.max(p.e,w.e);p.confidence=(p.confidence+w.confidence)/2;p.parts=(p.parts||1)+1}else out.push({...w})}return out;
+}
+function buildAcoustic(data){
+  const labels=classifyFrames(data),out=[];let st=0;
+  for(let i=1;i<=data.frames.length;i++){if(i<data.frames.length&&labels[i]===labels[st])continue;const en=i-1,sl=data.frames.slice(st,i),s=Math.max(0,data.frames[st].t-data.hop/2),e=Math.min(data.duration,data.frames[en].t+data.hop/2),label=labels[st];out.push({s,e,label,key:label,confidence:label==='quiet'?.9:clamp(.55+mean(sl.map(f=>f.periodicity))*.35,0,1)});st=i}
+  return out;
+}
+function buildVocal(data){
+  const frames=data.frames,hop=data.hop,wins=[];
+  for(const mode of ['vocal','nonvocal']){let on=false,st=0,scores=[];for(let i=0;i<=frames.length;i++){const active=i<frames.length&&frames[i].rmsDb>-52,yes=active&&(mode==='vocal'?frames[i].vocalScore>.46:frames[i].vocalScore<=.46);if(yes&&!on){on=true;st=i;scores=[]}if(yes)scores.push(mode==='vocal'?frames[i].vocalScore:1-frames[i].vocalScore);if(on&&(!yes||i===frames.length)){const en=i-1,s=Math.max(0,frames[st].t-hop/2),e=Math.min(data.duration,frames[en].t+hop/2);if(e-s>.18)wins.push({s,e,label:mode==='vocal'?'Vocal候補':'Vocalなし候補',key:mode,confidence:mean(scores)});on=false}}}
+  return mergeWindows(wins).sort((a,b)=>a.s-b.s);
+}
+function buildPerformance(data){
+  const frames=data.frames,step=Math.max(1,Math.round(1.2/data.hop)),wins=[],dbs=frames.map(f=>f.rmsDb),mid=median(dbs)||-35;
+  for(let i=0;i<frames.length;i+=step){const sl=frames.slice(i,Math.min(frames.length,i+step));if(!sl.length)continue;const rms=mean(sl.map(f=>f.rmsDb)),quiet=sl.filter(f=>f.rmsDb<-50).length/sl.length,trans=sl.filter(f=>Math.abs(f.delta)>7).length/sl.length,period=mean(sl.map(f=>f.periodicity));let label='通常演奏',key='normal',conf=.62;if(quiet>.58){label='Break / 休止候補';key='break';conf=clamp(.55+quiet*.4,0,1)}else if(rms>mid+5||trans>.16){label='Dense / 高密度候補';key='dense';conf=clamp(.6+Math.min(.3,Math.abs(rms-mid)/22+trans),0,1)}else if(rms<mid-6){label='Sparse / 低密度候補';key='sparse';conf=clamp(.58+Math.min(.3,Math.abs(rms-mid)/25),0,1)}else if(period>.7){label='Sustained / 持続候補';key='sustained';conf=clamp(.55+period*.3,0,1)}const s=Math.max(0,sl[0].t-data.hop/2),e=Math.min(data.duration,sl[sl.length-1].t+data.hop/2);wins.push({s,e,label,key,confidence:conf})}
+  return mergeWindows(wins);
+}
+function buildStructure(data){
+  const frames=data.frames,block=Math.max(1,Math.round(1.5/data.hop)),chunks=[];
+  for(let i=0;i<frames.length;i+=block){const sl=frames.slice(i,Math.min(frames.length,i+block));if(!sl.length)continue;chunks.push({s:Math.max(0,sl[0].t-data.hop/2),e:Math.min(data.duration,sl[sl.length-1].t+data.hop/2),rms:mean(sl.map(f=>f.rmsDb)),per:mean(sl.map(f=>f.periodicity)),voc:mean(sl.map(f=>f.vocalScore)),trans:sl.filter(f=>Math.abs(f.delta)>7).length/sl.length})}
+  const bounds=[0];for(let i=1;i<chunks.length;i++){const a=chunks[i-1],b=chunks[i],score=Math.abs(b.rms-a.rms)/10+Math.abs(b.per-a.per)*1.8+Math.abs(b.voc-a.voc)*1.8+Math.abs(b.trans-a.trans)*2.2;if(score>1.15&&b.s-bounds[bounds.length-1]>=2.5)bounds.push(b.s)}
+  if(data.duration-(bounds[bounds.length-1]||0)>.2)bounds.push(data.duration);
+  const out=[];for(let i=0;i<bounds.length-1;i++){let s=bounds[i],e=bounds[i+1];if(e-s>13){const parts=Math.ceil((e-s)/10),d=(e-s)/parts;for(let p=0;p<parts;p++)out.push({s:s+p*d,e:Math.min(e,s+(p+1)*d),label:`Section ${out.length+1}`,key:`section-${out.length+1}`,confidence:.55})}else out.push({s,e,label:`Section ${out.length+1}`,key:`section-${out.length+1}`,confidence:.58})}
+  return out;
+}
+function buildAnnotations(data){return{structure:buildStructure(data),vocal:buildVocal(data),performance:buildPerformance(data),acoustic:buildAcoustic(data)}}
+function keyFor(layer,a){return `${layer}:${a.key}`}
+function layerName(layer){return({structure:'楽曲構造',vocal:'Vocal',performance:'演奏状態',acoustic:'音響解析'})[layer]||layer}
+function annotationCatalog(){
+  const out=[];for(const layer of ['structure','vocal','performance','acoustic']){const m=new Map();for(const a of state.annotations[layer]){const key=keyFor(layer,a);if(!m.has(key))m.set(key,{layer,key,label:a.label,items:[]});m.get(key).items.push(a)}out.push(...m.values())}return out;
+}
+function renderTree(){
+  if(!state.data)return;const catalog=annotationCatalog();el.tree.innerHTML='';
+  for(const layer of ['structure','vocal','performance','acoustic']){const d=document.createElement('details');d.open=true;const s=document.createElement('summary');s.textContent=layerName(layer);d.appendChild(s);const box=document.createElement('div');box.className='tree-children';
+    for(const item of catalog.filter(x=>x.layer===layer)){const row=document.createElement('div');row.className='tree-row';row.innerHTML=`<label><input type="checkbox" data-key="${escapeHtml(item.key)}"> <span>${escapeHtml(item.label)}</span></label><span class="count">${item.items.length}</span><button type="button" data-toggle="${escapeHtml(item.key)}">時間</button>`;box.appendChild(row);
+      const occ=document.createElement('div');occ.className='occurrences';occ.dataset.occ=item.key;occ.hidden=true;item.items.slice(0,60).forEach((a,i)=>{const b=document.createElement('button');b.type='button';b.className='occurrence';b.dataset.selectS=String(a.s);b.dataset.selectE=String(a.e);b.innerHTML=`<span>${i+1}. ${timeCode(a.s)}–${timeCode(a.e)}</span><span>${(a.confidence||0).toFixed(2)}</span>`;occ.appendChild(b)});box.appendChild(occ);
+    }
+    d.appendChild(box);el.tree.appendChild(d);
+  }
+  syncTreeChecks();
+}
+function syncTreeChecks(){el.tree.querySelectorAll('input[data-key]').forEach(c=>c.checked=state.active.has(c.dataset.key))}
+function renderConditions(){
+  const catalog=new Map(annotationCatalog().map(x=>[x.key,x]));if(!state.active.size){el.conditionChips.innerHTML='<span class="rule-note">条件なし</span>';return}
+  el.conditionChips.innerHTML=[...state.active].map(k=>`<span class="condition-chip">${escapeHtml(catalog.get(k)?.label||k)} <button type="button" data-remove="${escapeHtml(k)}" aria-label="条件を外す">×</button></span>`).join('');
+}
+function normalizeRanges(ranges){
+  const src=ranges.filter(r=>r&&r.e>r.s).sort((a,b)=>a.s-b.s),out=[];for(const r of src){const p=out[out.length-1];if(p&&r.s<=p.e+.001)p.e=Math.max(p.e,r.e);else out.push({s:r.s,e:r.e})}return out;
+}
+function intersectTwo(a,b){
+  const out=[];let i=0,j=0;while(i<a.length&&j<b.length){const s=Math.max(a[i].s,b[j].s),e=Math.min(a[i].e,b[j].e);if(e>s+.001)out.push({s,e});if(a[i].e<b[j].e)i++;else j++}return normalizeRanges(out);
+}
+function computeTreeMatches(){
+  if(!state.data||!state.active.size)return[];
+  const groups={};for(const key of state.active){const layer=key.split(':')[0];(groups[layer]||(groups[layer]=[])).push(key)}
+  let result=null;
+  for(const [layer,keys] of Object.entries(groups)){const ranges=[];for(const a of state.annotations[layer]||[])if(keys.includes(keyFor(layer,a)))ranges.push({s:a.s,e:a.e});const union=normalizeRanges(ranges);result=result===null?union:intersectTwo(result,union)}
+  return normalizeRanges(result||[]);
+}
+function recomputeMatches(){
+  state.matches=computeTreeMatches();state.matchIndex=state.matches.length?clamp(state.matchIndex,0,state.matches.length-1):-1;
+  el.matchNote.textContent=state.active.size?`${state.matches.length} 個の時間範囲が条件に一致。区間番号への変換は行いません。`:'Tree条件を選ぶと一致する時間範囲を表示します。';
+  el.matchList.innerHTML=state.matches.map((r,i)=>`<button type="button" class="match-item ${i===state.matchIndex?'is-current':''}" data-match="${i}">${timeCode(r.s)}–${timeCode(r.e)} · ${(r.e-r.s).toFixed(2)}s</button>`).join('');
+  el.prevMatch.disabled=!state.matches.length;el.nextMatch.disabled=!state.matches.length;el.fitFirst.disabled=!state.matches.length;
+  drawWaveform();renderLanes();
+  document.documentElement.dataset.matchCount=String(state.matches.length);
+}
+function setMatch(index){
+  if(!state.matches.length)return;state.matchIndex=(index+state.matches.length)%state.matches.length;const r=state.matches[state.matchIndex];setSelection(r.s,r.e,'tree-match');recomputeMatches();
+}
+function currentSelection(){if(!state.data)return null;const s=clamp(Math.min(state.selectionStartSec,state.selectionEndSec),0,state.data.duration),e=clamp(Math.max(state.selectionStartSec,state.selectionEndSec),0,state.data.duration);return{s,e,duration:e-s}}
+function setSelection(s,e,source='time'){
+  if(!state.data)return;const dur=state.data.duration;s=clamp(Number(s)||0,0,dur);e=clamp(Number(e)||0,0,dur);if(e<s)[s,e]=[e,s];state.selectionStartSec=s;state.selectionEndSec=e;updateSelectionUi();document.documentElement.dataset.selectionSource=source;
+}
+function updateSelectionUi(){
+  const r=currentSelection();if(!r)return;const max=state.data.duration;
+  el.startRange.max=el.endRange.max=el.startNumber.max=el.endNumber.max=String(max);el.startRange.value=el.startNumber.value=r.s.toFixed(2);el.endRange.value=el.endNumber.value=r.e.toFixed(2);
+  el.startOutput.textContent=`${r.s.toFixed(2)}s`;el.endOutput.textContent=`${r.e.toFixed(2)}s`;el.selectionStartLabel.textContent=timeCode(r.s);el.selectionEndLabel.textContent=timeCode(r.e);el.selectionDuration.textContent=`${r.duration.toFixed(2)} s · raw continuous time`;
+  drawWaveform();renderLanes();renderSelectionInspector();document.documentElement.dataset.selection=`${r.s.toFixed(3)}:${r.e.toFixed(3)}`;
+}
+function overlap(a,b){return Math.max(0,Math.min(a.e,b.e)-Math.max(a.s,b.s))}
+function selectionAnnotations(){
+  const r=currentSelection();if(!r)return[];const rows=[];for(const layer of ['structure','vocal','performance','acoustic'])for(const a of state.annotations[layer]){const ov=overlap(r,a);if(ov>.001)rows.push({layer,a,overlap:ov,ratio:ov/Math.max(.001,r.duration||1)})}return rows.sort((x,y)=>y.overlap-x.overlap);
+}
+function renderSelectionInspector(){
+  if(!state.data){return}const rows=selectionAnnotations();el.selectionInspector.innerHTML=rows.length?rows.slice(0,20).map(x=>`<div class="inspect-row"><span class="layer">${layerName(x.layer)}</span><strong>${escapeHtml(x.a.label)}</strong><span class="score">${x.overlap.toFixed(2)}s · conf ${(x.a.confidence||0).toFixed(2)}</span></div>`).join(''):'<span class="rule-note">この時間範囲に注釈はありません。</span>';
+}
+function renderPlayheadInspector(){
+  if(!state.data)return;const t=el.audio.currentTime||0,rows=[];for(const layer of ['structure','vocal','performance','acoustic'])for(const a of state.annotations[layer])if(t>=a.s&&t<=a.e)rows.push({layer,a});el.playheadInspector.innerHTML=rows.length?rows.map(x=>`<div class="inspect-row"><span class="layer">${layerName(x.layer)}</span><strong>${escapeHtml(x.a.label)}</strong><span class="score">conf ${(x.a.confidence||0).toFixed(2)}</span></div>`).join(''):'<span class="rule-note">該当注釈なし。</span>';
+}
+function renderScale(){
+  if(!state.data)return;const dur=Math.max(.001,state.data.duration),steps=dur<30?6:dur<120?8:10;el.laneScale.innerHTML='';for(let i=0;i<=steps;i++){const t=dur*i/steps,n=document.createElement('span');n.className='tick';n.style.left=`${i/steps*100}%`;n.textContent=timeCode(t);el.laneScale.appendChild(n)}
+}
+function renderLanes(){
+  if(!state.data)return;const dur=Math.max(.001,state.data.duration),r=currentSelection(),ph=clamp((el.audio.currentTime||0)/dur,0,1)*100;el.laneGrid.innerHTML='';
+  for(const layer of ['structure','vocal','performance','acoustic']){const row=document.createElement('div');row.className='lane-row';const label=document.createElement('div');label.className='lane-label';label.textContent=layerName(layer);const lane=document.createElement('div');lane.className='lane';
+    for(const a of state.annotations[layer]){const b=document.createElement('button');b.type='button';b.className=`ann ${layer}`;b.dataset.selectS=String(a.s);b.dataset.selectE=String(a.e);b.dataset.key=keyFor(layer,a);b.style.left=`${a.s/dur*100}%`;b.style.width=`${Math.max(.15,(a.e-a.s)/dur*100)}%`;b.textContent=a.label;b.title=`${a.label} · ${timeCode(a.s)}–${timeCode(a.e)} · confidence ${(a.confidence||0).toFixed(2)}`;if(state.active.has(b.dataset.key))b.classList.add('is-active-key');if(r&&overlap(r,a)<=.001)b.classList.add('is-outside');lane.appendChild(b)}
+    if(r){const s=document.createElement('span');s.className='lane-selection';s.style.left=`${r.s/dur*100}%`;s.style.width=`${Math.max(0,(r.e-r.s)/dur*100)}%`;lane.appendChild(s)}
+    const p=document.createElement('span');p.className='lane-playhead';p.style.left=`${ph}%`;lane.appendChild(p);row.append(label,lane);el.laneGrid.appendChild(row);
+  }
+}
+function canvasSize(){const rect=el.wave.getBoundingClientRect(),dpr=Math.max(1,window.devicePixelRatio||1),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(el.wave.width!==w||el.wave.height!==h){el.wave.width=w;el.wave.height=h}return{w,h,dpr}}
+function drawWaveform(){
+  const {w,h,dpr}=canvasSize(),ctx=el.wave.getContext('2d');ctx.clearRect(0,0,w,h);ctx.fillStyle='#1d1c19';ctx.fillRect(0,0,w,h);if(!state.data||!state.mono){ctx.fillStyle='#746e65';ctx.font=`${12*dpr}px system-ui`;ctx.fillText('音声を読み込むと波形を表示します',16*dpr,28*dpr);return}
+  const dur=Math.max(.001,state.data.duration),r=currentSelection();for(const m of state.matches){ctx.fillStyle='rgba(85,121,102,.10)';ctx.fillRect(m.s/dur*w,0,(m.e-m.s)/dur*w,h)}
+  if(r){ctx.fillStyle='rgba(165,82,55,.20)';ctx.fillRect(r.s/dur*w,0,(r.e-r.s)/dur*w,h)}
+  ctx.strokeStyle='#8b8479';ctx.lineWidth=Math.max(1,dpr);ctx.beginPath();const mid=h/2,n=state.mono.length,cols=Math.max(1,Math.floor(w));for(let x=0;x<cols;x++){const a=Math.floor(x/cols*n),b=Math.max(a+1,Math.floor((x+1)/cols*n));let peak=0;for(let i=a;i<b;i++)peak=Math.max(peak,Math.abs(state.mono[i]||0));const y=peak*h*.42;ctx.moveTo(x,mid-y);ctx.lineTo(x,mid+y)}ctx.stroke();
+  if(r){ctx.strokeStyle='#e8a26f';ctx.lineWidth=Math.max(2,2*dpr);ctx.strokeRect(r.s/dur*w,1,Math.max(2,(r.e-r.s)/dur*w),h-2)}
+  const ph=clamp((el.audio.currentTime||0)/dur,0,1)*w;ctx.strokeStyle='#f3b15d';ctx.lineWidth=Math.max(1.5,1.5*dpr);ctx.beginPath();ctx.moveTo(ph,0);ctx.lineTo(ph,h);ctx.stroke();state.draws++;document.documentElement.dataset.waveDraws=String(state.draws);
+}
+function enableUi(on){
+  for(const n of [el.play,el.playSelection,el.loop,el.volume,el.seek,el.startRange,el.endRange,el.startNumber,el.endNumber,el.currentToStart,el.currentToEnd,el.download,el.clearFilters])n.disabled=!on;
+}
+function setPlayRange(range,mode){state.playRange=range?{s:range.s,e:range.e}:null;document.documentElement.dataset.playMode=mode||'track'}
+async function playSelection(){const r=currentSelection();if(!r||r.duration<=.001)return;setPlayRange(r,'selection');el.audio.currentTime=r.s;await el.audio.play()}
+function toggleLoop(){state.loop=!state.loop;el.loop.classList.toggle('is-on',state.loop);el.loop.textContent=`↻ ループ ${state.loop?'ON':'OFF'}`;document.documentElement.dataset.loop=state.loop?'on':'off'}
+function syncPlayback(){
+  if(!state.data)return;const t=clamp(el.audio.currentTime||0,0,state.data.duration);el.current.textContent=timeCode(t);el.seek.value=String(t);const pr=state.playRange;if(!el.audio.paused&&pr&&t>=pr.e-.004){if(state.loop){el.audio.currentTime=pr.s}else{el.audio.pause();el.audio.currentTime=pr.e;setPlayRange(null,'track')}}
+  drawWaveform();renderLanes();renderPlayheadInspector();
+}
+function tick(){state.raf=0;syncPlayback();if(!el.audio.paused&&!el.audio.ended)state.raf=requestAnimationFrame(tick)}
+function startTick(){if(state.raf)cancelAnimationFrame(state.raf);tick()}function stopTick(){if(state.raf)cancelAnimationFrame(state.raf);state.raf=0;syncPlayback()}
+function writeAscii(v,o,s){for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+function wavBlob(range){
+  const src=state.source;if(!src||!range)throw new Error('音声データがありません');const channels=src.channels.filter(Boolean),count=channels.length,sr=src.sampleRate,maxFrames=Math.min(...channels.map(c=>c.length)),start=clamp(Math.floor(range.s*sr),0,maxFrames),end=clamp(Math.ceil(range.e*sr),start,maxFrames),frames=end-start,align=count*2,buf=new ArrayBuffer(44+frames*align),v=new DataView(buf);
+  writeAscii(v,0,'RIFF');v.setUint32(4,36+frames*align,true);writeAscii(v,8,'WAVE');writeAscii(v,12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,count,true);v.setUint32(24,sr,true);v.setUint32(28,sr*align,true);v.setUint16(32,align,true);v.setUint16(34,16,true);writeAscii(v,36,'data');v.setUint32(40,frames*align,true);let off=44;for(let i=start;i<end;i++)for(let c=0;c<count;c++){const x=clamp(channels[c][i]||0,-1,1);v.setInt16(off,x<0?Math.round(x*32768):Math.round(x*32767),true);off+=2}return new Blob([buf],{type:'audio/wav'});
+}
+function downloadSelection(){const r=currentSelection();if(!r||r.duration<=.001)return;const blob=wavBlob(r),url=URL.createObjectURL(blob),a=document.createElement('a'),base=(state.source?.name||'annotation-explorer').replace(/\.[^.]+$/,'');a.href=url;a.download=`${base}.time-${r.s.toFixed(2)}-${r.e.toFixed(2)}.wav`;a.click();document.documentElement.dataset.lastDownload=a.download;setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function makeSynthetic(){
+  const sr=12000,dur=18,n=Math.floor(sr*dur),x=new Float32Array(n);let ph=0;for(let i=0;i<n;i++){const t=i/sr;let amp=.07,f=130,voice=0,noise=.02;if(t<2){amp=.05;f=110}else if(t<5){amp=.22;f=160;voice=.72}else if(t<6.4){amp=.02;noise=.06}else if(t<11){amp=.29;f=220+20*Math.sin(2*Math.PI*.5*t);voice=1}else if(t<12.6){amp=.13;f=118;voice=0}else if(t<16){amp=.25;f=185;voice=.86}else amp=.015;ph+=2*Math.PI*f/sr;const instr=amp*.55*Math.sin(ph*.51)+amp*.22*Math.sin(ph*1.87),voc=voice*amp*(Math.sin(ph)+.23*Math.sin(2*ph)+.11*Math.sin(3*ph)),nz=noise*(Math.sin(i*1.731)+.4*Math.sin(i*3.127));x[i]=instr+voc+nz}return{x,sr};
+}
+function sourceWavUrl(src){const old=state.source;state.source=src;try{return URL.createObjectURL(wavBlob({s:0,e:src.channels[0].length/src.sampleRate}))}finally{state.source=old}}
+function accept(data,source,mono,url){
+  state.data=data;state.source=source;state.mono=mono;state.annotations=buildAnnotations(data);state.active.clear();state.matches=[];state.matchIndex=-1;state.selectionStartSec=0;state.selectionEndSec=Math.min(data.duration,Math.max(.5,data.duration*.25));state.loop=false;state.playRange=null;
+  if(state.objectUrl)URL.revokeObjectURL(state.objectUrl);state.objectUrl=url;if(url){el.audio.src=url;el.audio.hidden=false}else{el.audio.removeAttribute('src');el.audio.load()}
+  el.fileChip.hidden=false;el.fileChip.textContent=`${data.name} · ${timeCode(data.duration)} · raw time selection`;el.duration.textContent=timeCode(data.duration);el.seek.max=String(data.duration);el.seek.value='0';el.volume.value='100';el.audio.volume=1;el.volumeValue.textContent='100%';el.loop.textContent='↻ ループ OFF';el.loop.classList.remove('is-on');
+  renderTree();renderConditions();renderScale();enableUi(!!url);updateSelectionUi();recomputeMatches();renderPlayheadInspector();el.provenance.textContent=`browser-local · source ${Math.round(data.sourceRate)} Hz · analysis ${Math.round(data.analysisRate)} Hz · hop ${(data.hop*1000).toFixed(0)} ms · raw continuous time selection · heuristic annotations`;
+  document.documentElement.dataset.analysis='ready';document.documentElement.dataset.selectionModel='continuous-time';setStatus(`done · ${Object.values(state.annotations).reduce((s,a)=>s+a.length,0)} annotations`);
+}
+async function analyzeFile(file){
+  const token=++state.abort;setAnalyzing(true);setProgress(.01);setStatus(`decoding ${file.name}`);try{const bytes=await file.arrayBuffer(),ac=new(window.AudioContext||window.webkitAudioContext)();let buffer;try{buffer=await ac.decodeAudioData(bytes.slice(0))}finally{await ac.close().catch(()=>{})}const channels=Array.from({length:buffer.numberOfChannels},(_,c)=>new Float32Array(buffer.getChannelData(c))),mono=downmix(buffer),data=await analyzeSamples(mono,buffer.sampleRate,{name:file.name,mime:file.type,sourceRate:buffer.sampleRate},token),url=URL.createObjectURL(file);accept(data,{name:file.name,sampleRate:buffer.sampleRate,channels},mono,url)}catch(err){if(String(err?.message||err)==='cancelled')setStatus('cancelled');else{console.error(err);setStatus(`error: ${err?.message||err}`)}}finally{if(token===state.abort)setAnalyzing(false)}
+}
+async function runSynthetic(selftest=false){
+  const token=++state.abort;setAnalyzing(true);setStatus(selftest?'selftest: Annotation Explorer':'synthetic demo');if(selftest)document.documentElement.dataset.selftest='running';try{const s=makeSynthetic(),data=await analyzeSamples(s.x,s.sr,{name:'annotation-explorer-demo.wav',mime:'audio/synthetic',sourceRate:s.sr},token),src={name:'annotation-explorer-demo.wav',sampleRate:s.sr,channels:[s.x]},url=sourceWavUrl(src);accept(data,src,s.x,url);if(selftest){const vocal=annotationCatalog().find(x=>x.key==='vocal:vocal'),dense=annotationCatalog().find(x=>x.key==='performance:dense');if(vocal)state.active.add(vocal.key);if(dense)state.active.add(dense.key);renderConditions();syncTreeChecks();recomputeMatches();const before=state.selectionStartSec;setSelection(1.23,4.56,'selftest');const exact=Math.abs(state.selectionStartSec-1.23)<1e-9&&Math.abs(state.selectionEndSec-4.56)<1e-9;const ok=state.annotations.structure.length>=2&&state.annotations.vocal.length>=2&&exact&&document.documentElement.dataset.selectionModel==='continuous-time';document.documentElement.dataset.selftest=ok?'pass':'fail';setStatus(`selftest ${ok?'PASS':'FAIL'} · ${state.matches.length} tree/time matches · raw selection ${before.toFixed(2)}→1.23s`)}}catch(err){console.error(err);setStatus(`error: ${err?.message||err}`);if(selftest)document.documentElement.dataset.selftest='fail'}finally{if(token===state.abort)setAnalyzing(false)}
+}
+function applyFilter(key,on){if(on)state.active.add(key);else state.active.delete(key);renderConditions();syncTreeChecks();recomputeMatches();document.documentElement.dataset.activeConditions=String(state.active.size)}
+function timeFromClientX(clientX){const r=el.waveWrap.getBoundingClientRect();return state.data?clamp((clientX-r.left)/Math.max(1,r.width),0,1)*state.data.duration:0}
+el.choose.addEventListener('click',()=>el.file.click());el.file.addEventListener('change',()=>{const f=el.file.files?.[0];if(f)analyzeFile(f)});
+el.drop.addEventListener('dragover',e=>{e.preventDefault();el.drop.classList.add('drag')});el.drop.addEventListener('dragleave',()=>el.drop.classList.remove('drag'));el.drop.addEventListener('drop',e=>{e.preventDefault();el.drop.classList.remove('drag');const f=e.dataTransfer?.files?.[0];if(f)analyzeFile(f)});el.drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.file.click()}});
+el.synthetic.addEventListener('click',()=>runSynthetic(false));el.cancel.addEventListener('click',()=>{state.abort++;setAnalyzing(false);setStatus('cancelled')});
+el.tree.addEventListener('change',e=>{const c=e.target.closest('input[data-key]');if(c)applyFilter(c.dataset.key,c.checked)});
+el.tree.addEventListener('click',e=>{const t=e.target.closest('[data-toggle]');if(t){const n=el.tree.querySelector(`[data-occ="${CSS.escape(t.dataset.toggle)}"]`);if(n)n.hidden=!n.hidden;return}const b=e.target.closest('[data-select-s]');if(b)setSelection(Number(b.dataset.selectS),Number(b.dataset.selectE),'tree-occurrence')});
+el.conditionChips.addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(b)applyFilter(b.dataset.remove,false)});el.clearFilters.addEventListener('click',()=>{state.active.clear();renderConditions();syncTreeChecks();recomputeMatches()});el.fitFirst.addEventListener('click',()=>{if(state.matches.length)setMatch(0)});
+el.matchList.addEventListener('click',e=>{const b=e.target.closest('[data-match]');if(b)setMatch(Number(b.dataset.match))});el.prevMatch.addEventListener('click',()=>setMatch(state.matchIndex-1));el.nextMatch.addEventListener('click',()=>setMatch(state.matchIndex+1));
+el.laneGrid.addEventListener('click',e=>{const b=e.target.closest('[data-select-s]');if(b)setSelection(Number(b.dataset.selectS),Number(b.dataset.selectE),'timeline-annotation')});
+function bindTimeInput(range,number,which){const fn=v=>{const r=currentSelection();if(!r)return;if(which==='start')setSelection(Number(v),r.e,'time-control');else setSelection(r.s,Number(v),'time-control')};range.addEventListener('input',()=>fn(range.value));number.addEventListener('change',()=>fn(number.value))}
+bindTimeInput(el.startRange,el.startNumber,'start');bindTimeInput(el.endRange,el.endNumber,'end');
+el.currentToStart.addEventListener('click',()=>{const r=currentSelection();if(r)setSelection(el.audio.currentTime||0,r.e,'playhead-start')});el.currentToEnd.addEventListener('click',()=>{const r=currentSelection();if(r)setSelection(r.s,el.audio.currentTime||0,'playhead-end')});
+el.waveWrap.addEventListener('pointerdown',e=>{if(!state.data)return;state.dragAnchor=timeFromClientX(e.clientX);state.dragMoved=false;el.waveWrap.setPointerCapture?.(e.pointerId)});
+el.waveWrap.addEventListener('pointermove',e=>{if(state.dragAnchor==null||!state.data)return;const t=timeFromClientX(e.clientX);if(Math.abs(t-state.dragAnchor)>.03)state.dragMoved=true;setSelection(state.dragAnchor,t,'wave-drag')});
+el.waveWrap.addEventListener('pointerup',e=>{if(state.dragAnchor==null||!state.data)return;const t=timeFromClientX(e.clientX);if(!state.dragMoved){el.audio.currentTime=t;setPlayRange(null,'track');syncPlayback()}else setSelection(state.dragAnchor,t,'wave-drag');state.dragAnchor=null;state.dragMoved=false;el.waveWrap.releasePointerCapture?.(e.pointerId)});
+el.waveWrap.addEventListener('pointercancel',()=>{state.dragAnchor=null;state.dragMoved=false});
+el.play.addEventListener('click',async()=>{if(el.audio.paused){setPlayRange(null,'track');await el.audio.play()}else el.audio.pause()});el.playSelection.addEventListener('click',playSelection);el.loop.addEventListener('click',toggleLoop);
+el.seek.addEventListener('input',()=>{el.audio.currentTime=Number(el.seek.value)||0;setPlayRange(null,'track');syncPlayback()});el.volume.addEventListener('input',()=>{const p=clamp(Number(el.volume.value)||0,0,100);el.audio.volume=p/100;el.volumeValue.textContent=`${Math.round(p)}%`});el.download.addEventListener('click',downloadSelection);
+el.audio.addEventListener('play',()=>{el.play.textContent='❚❚ 一時停止';startTick()});el.audio.addEventListener('pause',()=>{el.play.textContent='▶ 再生';stopTick()});el.audio.addEventListener('ended',()=>{el.play.textContent='▶ 再生';stopTick()});el.audio.addEventListener('timeupdate',syncPlayback);
+window.addEventListener('resize',()=>{drawWaveform();renderLanes()});
+enableUi(false);drawWaveform();
+window.__annotationExplorerTest={state,normalizeRanges,intersectTwo,computeTreeMatches,setSelection,currentSelection,buildAnnotations,runSynthetic};
+if(new URLSearchParams(location.search).get('selftest')==='1')setTimeout(()=>runSynthetic(true),0);
+})();
+</script>
+</body>
+</html>
