@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "tools/section_ai_onnx_probe.py"
+      - "tools/section-ai-ortweb-probe/**"
       - ".github/workflows/section-ai-onnx-probe.yml"
   workflow_dispatch:
 
@@ -58,6 +59,48 @@ jobs:
           for a in p.get("attempts", []):
               print(a)
           PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build ORT Web probe
+        working-directory: tools/section-ai-ortweb-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          cp ../../section-ai-probe/harmonix-fold0-section-function.onnx dist/model.onnx
+          mkdir -p dist/ort-wasm
+          cp node_modules/onnxruntime-web/dist/*.wasm dist/ort-wasm/
+          test -s dist/model.onnx
+
+      - name: Browser ORT Web probe
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found"
+            exit 1
+          fi
+          python3 -m http.server 4182 --bind 127.0.0.1 --directory tools/section-ai-ortweb-probe/dist >/tmp/section-ai-ortweb-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4182/ >/dev/null; then break; fi
+            sleep 0.25
+          done
+          "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --enable-unsafe-webgpu             --use-angle=swiftshader             --enable-features=Vulkan,WebGPUDeveloperFeatures             --disable-vulkan-surface             --virtual-time-budget=30000             --dump-dom             "http://127.0.0.1:4182/"             > /tmp/section-ai-ortweb.html || true
+          cat /tmp/section-ai-ortweb.html
+          RESULT="$(grep -oE 'data-section-ai-ortweb="[^"]+"' /tmp/section-ai-ortweb.html | head -1 || true)"
+          PROVIDER="$(grep -oE 'data-provider="[^"]+"' /tmp/section-ai-ortweb.html | head -1 || true)"
+          echo "ORT Web result: ${RESULT}"
+          echo "ORT Web provider: ${PROVIDER}"
+          if grep -Eq 'data-section-ai-ortweb="(WEBGPU_PASS|WEBGPU_FAIL_WASM_PASS|NO_WEBGPU_WASM_PASS)"' /tmp/section-ai-ortweb.html; then
+            exit 0
+          fi
+          echo "ORT Web could not execute the exported graph"
+          exit 1
 
       - name: Upload probe artifacts
         uses: actions/upload-artifact@v4

@@ -1,0 +1,14 @@
+{
+  "name": "section-ai-ortweb-probe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --base=./"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.26.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.2"
+  }
+}
