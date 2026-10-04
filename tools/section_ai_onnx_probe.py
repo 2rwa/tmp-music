@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
+import hashlib
+import importlib
 import json
 import os
 import sys
 import time
+import tomllib
 import traceback
+import types
+import urllib.request
 from pathlib import Path
 
 OUT = Path(os.environ.get("SECTION_AI_PROBE_OUT", "section-ai-probe"))
+UPSTREAM = Path(os.environ.get("ALLIN1_SOURCE_DIR", "upstream-allin1"))
 OUT.mkdir(parents=True, exist_ok=True)
 REPORT = OUT / "report.json"
 TRACE = OUT / "traceback.txt"
 MODEL_PATH = OUT / "harmonix-fold0-section-function.onnx"
+CHECKPOINT_PATH = OUT / "harmonix-fold0.pth"
 
 report = {
     "probe": "all-in-one harmonix-fold0 ONNX export",
@@ -25,13 +32,26 @@ report = {
 def save():
     REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
+def install_source_package_shims():
+    src = (UPSTREAM / "src" / "allin1_infer").resolve()
+    models_dir = src / "models"
+    if not src.is_dir():
+        raise FileNotFoundError(f"missing upstream source: {src}")
+    root = types.ModuleType("allin1_infer")
+    root.__path__ = [str(src)]
+    root.__package__ = "allin1_infer"
+    sys.modules["allin1_infer"] = root
+    models = types.ModuleType("allin1_infer.models")
+    models.__path__ = [str(models_dir)]
+    models.__package__ = "allin1_infer.models"
+    sys.modules["allin1_infer.models"] = models
+
 try:
     import numpy as np
     import torch
     import onnx
     import onnxruntime as ort
-    from allin1_infer.models.loaders import load_pretrained_model
-    from allin1_infer.checkpoints import checkpoint_metadata
+    from omegaconf import OmegaConf
 
     report["versions"] = {
         "python": sys.version.split()[0],
@@ -40,7 +60,8 @@ try:
         "onnxruntime": ort.__version__,
     }
 
-    metadata = checkpoint_metadata("harmonix-fold0")
+    checkpoint_toml = UPSTREAM / "src" / "allin1_infer" / "config" / "checkpoints.toml"
+    metadata = tomllib.loads(checkpoint_toml.read_text(encoding="utf-8"))["models"]["harmonix-fold0"]
     artifact = next(a for a in metadata["artifacts"] if a.get("kind") == "checkpoint")
     report["checkpoint"] = {
         "license": metadata.get("license"),
@@ -52,10 +73,35 @@ try:
         "size": artifact.get("size"),
     }
 
+    if not CHECKPOINT_PATH.exists():
+        urllib.request.urlretrieve(artifact["url"], CHECKPOINT_PATH)
+    digest = hashlib.sha256(CHECKPOINT_PATH.read_bytes()).hexdigest()
+    report["checkpoint_download_bytes"] = CHECKPOINT_PATH.stat().st_size
+    report["checkpoint_sha256_actual"] = digest
+    if digest != artifact["sha256"]:
+        raise ValueError("checkpoint SHA-256 mismatch")
+
+    install_source_package_shims()
+    AllInOne = importlib.import_module("allin1_infer.models.allinone").AllInOne
+
     torch.set_grad_enabled(False)
     started = time.time()
-    model = load_pretrained_model("harmonix-fold0", device="cpu")
+    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu")
+    config = OmegaConf.create(checkpoint["config"])
+    model = AllInOne(config)
+    model.load_state_dict(checkpoint["state_dict"])
+    model.eval()
     report["load_seconds"] = round(time.time() - started, 3)
+    report["config"] = {
+        "depth": int(config.depth),
+        "dim_embed": int(config.dim_embed),
+        "num_heads": int(config.num_heads),
+        "kernel_size": int(config.kernel_size),
+        "dim_input": int(config.dim_input),
+        "num_instruments": int(config.data.num_instruments),
+        "num_labels": int(config.data.num_labels),
+        "fps": int(config.fps),
+    }
 
     class SectionFunctionWrapper(torch.nn.Module):
         def __init__(self, base):
@@ -71,15 +117,13 @@ try:
 
     with torch.no_grad():
         ref_section, ref_function = wrapper(x)
-    report["pytorch_output_shapes"] = [
-        list(ref_section.shape),
-        list(ref_function.shape),
-    ]
+    report["pytorch_output_shapes"] = [list(ref_section.shape), list(ref_function.shape)]
 
     attempts = [
         ("legacy", {"dynamo": False}),
         ("dynamo", {"dynamo": True}),
     ]
+    all_traces = []
 
     for name, extra in attempts:
         attempt = {"name": name, "ok": False}
@@ -109,10 +153,10 @@ try:
             attempt["error_type"] = type(exc).__name__
             attempt["error"] = str(exc)[:4000]
             report["attempts"].append(attempt)
-            TRACE.write_text(
-                f"== {name} ==\n" + traceback.format_exc() + "\n",
-                encoding="utf-8",
-            )
+            all_traces.append(f"== {name} ==\n{traceback.format_exc()}\n")
+
+    if all_traces:
+        TRACE.write_text("\n".join(all_traces), encoding="utf-8")
 
     if report["export_ok"]:
         graph = onnx.load(str(MODEL_PATH))
@@ -124,19 +168,16 @@ try:
 
         started = time.time()
         session = ort.InferenceSession(str(MODEL_PATH), providers=["CPUExecutionProvider"])
-        got_section, got_function = session.run(
-            None,
-            {"spectrograms": x.numpy()},
-        )
+        got_section, got_function = session.run(None, {"spectrograms": x.numpy()})
         report["ort_seconds"] = round(time.time() - started, 3)
         sec_diff = float(np.max(np.abs(got_section - ref_section.numpy())))
         fun_diff = float(np.max(np.abs(got_function - ref_function.numpy())))
-        report["max_abs_diff"] = {
-            "section": sec_diff,
-            "function": fun_diff,
-        }
+        report["max_abs_diff"] = {"section": sec_diff, "function": fun_diff}
         report["ort_output_shapes"] = [list(got_section.shape), list(got_function.shape)]
-        report["ort_ok"] = bool(np.isfinite(sec_diff) and np.isfinite(fun_diff) and sec_diff < 5e-4 and fun_diff < 5e-4)
+        report["ort_ok"] = bool(
+            np.isfinite(sec_diff) and np.isfinite(fun_diff)
+            and sec_diff < 5e-4 and fun_diff < 5e-4
+        )
 
 except Exception as exc:
     report["fatal_error_type"] = type(exc).__name__
