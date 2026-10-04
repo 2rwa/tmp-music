@@ -47,7 +47,8 @@
         <li data-step="repetition">Repetition recurrence</li>
         <li data-step="beat">Beat / bar grid</li>
         <li class="pending" data-step="demucs">HTDemucs 4-stem</li>
-        <li class="pending" data-step="structure">Stem-aware consensus</li>
+        <li class="pending" data-step="section-ai">Section AI · All-In-One fold0</li>
+        <li class="pending" data-step="structure">Multi-engine consensus</li>
       </ol>
     </section>
 
@@ -65,7 +66,7 @@
           <p class="section-label">STRUCTURE VIEW</p>
           <div id="mode-tabs" class="mode-tabs" role="tablist">
             <button type="button" class="mode-tab is-active" data-mode="consensus">Consensus</button>
-            <button type="button" class="mode-tab" data-mode="section-ai" data-pending="true">Section AI</button>
+            <button type="button" class="mode-tab" data-mode="section-ai">Section AI</button>
             <button type="button" class="mode-tab" data-mode="repetition">Repetition</button>
             <button type="button" class="mode-tab" data-mode="change-point">Change Point</button>
             <button type="button" class="mode-tab" data-mode="stem-activity">Stem Activity</button>
@@ -102,7 +103,7 @@
       </section>
 
       <section id="compare-panel" class="compare-panel" hidden>
-        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point, Repetition, and estimated Beat / Bars are live immediately; Stem Activity and Vocal Phrase become live after HTDemucs. Section AI remains pending.</span></div>
+        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point, Repetition, and estimated Beat / Bars are live immediately; Stem Activity, Vocal Phrase, and Section AI become live after HTDemucs.</span></div>
         <div id="compare-grid" class="compare-grid"></div>
       </section>
 
@@ -140,7 +141,7 @@
       <div class="confidence-line"><span>Prototype confidence</span><strong id="boundary-confidence">0.00</strong></div>
       <div class="evidence-list">
         <div><span>Change point</span><strong id="evidence-change">—</strong></div>
-        <div class="pending-evidence"><span>Section AI</span><strong>pending</strong></div>
+        <div><span>Section AI</span><strong id="evidence-section">—</strong></div>
         <div><span>Repetition</span><strong id="evidence-repetition">—</strong></div>
         <div><span>Stem activity</span><strong id="evidence-stem">—</strong></div>
         <div><span>Vocal phrase proximity</span><strong id="evidence-vocal">—</strong></div>
@@ -150,7 +151,7 @@
     </aside>
 
     <audio id="audio" preload="metadata"></audio>
-    <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + estimated beat/bar grid + HTDemucs 4-stem + vocal phrase edges + three-source structural fusion. Section AI remains intentionally unsimulated.</footer>
+    <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + estimated beat/bar grid + HTDemucs 4-stem + All-In-One Section AI + vocal phrase edges + multi-engine structural fusion.</footer>
   </main>
   <script type="module" src="./app.js"></script>
 </body>

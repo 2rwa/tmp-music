@@ -14,9 +14,11 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 8. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
 9. vocals stemへadaptive RMS threshold + hysteresisを掛けてVocal Phrase開始/終了を生成
 10. Repetition はDemucs後にstem shareを特徴へ追加して再計算
-11. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
-12. 切断点は Exact / Nearest beat / Estimated bar / Vocal phrase edge / Low energy / Recommended から選択
-13. 区間選択 / loop / WAV export
+11. 4 stemsを上流互換の81-bin log-filterbankへ変換し、All-In-One Harmonix fold0 ONNXでSection AIを実行
+12. Section AIから INTRO / VERSE / CHORUS / BRIDGE / OUTRO 等の機能ラベルと境界を生成
+13. Mix Change Point + Repetition + Stem Activity + Section AI を ±1.5 s で cluster し Consensus boundary を生成
+14. 切断点は Exact / Nearest beat / Estimated bar / Vocal phrase edge / Low energy / Recommended から選択
+15. 区間選択 / loop / WAV export
 
 ## 実音源
 
@@ -26,18 +28,17 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 
 ## UIでliveになった解析
 
-- Consensus — Mix Change Point + Repetition + Stem Activity
+- Consensus — Mix Change Point + Repetition + Stem Activity + Section AI（Section AI成功時）
 - Change Point — mix RMS/ZCR
 - Repetition — M3-style recurrence / lag similarity / repeated-pair alignment
 - Beat / Bars — onset自己相関によるtempo/phase推定、4拍子bar-grid。意味的構成ではなく編集用snap layer
 - Stem Activity — HTDemucs 4-stem energy share change
 - Vocal Phrase — vocals stemのadaptive energy hysteresisによる歌唱区間start/end。semantic sectionではなく編集用edge
+- Section AI — All-In-One Harmonix fold0。HTDemucs 4 stems → 81-bin特徴 → ONNX Runtime Web。WebGPUを優先し失敗時はWASMへfallback
 
 ## Pending
 
-結果を偽装せず、未接続の解析は pending のまま表示する。
-
-- Section AI — All-In-One Harmonix fold0 の ONNX export / ONNX Runtime 数値一致 probe は成功済み。次はブラウザ側81-bin log-filterbank前処理と ONNX Runtime Web 接続。
+現時点で構造ビューに表示している主要engineは接続済み。今後はSection AI実音源評価・複数fold/ensemble・長尺時の前処理高速化を検討する。
 
 ## Demucs
 
@@ -57,7 +58,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 - synthetic 4-stem を使う browser self-test
 - Pages live smoke
 
-Browser self-testでは実モデルdownloadを行わず、fake stem を `installStemResult` へ入れて、Stem Activity / Consensus / lane描画まで回帰確認する。
+Browser self-testでは実モデルdownloadを行わず、fake stem と deterministic Section AI logits を使い、Stem Activity / Section AI label UI / 4-source Consensus / lane描画まで回帰確認する。実ONNX実行はSection AI ONNX probe、81-bin前処理の数値一致はSection AI feature parity CIで別々に担保する。
 
 ## Repetition regression
 
@@ -75,6 +76,19 @@ Browser self-testでは実モデルdownloadを行わず、fake stem を `install
 
 `tests/cut-core-test.mjs` は±0.35秒の範囲で局所RMS最小点を探索し、synthetic troughへ約27–30 dB低い切断点を回収する。Recommendedはbeat/bar snapが成立しないedgeだけLow energyをfallbackとして使い、大きな位置移動を避ける。
 
-## Section AI ONNX probe
+## Section AI
 
-Pinned upstream `openmirlab/all-in-one-infer@797f1d21b115955ed81ff9161440334fefea8855` の `harmonix-fold0` を Section/Function logits に限定して ONNX export。Actions probe で `export_ok=true` / `ort_ok=true`、legacy exporter、ONNX 3,199,894 bytes、input `[1, 4, 600, 81]` を確認。モデル接続前にブラウザ側の81-bin log-filterbank再現と実音源一致検証を行う。
+Pinned upstream `openmirlab/all-in-one-infer@797f1d21b115955ed81ff9161440334fefea8855` の `harmonix-fold0` を Section / Function logits に限定してONNX化。
+
+- production model: `models/harmonix-fold0-section-function-long.onnx`
+- size: 6,376,948 bytes
+- input: `[1, 4, T, 81]`
+- supported production range: 102.4–660 s。短い入力は102.4秒相当へzero-pad
+- labels: start / end / intro / outro / break / bridge / inst / solo / verse / chorus
+- ORT CPUとPyTorchの検証差: おおむね1e-6〜1e-5
+- browser ORT Web/WASM実行確認済み
+- WebGPU execution providerを優先し、失敗時はWASMへfallback
+- 4 stemsの前処理はproduction `section-ai-features.js` とPython reference間でparity CIを実施
+- checkpoint license metadata: CC-BY-NC-SA-4.0。NOTICEとmodel metadataを同梱
+
+Section AIはHTDemucs完了後に実行し、separatorを先にunloadしてGPUモデル2本の同時常駐を避ける。

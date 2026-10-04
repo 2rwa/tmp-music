@@ -7,6 +7,7 @@ on:
       - "docs/m6-status/structure-cutter-lab/**"
       - "tests/structure-cutter-lab-regression.mjs"
       - "tests/section-ai-postprocess-test.mjs"
+      - "tests/section-ai-runtime-test.mjs"
       - ".github/workflows/structure-cutter-lab-ci.yml"
   pull_request:
     paths:
@@ -39,6 +40,7 @@ jobs:
           node tests/vocal-core-test.mjs
           node tests/cut-core-test.mjs
           node tests/section-ai-postprocess-test.mjs
+          node tests/section-ai-runtime-test.mjs
 
       - name: Build browser bundle
         working-directory: docs/m6-status/structure-cutter-lab
@@ -48,6 +50,7 @@ jobs:
           npm run build
           test -s dist/index.html
           test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          test -s models/harmonix-fold0-section-function-long.onnx
           cp -a dist/. .
           rm -rf node_modules dist
 
@@ -70,7 +73,9 @@ jobs:
           "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=9000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
           grep -q 'data-structure-cutter-selftest="PASS"' /tmp/structure-cutter-browser.html
           grep -q 'data-demucs-ready="true"' /tmp/structure-cutter-browser.html
-          grep -q 'data-consensus-sources="3"' /tmp/structure-cutter-browser.html
+          grep -q 'data-consensus-sources="4"' /tmp/structure-cutter-browser.html
+          grep -q 'data-section-ai-ready="true"' /tmp/structure-cutter-browser.html
+          grep -q 'data-section-ai-selftest="PASS"' /tmp/structure-cutter-browser.html
           grep -q 'data-repetition-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-beat-grid-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-vocal-phrase-ready="true"' /tmp/structure-cutter-browser.html

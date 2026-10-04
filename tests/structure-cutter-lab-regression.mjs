@@ -8,14 +8,14 @@ const css = fs.readFileSync(`${root}/style.css`, 'utf8');
 for (const token of [
   'Structure Cutter Lab','STRUCTURE VIEW','Consensus','Section AI','Repetition','Change Point',
   'Stem Activity','Beat / Bars','Vocal Phrase','Compare engines','Extract WAV',
-  'stem-vocals','stem-drums','stem-bass','stem-other','evidence-repetition','evidence-vocal','evidence-beat','cut-alignment','Vocal phrase edge','Low energy','Cancel'
+  'stem-vocals','stem-drums','stem-bass','stem-other','evidence-section','evidence-repetition','evidence-vocal','evidence-beat','cut-alignment','Vocal phrase edge','Low energy','Cancel'
 ]) if (!html.includes(token)) throw new Error(`missing UI contract: ${token}`);
 
 for (const token of [
   "import { Separator } from 'unblend'","DEMUCS_MODEL = 'htdemucs'","backend: 'webgpu'","precision: 'fp16'",
   'samples/whisper-ao/source/whisper-ao.mp3','samples/jugemu/source/jugemu.mp3',
   'samples/chichinu-fiija/source/chichinu-fiija.mp3','runWholeTrackDemucs','prepareWholeTrackForDemucs',
-  'computeSectionAISpectrograms','analyzeBeatGrid','alignCutRange','alignLowEnergyRange','analyzeRepetition','analyzeStemActivity','analyzeVocalPhrases','nearestPhraseBoundary','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
+  'computeSectionAISpectrograms','postprocessFunctionalStructure','runSectionAIInference','runSectionAIAnalysis','dataset.sectionAiReady','analyzeBeatGrid','alignCutRange','alignLowEnergyRange','analyzeRepetition','analyzeStemActivity','analyzeVocalPhrases','nearestPhraseBoundary','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
 ]) if (!js.includes(token)) throw new Error(`missing behavior contract: ${token}`);
 
 for (const token of [
@@ -31,5 +31,7 @@ new Function(
     .replace("import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';", '')
     .replace("import { alignLowEnergyRange } from './cut-core.js';", '')
     .replace("import { computeSectionAISpectrograms } from './section-ai-features.js';", '')
+    .replace("import { postprocessFunctionalStructure } from './section-ai-postprocess.js';", '')
+    .replace("import { runSectionAIInference } from './section-ai-runtime.js';", '')
 );
 console.log('Structure Cutter Lab regression: PASS');

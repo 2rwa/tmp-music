@@ -4,6 +4,8 @@ import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js'
 import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
 import { alignLowEnergyRange } from './cut-core.js';
 import { computeSectionAISpectrograms } from './section-ai-features.js';
+import { postprocessFunctionalStructure } from './section-ai-postprocess.js';
+import { runSectionAIInference } from './section-ai-runtime.js';
 
 (() => {
   'use strict';
@@ -41,7 +43,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     modeTabs: $('mode-tabs'), engineNotice: $('engine-notice'), toggleCompare: $('toggle-compare'), comparePanel: $('compare-panel'), compareGrid: $('compare-grid'),
     ruler: $('timeline-ruler'), sectionTrack: $('section-track'), mixTrack: $('mix-track'), waveform: $('waveform'), selectionOverlay: $('selection-overlay'), playhead: $('playhead'), boundaryLayer: $('boundary-layer'),
     selectionTitle: $('selection-title'), selectionTime: $('selection-time'), cutAlignment: $('cut-alignment'), alignmentNote: $('alignment-note'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
-    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'), evidenceVocal: $('evidence-vocal'), evidenceBeat: $('evidence-beat'),
+    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'), evidenceSection: $('evidence-section'), evidenceVocal: $('evidence-vocal'), evidenceBeat: $('evidence-beat'),
     stemCanvases: { vocals: $('stem-vocals'), drums: $('stem-drums'), bass: $('stem-bass'), other: $('stem-other') }
   };
 
@@ -61,6 +63,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     beatAnalysis: { bpm: null, confidence: 0, beatTimes: [], barTimes: [], boundaries: [] },
     vocalPhrases: [],
     vocalPhraseBoundaries: [],
+    sectionAI: { status: 'idle', provider: '', error: '', segments: [], boundaries: [], inferenceMs: 0, frames: 0 },
     consensusBoundaries: [],
     stemProfiles: {},
     stems: {},
@@ -201,10 +204,12 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     state.stemBoundaries = [];
     state.vocalPhrases = [];
     state.vocalPhraseBoundaries = [];
-    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries);
+    state.sectionAI = { status: 'idle', provider: '', error: '', segments: [], boundaries: [], inferenceMs: 0, frames: 0 };
+    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries, []);
     stopStemAudition();
     clearStemVisuals();
     document.documentElement.dataset.demucsReady = 'false';
+    document.documentElement.dataset.sectionAiReady = 'false';
   }
 
   async function prepareWholeTrackForDemucs(buffer) {
@@ -283,11 +288,12 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     };
   }
 
-  function buildConsensusBoundaries(mix, stem, repetition = []) {
+  function buildConsensusBoundaries(mix, stem, repetition = [], sectionAI = []) {
     const events = [
       ...mix.map(x => ({ ...x, kind: 'mix' })),
       ...stem.map(x => ({ ...x, kind: 'stem' })),
-      ...repetition.map(x => ({ ...x, kind: 'repetition' }))
+      ...repetition.map(x => ({ ...x, kind: 'repetition' })),
+      ...sectionAI.map(x => ({ ...x, kind: 'section' }))
     ].sort((a, b) => a.t - b.t);
     const clusters = [];
     for (const event of events) {
@@ -299,7 +305,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
       }
     }
     return clusters.map(cluster => {
-      const evidence = { mix: 0, stem: 0, repetition: 0 };
+      const evidence = { mix: 0, stem: 0, repetition: 0, section: 0 };
       for (const kind of Object.keys(evidence)) {
         const matches = cluster.events.filter(x => x.kind === kind);
         evidence[kind] = matches.length ? Math.max(...matches.map(x => x.confidence)) : 0;
@@ -319,12 +325,15 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     if (mode === 'repetition') return state.repetitionBoundaries.length ? state.repetitionBoundaries : state.mixBoundaries;
     if (mode === 'beat-bars') return state.beatAnalysis.boundaries.length ? state.beatAnalysis.boundaries : state.mixBoundaries;
     if (mode === 'vocal-phrase') return state.vocalPhraseBoundaries.length ? state.vocalPhraseBoundaries : state.mixBoundaries;
+    if (mode === 'section-ai') return state.sectionAI.boundaries.length ? state.sectionAI.boundaries : state.consensusBoundaries;
     return state.consensusBoundaries.length ? state.consensusBoundaries : state.mixBoundaries;
   }
 
   function refreshModeView() {
     state.boundaries = boundariesForMode();
-    state.sections = buildSections(state.boundaries);
+    state.sections = state.mode === 'section-ai' && state.sectionAI.segments.length
+      ? state.sectionAI.segments.map(x => ({ s: x.start, e: x.end, label: String(x.label || 'section').toUpperCase() }))
+      : buildSections(state.boundaries);
     if (state.mode === 'beat-bars') {
       state.sections.forEach((section, i) => { section.label = 'Bar ' + (i + 1); });
     }
@@ -355,6 +364,93 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
 
   function drawAllStemProfiles() { for (const name of STEM_NAMES) drawStemProfile(name); }
 
+  function sectionAIBoundariesFromPostprocess(post) {
+    const strengths = post.boundaryIndices.map(i => post.sectionStrength[i] || 0);
+    const maxStrength = Math.max(1e-6, ...strengths);
+    return post.boundaryIndices.map((frame, i) => {
+      const t = frame / 100;
+      const raw = strengths[i] || 0;
+      const confidence = clamp(raw / maxStrength, .25, 1);
+      const next = post.segments.find(segment => Math.abs(segment.start - t) < .02);
+      return {
+        t,
+        score: raw,
+        confidence,
+        source: 'section-ai',
+        label: next?.label || '',
+        evidence: { section: confidence }
+      };
+    }).filter(x => x.t >= 1 && x.t <= state.duration - 1);
+  }
+
+  async function runSectionAIAnalysis(stems) {
+    state.sectionAI = { status: 'running', provider: '', error: '', segments: [], boundaries: [], inferenceMs: 0, frames: 0 };
+    document.documentElement.dataset.sectionAiReady = 'false';
+    stepState('section-ai', 'active');
+    try {
+      setProgress(.945, 'Section AI · building 81-bin stem features');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const features = computeSectionAISpectrograms(stems, DEMUCS_RATE);
+      state.sectionAI.frames = features.shape[2];
+      setProgress(.965, 'Section AI · running All-In-One fold0');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const inferred = await runSectionAIInference(features, { preferWebGPU: state.gpuAvailable });
+      const post = postprocessFunctionalStructure(inferred.sectionLogits, inferred.functionLogits);
+      const segments = post.segments
+        .map(segment => ({
+          ...segment,
+          start: clamp(segment.start, 0, state.duration),
+          end: clamp(segment.end, 0, state.duration)
+        }))
+        .filter(segment => segment.end > segment.start + .01);
+      const boundaries = sectionAIBoundariesFromPostprocess(post);
+      state.sectionAI = {
+        status: 'ready',
+        provider: inferred.provider,
+        error: '',
+        segments,
+        boundaries,
+        inferenceMs: inferred.inferenceMs,
+        frames: inferred.originalFrames
+      };
+      state.consensusBoundaries = buildConsensusBoundaries(
+        state.mixBoundaries,
+        state.stemBoundaries,
+        state.repetitionBoundaries,
+        boundaries
+      );
+      document.documentElement.dataset.sectionAiReady = 'true';
+      document.documentElement.dataset.sectionAiProvider = inferred.provider;
+      document.documentElement.dataset.consensusSources = boundaries.length ? '4' : '3';
+      stepState('section-ai', 'done');
+      refreshModeView();
+      return true;
+    } catch (err) {
+      console.error('Section AI failed', err);
+      state.sectionAI = {
+        status: 'error',
+        provider: '',
+        error: String(err?.message || err),
+        segments: [],
+        boundaries: [],
+        inferenceMs: 0,
+        frames: state.sectionAI.frames || 0
+      };
+      document.documentElement.dataset.sectionAiReady = 'error';
+      document.documentElement.dataset.sectionAiError = state.sectionAI.error.slice(0, 300);
+      stepState('section-ai', '');
+      state.consensusBoundaries = buildConsensusBoundaries(
+        state.mixBoundaries,
+        state.stemBoundaries,
+        state.repetitionBoundaries,
+        []
+      );
+      document.documentElement.dataset.consensusSources = '3';
+      refreshModeView();
+      return false;
+    }
+  }
+
   async function installStemResult(result) {
     const stems = result && result.stems ? result.stems : (result || {});
     const valid = Object.fromEntries(STEM_NAMES.filter(name => stems[name] instanceof Float32Array).map(name => [name, stems[name]]));
@@ -374,7 +470,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
       state.repetitionPairs = recurrence.pairs;
       state.repetitionPeriodSec = recurrence.selectedPeriodSec;
     }
-    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, state.stemBoundaries, state.repetitionBoundaries);
+    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, state.stemBoundaries, state.repetitionBoundaries, []);
     drawAllStemProfiles();
     refreshModeView();
     document.documentElement.dataset.demucsReady = 'true';
@@ -417,11 +513,20 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
       if (runId !== state.demucs.runId) return false;
       await installStemResult(result);
       stepState('demucs', 'done');
-      stepState('structure', 'active'); setProgress(.96, 'Building stem-aware consensus');
+
+      // Release the large separator before loading the structure model so the
+      // two GPU models do not have to coexist.
+      try { if (separator && separator.unload) await separator.unload(); } catch {}
+      separator = null;
+
+      await runSectionAIAnalysis(state.stems);
+
+      stepState('structure', 'active'); setProgress(.99, 'Building multi-engine consensus');
       await new Promise(resolve => setTimeout(resolve, 0));
       stepState('structure', 'done');
       const elapsed = (performance.now() - started) / 1000;
-      setProgress(1, 'Ready · HTDemucs ' + (elapsed < 1 ? '<1' : elapsed.toFixed(1)) + ' s · ' + state.consensusBoundaries.length + ' consensus boundaries');
+      const aiText = state.sectionAI.status === 'ready' ? ' · Section AI ' + state.sectionAI.provider : ' · Section AI unavailable';
+      setProgress(1, 'Ready · HTDemucs ' + (elapsed < 1 ? '<1' : elapsed.toFixed(1)) + ' s' + aiText + ' · ' + state.consensusBoundaries.length + ' consensus boundaries');
       el.progressPercent.textContent = 'ready';
       return true;
     } catch (err) {
@@ -518,7 +623,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
   function renderCompare() {
     const rows = [
       ['Consensus', state.consensusBoundaries, 'live'],
-      ['Section AI', [], 'pending'],
+      ['Section AI', state.sectionAI.boundaries, state.sectionAI.status === 'ready' ? 'live' : 'pending'],
       ['Repetition', state.repetitionBoundaries, state.repetitionBoundaries.length ? 'live' : 'pending'],
       ['Change Point', state.mixBoundaries, 'live'],
       ['Stem Activity', state.stemBoundaries, state.stems.vocals ? 'live' : 'pending'],
@@ -597,9 +702,11 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     const mixEvidence = b.evidence && Number.isFinite(b.evidence.mix) ? b.evidence.mix : (b.source === 'mix' ? b.confidence : 0);
     const stemEvidence = b.evidence && Number.isFinite(b.evidence.stem) ? b.evidence.stem : (b.source === 'stem' ? b.confidence : 0);
     const repetitionEvidence = b.evidence && Number.isFinite(b.evidence.repetition) ? b.evidence.repetition : (b.source === 'repetition' ? b.confidence : 0);
+    const sectionEvidence = b.evidence && Number.isFinite(b.evidence.section) ? b.evidence.section : (b.source === 'section-ai' ? b.confidence : 0);
     el.evidenceChange.textContent = mixEvidence ? mixEvidence.toFixed(2) : '—';
     el.evidenceStem.textContent = stemEvidence ? stemEvidence.toFixed(2) : (state.stems.vocals ? '0.00' : 'pending');
     el.evidenceRepetition.textContent = repetitionEvidence ? repetitionEvidence.toFixed(2) : (state.repetitionBoundaries.length ? '0.00' : 'pending');
+    el.evidenceSection.textContent = sectionEvidence ? sectionEvidence.toFixed(2) : (state.sectionAI.status === 'ready' ? '0.00' : 'pending');
     const nearestVocal = nearestPhraseBoundary(b.t, state.vocalPhraseBoundaries, Infinity);
     el.evidenceVocal.textContent = nearestVocal ? 'Δ' + nearestVocal.distance.toFixed(2) + 's' : 'pending';
     const nearestBar = nearestGridTime(b.t, state.beatAnalysis.barTimes || [], Infinity);
@@ -629,7 +736,7 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
   }
 
   async function processBytes(bytes, name, audioUrl, sourcePath = '') {
-    for (const step of ['decode', 'waveform', 'change', 'repetition', 'beat', 'demucs', 'structure']) stepState(step, '');
+    for (const step of ['decode', 'waveform', 'change', 'repetition', 'beat', 'demucs', 'section-ai', 'structure']) stepState(step, '');
     setProgress(.08, 'Decoding audio'); stepState('decode', 'active');
     const buffer = await decodeArrayBuffer(bytes); stepState('decode', 'done'); setLoadedAudio(buffer, name, audioUrl, sourcePath);
     setProgress(.35, 'Building waveform'); stepState('waveform', 'active');
@@ -736,6 +843,49 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
       fake[name] = a;
     }
     await installStemResult(fake);
+
+    // Section AI browser regression uses deterministic logits rather than
+    // downloading/running the real ONNX model in this cheap UI self-test.
+    const aiFrames = seconds * 100;
+    const aiSection = new Float32Array(aiFrames).fill(-Infinity);
+    aiSection[800] = 9; aiSection[1600] = 10; aiSection[2400] = 9;
+    const aiClasses = 10;
+    const aiFunction = new Float32Array(aiClasses * aiFrames).fill(-5);
+    const setAILabel = (start, end, label) => {
+      for (let f = start; f < end; f++) aiFunction[label * aiFrames + f] = 5;
+    };
+    setAILabel(0, 800, 2);
+    setAILabel(800, 1600, 8);
+    setAILabel(1600, 2400, 9);
+    setAILabel(2400, aiFrames, 3);
+    const aiPost = postprocessFunctionalStructure(aiSection, aiFunction);
+    const aiBoundaries = sectionAIBoundariesFromPostprocess(aiPost);
+    state.sectionAI = {
+      status: 'ready',
+      provider: 'selftest',
+      error: '',
+      segments: aiPost.segments,
+      boundaries: aiBoundaries,
+      inferenceMs: 1,
+      frames: aiFrames
+    };
+    state.consensusBoundaries = buildConsensusBoundaries(
+      state.mixBoundaries,
+      state.stemBoundaries,
+      state.repetitionBoundaries,
+      aiBoundaries
+    );
+    document.documentElement.dataset.sectionAiReady = 'true';
+    document.documentElement.dataset.consensusSources = '4';
+
+    state.mode = 'section-ai';
+    refreshModeView();
+    const sectionAiUiOk = state.sections.length === 4 &&
+      state.sections.map(x => x.label).join(',') === 'INTRO,VERSE,CHORUS,OUTRO';
+    document.documentElement.dataset.sectionAiSelftest = sectionAiUiOk ? 'PASS' : 'FAIL';
+    state.mode = 'consensus';
+    refreshModeView();
+
     renderRuler(); drawWaveform(); setSelection(2, 6, 'Self-test selection');
     const ok = state.sections.length >= 2 &&
       state.mixBoundaries.length >= 1 &&
@@ -746,8 +896,11 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
       state.stemBoundaries.length >= 1 &&
       state.vocalPhrases.length >= 3 &&
       state.vocalPhraseBoundaries.length >= 6 &&
+      state.sectionAI.boundaries.length === 3 &&
+      state.sectionAI.segments.length === 4 &&
       state.consensusBoundaries.length >= 1 &&
-      document.documentElement.dataset.consensusSources === '3' &&
+      document.documentElement.dataset.consensusSources === '4' &&
+      document.documentElement.dataset.sectionAiSelftest === 'PASS' &&
       !el.selectionOverlay.hidden &&
       STEM_NAMES.every(name => state.stemProfiles[name] && state.stemProfiles[name].length);
     document.documentElement.dataset.repetitionReady = state.repetitionBoundaries.length ? 'true' : 'false';
@@ -761,8 +914,8 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     setSelection(1.18, 5.08, 'Vocal snap self-test');
     const vocalSnapOk = state.selection && state.selection.startKind === 'vocal' && state.selection.endKind === 'vocal';
     document.documentElement.dataset.vocalSnapSelftest = vocalSnapOk ? 'PASS' : 'FAIL';
-    document.documentElement.dataset.structureCutterSelftest = ok && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL';
-    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL');
+    document.documentElement.dataset.structureCutterSelftest = ok && sectionAiUiOk && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL';
+    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok && sectionAiUiOk && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL');
   }
 
   el.sampleSelect.addEventListener('change', () => { el.loadSample.disabled = !el.sampleSelect.value; const s = REPO_SAMPLES[el.sampleSelect.value]; if (s) { el.trackName.textContent = s.title; el.trackMeta.textContent = `Repository source · ${s.path}`; } });
@@ -779,6 +932,14 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
     el.modeTabs.querySelectorAll('.mode-tab').forEach(n => n.classList.toggle('is-active', n === b));
     if (b.dataset.pending === 'true') {
       el.engineNotice.textContent = b.textContent.trim() + ' engine is not connected yet; showing the current consensus while keeping this engine visibly pending.';
+    } else if (state.mode === 'section-ai') {
+      if (state.sectionAI.status === 'ready') {
+        el.engineNotice.textContent = 'All-In-One Harmonix fold0 · ' + state.sectionAI.provider + ' · ' + state.sectionAI.segments.length + ' labeled sections · ' + state.sectionAI.inferenceMs.toFixed(0) + ' ms inference.';
+      } else if (state.sectionAI.status === 'error') {
+        el.engineNotice.textContent = 'Section AI unavailable: ' + state.sectionAI.error;
+      } else {
+        el.engineNotice.textContent = 'Section AI runs after HTDemucs because it consumes all four stems.';
+      }
     } else if (state.mode === 'change-point') {
       el.engineNotice.textContent = 'Showing the live mix energy/ZCR change-point track.';
     } else if (state.mode === 'stem-activity') {
@@ -795,8 +956,8 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
         ? 'Showing ' + state.vocalPhrases.length + ' vocal phrases from adaptive energy hysteresis on the HTDemucs vocals stem.'
         : 'Vocal Phrase becomes available after HTDemucs finishes.';
     } else {
-      const sources = [state.mixBoundaries.length, state.repetitionBoundaries.length, state.stemBoundaries.length].filter(Boolean).length;
-      el.engineNotice.textContent = 'Consensus fuses ' + sources + ' live evidence tracks: mix change point, repetition, and (after HTDemucs) stem activity.';
+      const sources = [state.mixBoundaries.length, state.repetitionBoundaries.length, state.stemBoundaries.length, state.sectionAI.boundaries.length].filter(Boolean).length;
+      el.engineNotice.textContent = 'Consensus fuses ' + sources + ' live structural evidence tracks: mix change point, repetition, stem activity, and Section AI when available.';
     }
     refreshModeView();
   });
@@ -821,6 +982,6 @@ import { computeSectionAISpectrograms } from './section-ai-features.js';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, computeSectionAISpectrograms, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, computeSectionAISpectrograms, postprocessFunctionalStructure, runSectionAIAnalysis, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();

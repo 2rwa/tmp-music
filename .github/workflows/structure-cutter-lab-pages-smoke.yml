@@ -33,7 +33,11 @@ jobs:
                 grep -q "analyzeRepetition" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeStemActivity" /tmp/structure-cutter-bundle.js
                 grep -q "buildConsensusBoundaries" /tmp/structure-cutter-bundle.js
-                echo "Structure Cutter Lab is live with HTDemucs bundle"
+                grep -q "harmonix-fold0-section-function-long.onnx" /tmp/structure-cutter-bundle.js
+                grep -q "postprocessFunctionalStructure" /tmp/structure-cutter-bundle.js
+                curl -fsSL --max-time 30 --range 0-1023 "${LAB_URL}/models/harmonix-fold0-section-function-long.onnx" -o /tmp/section-ai-model-prefix.bin
+                test -s /tmp/section-ai-model-prefix.bin
+                echo "Structure Cutter Lab is live with HTDemucs + Section AI bundle"
                 exit 0
               fi
             fi
