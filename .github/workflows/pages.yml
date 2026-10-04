@@ -157,6 +157,44 @@ jobs:
           grep -q 'inspector browser self-test: PASS' /tmp/vocal-inspector-browser.html
           echo "Vocal Isolation Inspector browser regression: PASS"
 
+      - name: Stem Dominance Map regression
+        run: |
+          node --check docs/test/stem-dominance-map/app.js
+          node tests/stem-dominance-map-regression.mjs \
+            docs/test/stem-dominance-map/index.html \
+            docs/test/stem-dominance-map/app.js \
+            docs/test/stem-dominance-map/style.css
+
+      - name: Stem Dominance Map browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4176 --bind 127.0.0.1 --directory docs >/tmp/stem-map-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4176/test/stem-dominance-map/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            "http://127.0.0.1:4176/test/stem-dominance-map/?selftest=1" \
+            > /tmp/stem-map-browser.html
+          grep -q 'data-stem-map-selftest="PASS"' /tmp/stem-map-browser.html
+          grep -q 'stem map browser self-test: PASS' /tmp/stem-map-browser.html
+          echo "Stem Dominance Map browser regression: PASS"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -289,4 +327,25 @@ jobs:
             sleep 5
           done
           echo "Vocal Isolation Inspector live validation failed"
+          exit 1
+
+
+      - name: Validate live Stem Dominance Map
+        env:
+          STEM_MAP_URL: https://2rwa.github.io/tmp-music/test/stem-dominance-map
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${STEM_MAP_URL}"
+            if curl -fsSL --max-time 15 "${STEM_MAP_URL}/" -o /tmp/stem-map.html \
+              && curl -fsSL --max-time 15 "${STEM_MAP_URL}/app.js" -o /tmp/stem-map-app.js; then
+              grep -q "Stem Dominance Map" /tmp/stem-map.html
+              grep -q "buildMap" /tmp/stem-map-app.js
+              grep -q "runBrowserSelfTest" /tmp/stem-map-app.js
+              echo "Stem Dominance Map is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Stem Dominance Map live validation failed"
           exit 1
