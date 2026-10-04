@@ -1,0 +1,60 @@
+name: Section AI feature parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/section_ai_feature_reference.py"
+      - "tools/section-ai-feature-probe/**"
+      - ".github/workflows/section-ai-feature-parity.yml"
+  pull_request:
+    paths:
+      - "tools/section_ai_feature_reference.py"
+      - "tools/section-ai-feature-probe/**"
+      - ".github/workflows/section-ai-feature-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install reference dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy tqdm "madmom-infer>=0.1.0"
+
+      - name: Checkout pinned All-In-One source
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/openmirlab/all-in-one-infer.git upstream-allin1
+          git -C upstream-allin1 checkout 797f1d21b115955ed81ff9161440334fefea8855
+
+      - name: Generate Python golden features
+        env:
+          ALLIN1_SOURCE_DIR: upstream-allin1
+        run: |
+          set -euo pipefail
+          python tools/section_ai_feature_reference.py /tmp/section-ai-feature-reference
+          cat /tmp/section-ai-feature-reference/reference.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Compare JS browser features
+        working-directory: tools/section-ai-feature-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          node feature-test.mjs /tmp/section-ai-feature-reference
