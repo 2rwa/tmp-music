@@ -848,16 +848,17 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     // downloading/running the real ONNX model in this cheap UI self-test.
     const aiFrames = seconds * 100;
     const aiSection = new Float32Array(aiFrames).fill(-Infinity);
-    aiSection[800] = 9; aiSection[1600] = 10; aiSection[2400] = 9;
+    // Boundaries are >12 seconds apart because upstream functional
+    // postprocessing uses a ±12 s peak-picking window.
+    aiSection[600] = 9; aiSection[2200] = 10;
     const aiClasses = 10;
     const aiFunction = new Float32Array(aiClasses * aiFrames).fill(-5);
     const setAILabel = (start, end, label) => {
       for (let f = start; f < end; f++) aiFunction[label * aiFrames + f] = 5;
     };
-    setAILabel(0, 800, 2);
-    setAILabel(800, 1600, 8);
-    setAILabel(1600, 2400, 9);
-    setAILabel(2400, aiFrames, 3);
+    setAILabel(0, 600, 2);
+    setAILabel(600, 2200, 8);
+    setAILabel(2200, aiFrames, 9);
     const aiPost = postprocessFunctionalStructure(aiSection, aiFunction);
     const aiBoundaries = sectionAIBoundariesFromPostprocess(aiPost);
     state.sectionAI = {
@@ -880,8 +881,8 @@ import { runSectionAIInference } from './section-ai-runtime.js';
 
     state.mode = 'section-ai';
     refreshModeView();
-    const sectionAiUiOk = state.sections.length === 4 &&
-      state.sections.map(x => x.label).join(',') === 'INTRO,VERSE,CHORUS,OUTRO';
+    const sectionAiUiOk = state.sections.length === 3 &&
+      state.sections.map(x => x.label).join(',') === 'INTRO,VERSE,CHORUS';
     document.documentElement.dataset.sectionAiSelftest = sectionAiUiOk ? 'PASS' : 'FAIL';
     state.mode = 'consensus';
     refreshModeView();
@@ -896,8 +897,8 @@ import { runSectionAIInference } from './section-ai-runtime.js';
       state.stemBoundaries.length >= 1 &&
       state.vocalPhrases.length >= 3 &&
       state.vocalPhraseBoundaries.length >= 6 &&
-      state.sectionAI.boundaries.length === 3 &&
-      state.sectionAI.segments.length === 4 &&
+      state.sectionAI.boundaries.length === 2 &&
+      state.sectionAI.segments.length === 3 &&
       state.consensusBoundaries.length >= 1 &&
       document.documentElement.dataset.consensusSources === '4' &&
       document.documentElement.dataset.sectionAiSelftest === 'PASS' &&
