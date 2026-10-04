@@ -1,0 +1,51 @@
+name: Structure Cutter Lab CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/m6-status/structure-cutter-lab/**"
+      - "tests/structure-cutter-lab-regression.mjs"
+      - ".github/workflows/structure-cutter-lab-ci.yml"
+  pull_request:
+    paths:
+      - "docs/m6-status/structure-cutter-lab/**"
+      - "tests/structure-cutter-lab-regression.mjs"
+      - ".github/workflows/structure-cutter-lab-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Static regression
+        run: |
+          node --check docs/m6-status/structure-cutter-lab/app.js
+          node tests/structure-cutter-lab-regression.mjs docs/m6-status/structure-cutter-lab
+
+      - name: Browser interaction self-test
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          "$CHROME" --version
+          python3 -m http.server 4181 --bind 127.0.0.1 --directory docs >/tmp/structure-cutter-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4181/m6-status/structure-cutter-lab/ >/dev/null; then break; fi
+            sleep 0.25
+          done
+          "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=6000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
+          grep -q 'data-structure-cutter-selftest="PASS"' /tmp/structure-cutter-browser.html
+          grep -q 'structure cutter self-test: PASS' /tmp/structure-cutter-browser.html
+          echo "Structure Cutter Lab browser regression: PASS"

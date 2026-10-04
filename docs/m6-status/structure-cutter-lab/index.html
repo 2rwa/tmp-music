@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111217">
+  <title>Structure Cutter Lab — tmp-music</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-bar">
+      <div>
+        <p class="kicker">tmp-music · GPU-first music structure workspace</p>
+        <h1>Structure Cutter Lab</h1>
+      </div>
+      <div class="app-actions">
+        <span id="gpu-badge" class="badge">WebGPU checking…</span>
+        <button id="open-file" class="quiet-button" type="button">Open audio</button>
+        <input id="file-input" type="file" accept="audio/*" hidden>
+      </div>
+    </header>
+
+    <section class="source-strip" aria-label="Test audio source">
+      <div class="source-copy">
+        <strong id="track-name">Choose a repository sample</strong>
+        <span id="track-meta">Real audio from 2rwa/tmp-music · Demucs integration follows this UI pass</span>
+      </div>
+      <label class="sample-picker">Repository sample
+        <select id="sample-select">
+          <option value="">Select…</option>
+          <option value="whisper-ao">Whisper AO</option>
+          <option value="jugemu">Jugemu</option>
+          <option value="chichinu-fiija">Chichinu Fiija</option>
+        </select>
+      </label>
+      <button id="load-sample" class="primary-button" type="button" disabled>Load sample</button>
+    </section>
+
+    <section id="progress-panel" class="progress-panel" hidden>
+      <div class="progress-head"><strong id="progress-title">Preparing audio</strong><span id="progress-percent">0%</span></div>
+      <div class="progress-track"><span id="progress-fill"></span></div>
+      <ol class="pipeline-list">
+        <li data-step="decode">Audio decode</li>
+        <li data-step="waveform">Waveform</li>
+        <li data-step="change">Prototype change points</li>
+        <li class="pending" data-step="demucs">HTDemucs 4-stem · next integration</li>
+        <li class="pending" data-step="structure">Multi-engine structure · next integration</li>
+      </ol>
+    </section>
+
+    <section id="workspace" class="workspace" aria-live="polite">
+      <div class="transport-bar">
+        <button id="play-toggle" type="button" class="transport-button" disabled>▶</button>
+        <span id="time-current" class="time-readout">00:00.0</span>
+        <input id="seek" type="range" min="0" max="1" value="0" step="0.01" disabled aria-label="Seek">
+        <span id="time-duration" class="time-readout muted">00:00.0</span>
+        <label class="volume-control">VOL <input id="volume" type="range" min="0" max="100" value="86" step="1"></label>
+      </div>
+
+      <div class="mode-bar">
+        <div>
+          <p class="section-label">STRUCTURE VIEW</p>
+          <div id="mode-tabs" class="mode-tabs" role="tablist">
+            <button type="button" class="mode-tab is-active" data-mode="consensus">Consensus</button>
+            <button type="button" class="mode-tab" data-mode="section-ai" data-pending="true">Section AI</button>
+            <button type="button" class="mode-tab" data-mode="repetition" data-pending="true">Repetition</button>
+            <button type="button" class="mode-tab" data-mode="change-point">Change Point</button>
+            <button type="button" class="mode-tab" data-mode="stem-activity" data-pending="true">Stem Activity</button>
+            <button type="button" class="mode-tab" data-mode="beat-bars" data-pending="true">Beat / Bars</button>
+            <button type="button" class="mode-tab" data-mode="vocal-phrase" data-pending="true">Vocal Phrase</button>
+          </div>
+        </div>
+        <button id="toggle-compare" type="button" class="quiet-button">Compare engines</button>
+      </div>
+
+      <div id="engine-notice" class="engine-notice">Prototype consensus currently uses the real-audio change-point track only. Pending engines remain visibly separate instead of being faked.</div>
+
+      <section class="timeline-card" aria-label="Music structure timeline">
+        <div class="timeline-ruler" id="timeline-ruler"></div>
+        <div class="lane section-lane">
+          <div class="lane-label"><strong>SECTION</strong><small>prototype</small></div>
+          <div class="lane-track section-track" id="section-track">
+            <div class="empty-lane">Load audio to build sections</div>
+          </div>
+        </div>
+        <div class="lane mix-lane">
+          <div class="lane-label"><strong>MIX</strong><small>real audio</small></div>
+          <div id="mix-track" class="lane-track canvas-track" tabindex="0" aria-label="Waveform. Drag to select a range.">
+            <canvas id="waveform"></canvas>
+            <div id="selection-overlay" class="selection-overlay" hidden></div>
+            <div id="playhead" class="playhead" hidden></div>
+            <div id="boundary-layer" class="boundary-layer"></div>
+          </div>
+        </div>
+        <div class="lane stem-lane"><div class="lane-label stem-vocal"><strong>VOCALS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
+        <div class="lane stem-lane"><div class="lane-label stem-drums"><strong>DRUMS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
+        <div class="lane stem-lane"><div class="lane-label stem-bass"><strong>BASS</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
+        <div class="lane stem-lane"><div class="lane-label stem-other"><strong>OTHER</strong><small>Demucs</small></div><div class="lane-track pending-track"><span>HTDemucs not connected yet</span></div></div>
+      </section>
+
+      <section id="compare-panel" class="compare-panel" hidden>
+        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Only Change Point is live in this UI pass.</span></div>
+        <div id="compare-grid" class="compare-grid"></div>
+      </section>
+
+      <section class="selection-bar">
+        <div class="selection-summary">
+          <p class="section-label">SELECTION</p>
+          <strong id="selection-title">No range selected</strong>
+          <span id="selection-time" class="muted">Drag the waveform or click a section.</span>
+        </div>
+        <div class="selection-actions">
+          <button id="loop-toggle" type="button" class="quiet-button" disabled>Loop</button>
+          <button id="clear-selection" type="button" class="quiet-button" disabled>Clear</button>
+          <button id="extract-selection" type="button" class="primary-button" disabled>Extract WAV</button>
+        </div>
+      </section>
+    </section>
+
+    <aside id="boundary-inspector" class="boundary-inspector" hidden>
+      <button id="close-inspector" class="inspector-close" type="button" aria-label="Close">×</button>
+      <p class="section-label">BOUNDARY</p>
+      <h2 id="boundary-time">00:00.0</h2>
+      <div class="confidence-line"><span>Prototype confidence</span><strong id="boundary-confidence">0.00</strong></div>
+      <div class="evidence-list">
+        <div><span>Change point</span><strong id="evidence-change">—</strong></div>
+        <div class="pending-evidence"><span>Section AI</span><strong>pending</strong></div>
+        <div class="pending-evidence"><span>Repetition</span><strong>pending</strong></div>
+        <div class="pending-evidence"><span>Stem activity</span><strong>pending</strong></div>
+        <div class="pending-evidence"><span>Downbeat</span><strong>pending</strong></div>
+      </div>
+      <p class="inspector-note">Raw analysis boundary and final edit point remain separate in the data model.</p>
+    </aside>
+
+    <audio id="audio" preload="metadata"></audio>
+    <footer class="footer">UI prototype: real repository audio + real waveform/change-point calculation. Demucs and multi-engine structure analysis are intentionally not simulated.</footer>
+  </main>
+  <script src="./app.js"></script>
+</body>
+</html>

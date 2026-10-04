@@ -1,0 +1,37 @@
+name: Structure Cutter Lab Pages smoke
+
+on:
+  workflow_run:
+    workflows: ["Deploy GitHub Pages"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate live Structure Cutter Lab
+        env:
+          LAB_URL: https://2rwa.github.io/tmp-music/m6-status/structure-cutter-lab
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${LAB_URL}"
+            if curl -fsSL --max-time 15 "${LAB_URL}/" -o /tmp/structure-cutter.html               && curl -fsSL --max-time 15 "${LAB_URL}/app.js" -o /tmp/structure-cutter-app.js               && curl -fsSL --max-time 15 "${LAB_URL}/style.css" -o /tmp/structure-cutter-style.css; then
+              grep -q "Structure Cutter Lab" /tmp/structure-cutter.html
+              grep -q "HTDemucs not connected yet" /tmp/structure-cutter.html
+              grep -q "samples/whisper-ao/source/whisper-ao.mp3" /tmp/structure-cutter-app.js
+              grep -q "analyzeChangePoints" /tmp/structure-cutter-app.js
+              grep -q ".timeline-card" /tmp/structure-cutter-style.css
+              echo "Structure Cutter Lab is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Structure Cutter Lab did not become available"
+          exit 1
