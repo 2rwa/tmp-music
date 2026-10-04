@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+const [htmlPath,appPath,cssPath]=process.argv.slice(2);
+if(!htmlPath||!appPath||!cssPath)throw new Error('usage: node vocal-isolation-inspector-regression.mjs <html> <app> <css>');
+const html=fs.readFileSync(htmlPath,'utf8'),src=fs.readFileSync(appPath,'utf8'),css=fs.readFileSync(cssPath,'utf8');
+for(const required of ['Vocal Isolation Inspector','同期試聴','Residual = Original','metrics','downloads','listenGrid'])if(!html.includes(required))throw new Error('HTML contract missing: '+required);
+for(const required of ['web-audio-separation@0.3.1/+esm','separateAndInspect','combineBuffers','renderMetrics','bufferToWavBlob','wavBlobFromRange','resultRangeKey','runBrowserSelfTest'])if(!src.includes(required))throw new Error('JS contract missing: '+required);
+for(const required of ['.listen-grid','.metrics','.metric','.downloads'])if(!css.includes(required))throw new Error('CSS contract missing: '+required);
+new Function(src);
+function extractFunction(source,name){const start=source.indexOf('function '+name+'(');if(start<0)throw new Error('function not found: '+name);const brace=source.indexOf('{',start);let depth=0;for(let i=brace;i<source.length;i++){if(source[i]==='{')depth++;else if(source[i]==='}'){depth--;if(depth===0)return source.slice(start,i+1)}}throw new Error('unterminated function: '+name);}
+const ctx={Math,Blob,ArrayBuffer,DataView};vm.createContext(ctx);
+vm.runInContext(extractFunction(src,'normalizeSelection')+';'+extractFunction(src,'wavBlobFromRange')+';this.normalizeSelection=normalizeSelection;this.wavBlobFromRange=wavBlobFromRange;',ctx);
+const r=ctx.normalizeSelection(9,3,12);if(r.start!==3||r.end!==9)throw new Error('selection ordering wrong');
+const rate=8000,data=new Float32Array(rate*2);data.fill(.1,0,rate);data.fill(.8,rate);
+const fake={sampleRate:rate,duration:2,numberOfChannels:2,getChannelData:()=>data};
+const blob=ctx.wavBlobFromRange(fake,1.2,1.4),ab=await blob.arrayBuffer(),first=new DataView(ab).getInt16(44,true)/32767;
+if(Math.abs(first-.8)>.02)throw new Error('mid-file crop started from source head');
+if(!/state\.resultRangeKey&&state\.resultRangeKey!==key\)clearResults\('selection changed'\)/.test(src))throw new Error('selection invalidation missing');
+if(!/mod\.createSeparator\(model,config\(\)\)/.test(src))throw new Error('fresh separator per run missing');
+console.log('mid-file crop: PASS');
+console.log('fresh separator + stale result invalidation: PASS');
+console.log('Vocal Isolation Inspector regression: PASS');
