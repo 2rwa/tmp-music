@@ -17,6 +17,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 REPORT = OUT / "report.json"
 TRACE = OUT / "traceback.txt"
 MODEL_PATH = OUT / "harmonix-fold0-section-function.onnx"
+DYNAMIC_MODEL_PATH = OUT / "harmonix-fold0-section-function-dynamic.onnx"
 CHECKPOINT_PATH = OUT / "harmonix-fold0.pth"
 
 report = {
@@ -27,6 +28,7 @@ report = {
     "attempts": [],
     "export_ok": False,
     "ort_ok": False,
+    "dynamic": {"export_ok": False, "cases": []},
 }
 
 def save():
@@ -178,6 +180,78 @@ try:
             np.isfinite(sec_diff) and np.isfinite(fun_diff)
             and sec_diff < 5e-4 and fun_diff < 5e-4
         )
+
+        # Probe whether the time axis can really be dynamic. The legacy exporter
+        # emits tracer warnings around shape-dependent padding, so this must be
+        # verified numerically at lengths other than the trace length.
+        dynamic = report["dynamic"]
+        try:
+            started = time.time()
+            if DYNAMIC_MODEL_PATH.exists():
+                DYNAMIC_MODEL_PATH.unlink()
+            torch.onnx.export(
+                wrapper,
+                (x,),
+                str(DYNAMIC_MODEL_PATH),
+                input_names=["spectrograms"],
+                output_names=["section_logits", "function_logits"],
+                opset_version=18,
+                do_constant_folding=True,
+                dynamo=False,
+                dynamic_axes={
+                    "spectrograms": {2: "time"},
+                    "section_logits": {1: "time"},
+                    "function_logits": {2: "time"},
+                },
+            )
+            dynamic["export_seconds"] = round(time.time() - started, 3)
+            dynamic["bytes"] = DYNAMIC_MODEL_PATH.stat().st_size
+            onnx.checker.check_model(onnx.load(str(DYNAMIC_MODEL_PATH)))
+            dyn_session = ort.InferenceSession(
+                str(DYNAMIC_MODEL_PATH),
+                providers=["CPUExecutionProvider"],
+            )
+            dynamic["export_ok"] = True
+
+            for frames in [600, 1200, 3000]:
+                case = {"frames": frames, "ok": False}
+                try:
+                    probe_x = torch.randn(1, 4, frames, 81, dtype=torch.float32)
+                    started = time.time()
+                    with torch.no_grad():
+                        ref_s, ref_f = wrapper(probe_x)
+                    case["pytorch_seconds"] = round(time.time() - started, 3)
+
+                    started = time.time()
+                    got_s, got_f = dyn_session.run(
+                        None,
+                        {"spectrograms": probe_x.numpy()},
+                    )
+                    case["ort_seconds"] = round(time.time() - started, 3)
+                    sec = float(np.max(np.abs(got_s - ref_s.numpy())))
+                    fun = float(np.max(np.abs(got_f - ref_f.numpy())))
+                    case["max_abs_diff"] = {"section": sec, "function": fun}
+                    case["output_shapes"] = [list(got_s.shape), list(got_f.shape)]
+                    case["ok"] = bool(
+                        got_s.shape[-1] == frames
+                        and got_f.shape[-1] == frames
+                        and np.isfinite(sec)
+                        and np.isfinite(fun)
+                        and sec < 5e-4
+                        and fun < 5e-4
+                    )
+                except Exception as exc:
+                    case["error_type"] = type(exc).__name__
+                    case["error"] = str(exc)[:4000]
+                dynamic["cases"].append(case)
+
+            dynamic["all_cases_ok"] = all(x.get("ok") for x in dynamic["cases"])
+        except Exception as exc:
+            dynamic["error_type"] = type(exc).__name__
+            dynamic["error"] = str(exc)[:4000]
+            with TRACE.open("a", encoding="utf-8") as fh:
+                fh.write("\n== dynamic export ==\n")
+                fh.write(traceback.format_exc())
 
 except Exception as exc:
     report["fatal_error_type"] = type(exc).__name__
