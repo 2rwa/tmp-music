@@ -1,0 +1,85 @@
+{
+  "model": "harmonix-fold0",
+  "file": "harmonix-fold0-section-function-long.onnx",
+  "onnx_bytes": 6376948,
+  "onnx_sha256": "1ca1a71eca7d2a40bb22e8f7699099651ebd5a29a801f24e84e7ea13c037fab3",
+  "opset": 18,
+  "input": {
+    "name": "spectrograms",
+    "shape": [
+      1,
+      4,
+      "time_long",
+      81
+    ],
+    "min_frames": 10240,
+    "max_frames": 66000,
+    "fps": 100,
+    "min_seconds": 102.4,
+    "max_seconds": 660.0
+  },
+  "outputs": [
+    "section_logits",
+    "function_logits"
+  ],
+  "labels": [
+    "start",
+    "end",
+    "intro",
+    "outro",
+    "break",
+    "bridge",
+    "inst",
+    "solo",
+    "verse",
+    "chorus"
+  ],
+  "source": {
+    "repository": "https://github.com/openmirlab/all-in-one-infer",
+    "revision": "797f1d21b115955ed81ff9161440334fefea8855",
+    "checkpoint": "harmonix-fold0-0vra4ys2.pth",
+    "checkpoint_sha256": "0db596dfb0995f41d62f6267d76a9d54c046f1649bd35e1dbeca0c5f9a7b8acd",
+    "checkpoint_bytes": 1400571,
+    "checkpoint_license": "CC-BY-NC-SA-4.0"
+  },
+  "validation": [
+    {
+      "frames": 10240,
+      "ok": true,
+      "max_abs_diff": {
+        "section": 1.430511474609375e-06,
+        "function": 6.67572021484375e-06
+      },
+      "output_shapes": [
+        [
+          1,
+          10240
+        ],
+        [
+          1,
+          10,
+          10240
+        ]
+      ]
+    },
+    {
+      "frames": 12000,
+      "ok": true,
+      "max_abs_diff": {
+        "section": 1.9073486328125e-06,
+        "function": 5.7220458984375e-06
+      },
+      "output_shapes": [
+        [
+          1,
+          12000
+        ],
+        [
+          1,
+          10,
+          12000
+        ]
+      ]
+    }
+  ]
+}
