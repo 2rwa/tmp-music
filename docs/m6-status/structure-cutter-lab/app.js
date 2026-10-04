@@ -1,5 +1,6 @@
 import { Separator } from 'unblend';
 import { analyzeRepetition } from './repetition-core.js';
+import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js';
 
 (() => {
   'use strict';
@@ -36,8 +37,8 @@ import { analyzeRepetition } from './repetition-core.js';
     audio: $('audio'), play: $('play-toggle'), seek: $('seek'), current: $('time-current'), duration: $('time-duration'), volume: $('volume'),
     modeTabs: $('mode-tabs'), engineNotice: $('engine-notice'), toggleCompare: $('toggle-compare'), comparePanel: $('compare-panel'), compareGrid: $('compare-grid'),
     ruler: $('timeline-ruler'), sectionTrack: $('section-track'), mixTrack: $('mix-track'), waveform: $('waveform'), selectionOverlay: $('selection-overlay'), playhead: $('playhead'), boundaryLayer: $('boundary-layer'),
-    selectionTitle: $('selection-title'), selectionTime: $('selection-time'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
-    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'),
+    selectionTitle: $('selection-title'), selectionTime: $('selection-time'), cutAlignment: $('cut-alignment'), alignmentNote: $('alignment-note'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
+    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'), evidenceBeat: $('evidence-beat'),
     stemCanvases: { vocals: $('stem-vocals'), drums: $('stem-drums'), bass: $('stem-bass'), other: $('stem-other') }
   };
 
@@ -54,6 +55,7 @@ import { analyzeRepetition } from './repetition-core.js';
     repetitionBoundaries: [],
     repetitionPairs: [],
     repetitionPeriodSec: null,
+    beatAnalysis: { bpm: null, confidence: 0, beatTimes: [], barTimes: [], boundaries: [] },
     consensusBoundaries: [],
     stemProfiles: {},
     stems: {},
@@ -308,12 +310,16 @@ import { analyzeRepetition } from './repetition-core.js';
     if (mode === 'change-point') return state.mixBoundaries;
     if (mode === 'stem-activity') return state.stemBoundaries.length ? state.stemBoundaries : state.mixBoundaries;
     if (mode === 'repetition') return state.repetitionBoundaries.length ? state.repetitionBoundaries : state.mixBoundaries;
+    if (mode === 'beat-bars') return state.beatAnalysis.boundaries.length ? state.beatAnalysis.boundaries : state.mixBoundaries;
     return state.consensusBoundaries.length ? state.consensusBoundaries : state.mixBoundaries;
   }
 
   function refreshModeView() {
     state.boundaries = boundariesForMode();
     state.sections = buildSections(state.boundaries);
+    if (state.mode === 'beat-bars') {
+      state.sections.forEach((section, i) => { section.label = 'Bar ' + (i + 1); });
+    }
     renderSections();
     renderBoundaries();
     renderCompare();
@@ -504,7 +510,7 @@ import { analyzeRepetition } from './repetition-core.js';
       ['Repetition', state.repetitionBoundaries, state.repetitionBoundaries.length ? 'live' : 'pending'],
       ['Change Point', state.mixBoundaries, 'live'],
       ['Stem Activity', state.stemBoundaries, state.stems.vocals ? 'live' : 'pending'],
-      ['Beat / Downbeat', [], 'pending']
+      ['Beat / Bars', state.beatAnalysis.boundaries, state.beatAnalysis.boundaries.length ? 'live' : 'pending']
     ];
     el.compareGrid.innerHTML = rows.map(([name, boundaries, status]) => {
       const marks = status === 'live'
@@ -516,18 +522,34 @@ import { analyzeRepetition } from './repetition-core.js';
 
   function setSelection(s, e, title = 'Manual selection') {
     if (!state.duration) return;
-    s = clamp(Math.min(s, e), 0, state.duration); e = clamp(Math.max(s, e), 0, state.duration);
-    if (e - s < .02) e = Math.min(state.duration, s + .02);
-    state.selection = { s, e, title };
+    const rawS = clamp(Math.min(s, e), 0, state.duration);
+    const rawE = clamp(Math.max(s, e), 0, state.duration);
+    const minRawE = rawE - rawS < .02 ? Math.min(state.duration, rawS + .02) : rawE;
+    const mode = el.cutAlignment ? el.cutAlignment.value : 'recommended';
+    const aligned = alignCutRange(rawS, minRawE, state.beatAnalysis, mode);
+    s = clamp(aligned.start, 0, state.duration);
+    e = clamp(aligned.end, 0, state.duration);
+    if (e - s < .02) { s = rawS; e = minRawE; }
+    state.selection = { rawS, rawE: minRawE, s, e, title, alignmentMode: mode, startKind: aligned.startKind, endKind: aligned.endKind };
     el.selectionOverlay.hidden = false; el.selectionOverlay.style.left = `${pct(s)}%`; el.selectionOverlay.style.width = `${pct(e) - pct(s)}%`;
-    el.selectionTitle.textContent = title; el.selectionTime.textContent = `${fmt(s)} → ${fmt(e)} · ${(e - s).toFixed(2)} sec`;
+    const changed = Math.abs(s - rawS) > .015 || Math.abs(e - minRawE) > .015;
+    el.selectionTitle.textContent = title;
+    el.selectionTime.textContent = changed
+      ? `cut ${fmt(s)} → ${fmt(e)} · raw ${fmt(rawS)} → ${fmt(minRawE)} · ${(e - s).toFixed(2)} sec`
+      : `${fmt(s)} → ${fmt(e)} · ${(e - s).toFixed(2)} sec`;
+    if (el.alignmentNote) {
+      const bpm = state.beatAnalysis.bpm ? state.beatAnalysis.bpm.toFixed(1) + ' BPM' : 'no beat grid';
+      el.alignmentNote.textContent = changed
+        ? `${aligned.startKind} → ${aligned.endKind} · ${bpm}`
+        : `${mode === 'exact' ? 'Exact' : 'No nearby snap'} · ${bpm}`;
+    }
     el.loop.disabled = false; el.clearSelection.disabled = false; el.extract.disabled = !state.audioBuffer;
-    el.sectionTrack.querySelectorAll('.section-block').forEach((n, i) => n.classList.toggle('is-selected', state.sections[i] && Math.abs(state.sections[i].s - s) < .03 && Math.abs(state.sections[i].e - e) < .03));
+    el.sectionTrack.querySelectorAll('.section-block').forEach((n, i) => n.classList.toggle('is-selected', state.sections[i] && Math.abs(state.sections[i].s - rawS) < .03 && Math.abs(state.sections[i].e - minRawE) < .03));
   }
 
   function clearSelection() {
     state.selection = null; el.selectionOverlay.hidden = true; el.selectionTitle.textContent = 'No range selected'; el.selectionTime.textContent = 'Drag the waveform or click a section.';
-    el.loop.disabled = true; el.clearSelection.disabled = true; el.extract.disabled = true; state.loop = false; el.loop.textContent = 'Loop';
+    el.loop.disabled = true; el.clearSelection.disabled = true; el.extract.disabled = true; state.loop = false; el.loop.textContent = 'Loop'; if (el.alignmentNote) el.alignmentNote.textContent = state.beatAnalysis.bpm ? state.beatAnalysis.bpm.toFixed(1) + ' BPM · choose a range to snap' : 'Beat grid appears after analysis.';
     el.sectionTrack.querySelectorAll('.section-block').forEach(n => n.classList.remove('is-selected'));
   }
 
@@ -541,6 +563,8 @@ import { analyzeRepetition } from './repetition-core.js';
     el.evidenceChange.textContent = mixEvidence ? mixEvidence.toFixed(2) : '—';
     el.evidenceStem.textContent = stemEvidence ? stemEvidence.toFixed(2) : (state.stems.vocals ? '0.00' : 'pending');
     el.evidenceRepetition.textContent = repetitionEvidence ? repetitionEvidence.toFixed(2) : (state.repetitionBoundaries.length ? '0.00' : 'pending');
+    const nearestBar = nearestGridTime(b.t, state.beatAnalysis.barTimes || [], Infinity);
+    el.evidenceBeat.textContent = nearestBar ? 'Δ' + nearestBar.distance.toFixed(2) + 's' : 'pending';
     el.inspector.hidden = false;
   }
 
@@ -556,6 +580,7 @@ import { analyzeRepetition } from './repetition-core.js';
     state.repetitionBoundaries = [];
     state.repetitionPairs = [];
     state.repetitionPeriodSec = null;
+    state.beatAnalysis = { bpm: null, confidence: 0, beatTimes: [], barTimes: [], boundaries: [] };
     state.consensusBoundaries = [];
     state.boundaries = [];
     if (state.objectUrl && state.objectUrl.startsWith('blob:')) URL.revokeObjectURL(state.objectUrl);
@@ -565,7 +590,7 @@ import { analyzeRepetition } from './repetition-core.js';
   }
 
   async function processBytes(bytes, name, audioUrl, sourcePath = '') {
-    for (const step of ['decode', 'waveform', 'change', 'repetition', 'demucs', 'structure']) stepState(step, '');
+    for (const step of ['decode', 'waveform', 'change', 'repetition', 'beat', 'demucs', 'structure']) stepState(step, '');
     setProgress(.08, 'Decoding audio'); stepState('decode', 'active');
     const buffer = await decodeArrayBuffer(bytes); stepState('decode', 'done'); setLoadedAudio(buffer, name, audioUrl, sourcePath);
     setProgress(.35, 'Building waveform'); stepState('waveform', 'active');
@@ -580,6 +605,13 @@ import { analyzeRepetition } from './repetition-core.js';
     state.repetitionPairs = recurrence.pairs;
     state.repetitionPeriodSec = recurrence.selectedPeriodSec;
     stepState('repetition', 'done');
+    setProgress(.66, 'Estimating beat / bar grid'); stepState('beat', 'active');
+    state.beatAnalysis = analyzeBeatGrid(mono, buffer.sampleRate);
+    stepState('beat', 'done');
+    document.documentElement.dataset.beatGridReady = state.beatAnalysis.boundaries.length ? 'true' : 'false';
+    if (el.alignmentNote) el.alignmentNote.textContent = state.beatAnalysis.bpm
+      ? state.beatAnalysis.bpm.toFixed(1) + ' BPM · ' + state.beatAnalysis.barTimes.length + ' estimated bars'
+      : 'Beat grid unavailable for this track.';
     state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries);
     document.documentElement.dataset.consensusSources = state.repetitionBoundaries.length ? '2' : '1';
     refreshModeView();
@@ -632,9 +664,16 @@ import { analyzeRepetition } from './repetition-core.js';
       const trem = 1 + .28 * Math.sin(2 * Math.PI * spec.pulse * local);
       x[i] = spec.amp * trem * Math.sin(2 * Math.PI * spec.freq * local);
     }
+    for (let beat = 0; beat * .5 < seconds; beat++) {
+      const start = Math.floor(beat * .5 * sr), amp = beat % 4 === 0 ? .8 : .32, clickFrames = Math.floor(.035 * sr);
+      for (let i = 0; i < clickFrames && start + i < x.length; i++) {
+        x[start + i] += amp * Math.exp(-i / (sr * .01)) * Math.sin(2 * Math.PI * 900 * i / sr);
+      }
+    }
     const buffer = { sampleRate: sr, numberOfChannels: 1, length: frames, duration: seconds, getChannelData: () => x };
     state.duration = buffer.duration; state.audioBuffer = buffer; state.name = 'selftest.wav'; state.mono = x; state.envelope = buildEnvelope(x);
     state.mixBoundaries = analyzeChangePoints(x, sr);
+    state.beatAnalysis = analyzeBeatGrid(x, sr);
     const recurrence = analyzeRepetition(x, sr, [], { minPeriodSec: 10, maxPeriodSec: 22, blockSec: 5.5 });
     state.repetitionBoundaries = recurrence.boundaries;
     state.repetitionPairs = recurrence.pairs;
@@ -661,6 +700,8 @@ import { analyzeRepetition } from './repetition-core.js';
       state.mixBoundaries.length >= 1 &&
       state.repetitionBoundaries.length >= 1 &&
       state.repetitionPairs.length >= 1 &&
+      state.beatAnalysis.bpm && Math.abs(state.beatAnalysis.bpm - 120) < 4 &&
+      state.beatAnalysis.boundaries.length >= 4 &&
       state.stemBoundaries.length >= 1 &&
       state.consensusBoundaries.length >= 1 &&
       document.documentElement.dataset.consensusSources === '3' &&
@@ -668,6 +709,7 @@ import { analyzeRepetition } from './repetition-core.js';
       STEM_NAMES.every(name => state.stemProfiles[name] && state.stemProfiles[name].length);
     document.documentElement.dataset.structureCutterSelftest = ok ? 'PASS' : 'FAIL';
     document.documentElement.dataset.repetitionReady = state.repetitionBoundaries.length ? 'true' : 'false';
+    document.documentElement.dataset.beatGridReady = state.beatAnalysis.boundaries.length ? 'true' : 'false';
     el.engineNotice.textContent = 'structure cutter self-test: ' + (ok ? 'PASS' : 'FAIL');
   }
 
@@ -692,6 +734,10 @@ import { analyzeRepetition } from './repetition-core.js';
     } else if (state.mode === 'repetition') {
       const periodText = state.repetitionPeriodSec ? ' Strongest recurrence lag: ' + state.repetitionPeriodSec.toFixed(1) + ' s.' : '';
       el.engineNotice.textContent = 'Showing M3-style recurrence boundaries from non-local repeated audio patterns.' + periodText;
+    } else if (state.mode === 'beat-bars') {
+      el.engineNotice.textContent = state.beatAnalysis.bpm
+        ? 'Estimated beat/bar grid · ' + state.beatAnalysis.bpm.toFixed(1) + ' BPM · autocorrelation ' + state.beatAnalysis.confidence.toFixed(2) + '. Bars assume 4 beats and are editing aids, not semantic structure.'
+        : 'Beat/bar grid could not be estimated reliably.';
     } else {
       const sources = [state.mixBoundaries.length, state.repetitionBoundaries.length, state.stemBoundaries.length].filter(Boolean).length;
       el.engineNotice.textContent = 'Consensus fuses ' + sources + ' live evidence tracks: mix change point, repetition, and (after HTDemucs) stem activity.';
@@ -705,6 +751,9 @@ import { analyzeRepetition } from './repetition-core.js';
   el.mixTrack.addEventListener('pointercancel', () => { state.dragStart = null; state.dragMoved = false; });
   el.loop.addEventListener('click', () => { if (!state.selection) return; state.loop = !state.loop; el.loop.textContent = state.loop ? 'Loop on' : 'Loop'; if (state.loop) { el.audio.currentTime = state.selection.s; el.audio.play().catch(() => {}); } });
   el.clearSelection.addEventListener('click', clearSelection); el.extract.addEventListener('click', extractSelection);
+  el.cutAlignment.addEventListener('change', () => {
+    if (state.selection) setSelection(state.selection.rawS, state.selection.rawE, state.selection.title);
+  });
   el.cancelProcessing.addEventListener('click', () => {
     if (state.demucs.controller && !state.demucs.controller.signal.aborted) state.demucs.controller.abort(new DOMException('cancel button', 'AbortError'));
   });
@@ -716,6 +765,6 @@ import { analyzeRepetition } from './repetition-core.js';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, buildConsensusBoundaries, buildSections, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, alignCutRange, buildConsensusBoundaries, buildSections, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();

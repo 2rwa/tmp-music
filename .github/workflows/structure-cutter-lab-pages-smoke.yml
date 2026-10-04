@@ -27,6 +27,7 @@ jobs:
               ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/structure-cutter.html | head -1 || true)"
               if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${LAB_URL}/${ASSET}" -o /tmp/structure-cutter-bundle.js; then
                 grep -q "htdemucs" /tmp/structure-cutter-bundle.js
+                grep -q "analyzeBeatGrid" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeRepetition" /tmp/structure-cutter-bundle.js
                 grep -q "analyzeStemActivity" /tmp/structure-cutter-bundle.js
                 grep -q "buildConsensusBoundaries" /tmp/structure-cutter-bundle.js

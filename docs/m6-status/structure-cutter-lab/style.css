@@ -42,3 +42,9 @@ h1{margin:.2rem 0 0;font-size:clamp(2rem,4vw,3.5rem);letter-spacing:-.045em}h2{m
 .stem-track canvas{display:block;width:100%;height:100%}
 .stem-placeholder{position:absolute;inset:0;display:grid;place-items:center;color:#59616c;font:9px ui-monospace,SFMono-Regular,Menlo,monospace;pointer-events:none}
 .stem-track.is-ready .stem-placeholder{display:none}
+
+.cut-alignment-control{display:flex;align-items:flex-end;gap:9px;margin-left:auto}
+.cut-alignment-control label{display:grid;gap:4px;color:var(--muted);font-size:.68rem}
+.cut-alignment-control select{min-width:190px;border:1px solid var(--line);border-radius:7px;background:#101319;color:var(--ink);padding:.48rem .55rem}
+.cut-alignment-control span{max-width:260px;font-size:.65rem;line-height:1.35}
+@media(max-width:900px){.cut-alignment-control{margin-left:0;align-items:flex-start;flex-direction:column}}

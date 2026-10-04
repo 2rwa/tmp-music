@@ -8,12 +8,14 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 2. Mix waveform を生成
 3. Mix の RMS + zero-crossing-rate 変化から Change Point 候補を生成
 4. M3と同じ recurrence / lag-profile の考え方を軽量化し、非局所の反復ペアから Repetition boundary を生成
-5. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
-6. `vocals / drums / bass / other` の実データを共通時間軸へ描画
-7. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
-8. Repetition はDemucs後にstem shareを特徴へ追加して再計算
-9. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
-10. 区間選択 / loop / WAV export
+5. onset envelope自己相関からtempo/beat phaseを推定し、4拍単位のbar-grid候補を生成
+6. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
+7. `vocals / drums / bass / other` の実データを共通時間軸へ描画
+8. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
+9. Repetition はDemucs後にstem shareを特徴へ追加して再計算
+10. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
+11. 切断点は Exact / Nearest beat / Estimated bar / Recommended から選択
+12. 区間選択 / loop / WAV export
 
 ## 実音源
 
@@ -26,6 +28,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 - Consensus — Mix Change Point + Repetition + Stem Activity
 - Change Point — mix RMS/ZCR
 - Repetition — M3-style recurrence / lag similarity / repeated-pair alignment
+- Beat / Bars — onset自己相関によるtempo/phase推定、4拍子bar-grid。意味的構成ではなく編集用snap layer
 - Stem Activity — HTDemucs 4-stem energy share change
 
 ## Pending
@@ -59,3 +62,7 @@ Browser self-testでは実モデルdownloadを行わず、fake stem を `install
 ## Repetition regression
 
 `tests/repetition-core-test.mjs` は A–B–A–C synthetic signal から約16秒の反復ラグ、反復ペア、反復境界を回収する既知解テスト。ブラウザself-testではこのRepetitionをsynthetic 4-stemと統合し、3-source Consensusまで確認する。
+
+## Beat / cut alignment regression
+
+`tests/beat-core-test.mjs` は120 BPM・4拍ごと強拍のsynthetic click trackからtempo / beat grid / bar gridを回収し、3.08秒がRecommendedで3.00秒の近傍beatへsnapすることを検証する。barが遠い場合に約1秒飛ばさないことも回帰条件。
