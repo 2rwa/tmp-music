@@ -1,0 +1,8 @@
+{
+  "name": "section-ai-feature-probe",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "fft.js": "4.0.4"
+  }
+}

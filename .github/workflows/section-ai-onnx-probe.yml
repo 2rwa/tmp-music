@@ -6,6 +6,8 @@ on:
     paths:
       - "tools/section_ai_onnx_probe.py"
       - "tools/section-ai-ortweb-probe/**"
+      - "tools/section-ai-feature-probe/**"
+      - "tools/section_ai_feature_reference.py"
       - ".github/workflows/section-ai-onnx-probe.yml"
   workflow_dispatch:
 
@@ -28,13 +30,21 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.8.0"
-          python -m pip install numpy hydra-core omegaconf onnx onnxruntime onnxscript
+          python -m pip install numpy hydra-core omegaconf onnx onnxruntime onnxscript "madmom-infer>=0.1.0"
 
       - name: Checkout pinned All-In-One source
         run: |
           set -euo pipefail
           git clone --filter=blob:none --no-checkout https://github.com/openmirlab/all-in-one-infer.git upstream-allin1
           git -C upstream-allin1 checkout 797f1d21b115955ed81ff9161440334fefea8855
+
+      - name: Generate Section AI feature reference
+        env:
+          ALLIN1_SOURCE_DIR: upstream-allin1
+        run: |
+          set -euo pipefail
+          python tools/section_ai_feature_reference.py section-ai-probe/feature-reference
+          cat section-ai-probe/feature-reference/reference.json
 
       - name: Export one Harmonix fold
         env:
@@ -66,6 +76,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+
+      - name: Validate browser feature parity
+        working-directory: tools/section-ai-feature-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          node feature-test.mjs ../../section-ai-probe/feature-reference
 
       - name: Build ORT Web probe
         working-directory: tools/section-ai-ortweb-probe
