@@ -84,3 +84,34 @@ ChronicleEntry
 ## Iteration scope
 
 First implementation prioritizes transport, follow/browse, responsive cards, delta text, Evidence, sparklines, minimap, loop, A/B comparison and 20ms detail. Further feature work can add note-name display, bookmarks/search and virtualization after real-track use.
+
+
+## Visual direction — Warm Scientific Editorial
+
+The default visual language is a **warm scientific field note / annotated score**, not a cool-blue monitoring dashboard.
+
+- background: warm paper `#f2eee5`
+- writing surface: ivory `#faf7f0`
+- main ink: `#28241e`
+- accent / NOW: rust red `#a64b32` / `#bd4f31`
+- periodic state: muted green `#587766`
+- transient / event: amber-brown `#b87635`
+- mixed: muted plum `#756979`
+- transport: warm charcoal `#24211c`
+
+Typography is semantic:
+
+- title / section interpretation: Japanese serif (Mincho)
+- controls / prose: Japanese sans-serif
+- timestamps / measurements / mode labels: monospace
+
+The chronicle should feel like an annotated score or research notebook. Large boxed cards are avoided where hierarchy can be expressed with whitespace, rules and indentation. Metric identity is primarily carried by labels and placement; color is reserved for state, current position and events.
+
+### Visual regression contract
+
+- no return to the original cool-blue base palette;
+- paper background + rust accent stay present;
+- serif headings remain distinct from controls and measurements;
+- current position is the strongest accent;
+- metric cards wrap 3→2→1 columns without horizontal page scrolling;
+- transport remains visually distinct as warm recording-equipment furniture.

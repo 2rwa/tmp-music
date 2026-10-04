@@ -101,4 +101,10 @@ if(!/@media\(max-width:560px\)[\s\S]*?\.transport\{[^}]*position:fixed/s.test(cs
 if(!/body\{[^}]*overflow-x:hidden/s.test(css)) throw new Error('page horizontal overflow guard missing');
 if(/\.chronicle[^\{]*\{[^}]*min-width\s*:\s*(?:[5-9]\d\d|\d{4,})px/s.test(css)) throw new Error('chronicle forces wide min-width');
 if(!/\.metric-grid\{[^}]*minmax\(0,1fr\)/s.test(css)) throw new Error('responsive metric grid missing');
+if(!css.includes('color-scheme:light')) throw new Error('warm editorial light palette missing');
+if(!css.includes('--bg:#f2eee5')||!css.includes('--accent:#a64b32')) throw new Error('paper/rust design tokens regressed');
+if(!css.includes('Hiragino Mincho ProN')) throw new Error('editorial serif heading contract missing');
+if(!css.includes('--transport:#24211c')) throw new Error('warm equipment transport palette missing');
+for(const legacy of ['#090e18','#111827','#69c7d8','#8bd5e1']) if(css.includes(legacy)) throw new Error('legacy cool-blue palette returned: '+legacy);
+console.log('warm editorial design: PASS');
 console.log('responsive/static contracts: PASS');
