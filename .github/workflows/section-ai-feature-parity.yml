@@ -6,11 +6,15 @@ on:
     paths:
       - "tools/section_ai_feature_reference.py"
       - "tools/section-ai-feature-probe/**"
+      - "docs/m6-status/structure-cutter-lab/section-ai-features.js"
+      - "docs/m6-status/structure-cutter-lab/package.json"
       - ".github/workflows/section-ai-feature-parity.yml"
   pull_request:
     paths:
       - "tools/section_ai_feature_reference.py"
       - "tools/section-ai-feature-probe/**"
+      - "docs/m6-status/structure-cutter-lab/section-ai-features.js"
+      - "docs/m6-status/structure-cutter-lab/package.json"
       - ".github/workflows/section-ai-feature-parity.yml"
   workflow_dispatch:
 
@@ -52,9 +56,9 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Compare JS browser features
-        working-directory: tools/section-ai-feature-probe
+      - name: Compare production browser features
+        working-directory: docs/m6-status/structure-cutter-lab
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
-          node feature-test.mjs /tmp/section-ai-feature-reference
+          node ../../../tools/section-ai-feature-probe/feature-test.mjs /tmp/section-ai-feature-reference

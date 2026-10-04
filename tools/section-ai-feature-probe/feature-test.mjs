@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { computeSectionAISpectrograms } from './feature-core.mjs';
+import { computeSectionAISpectrograms } from '../../docs/m6-status/structure-cutter-lab/section-ai-features.js';
 
 const referenceDir = process.argv[2];
 if (!referenceDir) throw new Error('usage: node feature-test.mjs <reference-dir>');

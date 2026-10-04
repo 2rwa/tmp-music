@@ -3,6 +3,7 @@ import { analyzeRepetition } from './repetition-core.js';
 import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js';
 import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
 import { alignLowEnergyRange } from './cut-core.js';
+import { computeSectionAISpectrograms } from './section-ai-features.js';
 
 (() => {
   'use strict';
@@ -820,6 +821,6 @@ import { alignLowEnergyRange } from './cut-core.js';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, computeSectionAISpectrograms, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();
