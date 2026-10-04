@@ -2,6 +2,7 @@ import { Separator } from 'unblend';
 import { analyzeRepetition } from './repetition-core.js';
 import { analyzeBeatGrid, alignCutRange, nearestGridTime } from './beat-core.js';
 import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
+import { alignLowEnergyRange } from './cut-core.js';
 
 (() => {
   'use strict';
@@ -546,8 +547,21 @@ import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
       aligned = end > start + .02
         ? { start, end, startKind: startHit ? 'vocal' : 'exact', endKind: endHit ? 'vocal' : 'exact' }
         : { start: rawS, end: minRawE, startKind: 'exact', endKind: 'exact' };
+    } else if (mode === 'low-energy') {
+      aligned = alignLowEnergyRange(rawS, minRawE, state.mono, state.audioBuffer?.sampleRate || 0, { radiusSec: .35 });
     } else {
       aligned = alignCutRange(rawS, minRawE, state.beatAnalysis, mode);
+      if (mode === 'recommended' && state.mono && state.audioBuffer) {
+        const low = alignLowEnergyRange(rawS, minRawE, state.mono, state.audioBuffer.sampleRate, { radiusSec: .28 });
+        let start = aligned.start, end = aligned.end, startKind = aligned.startKind, endKind = aligned.endKind;
+        if (startKind === 'exact' && low.startKind === 'low-energy' && (low.startDropDb || 0) >= 4) {
+          start = low.start; startKind = 'low-energy';
+        }
+        if (endKind === 'exact' && low.endKind === 'low-energy' && (low.endDropDb || 0) >= 4) {
+          end = low.end; endKind = 'low-energy';
+        }
+        if (end > start + .02) aligned = { ...aligned, start, end, startKind, endKind };
+      }
     }
     s = clamp(aligned.start, 0, state.duration);
     e = clamp(aligned.end, 0, state.duration);
@@ -738,12 +752,16 @@ import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
     document.documentElement.dataset.repetitionReady = state.repetitionBoundaries.length ? 'true' : 'false';
     document.documentElement.dataset.beatGridReady = state.beatAnalysis.boundaries.length ? 'true' : 'false';
     document.documentElement.dataset.vocalPhraseReady = state.vocalPhraseBoundaries.length ? 'true' : 'false';
+    el.cutAlignment.value = 'low-energy';
+    setSelection(7.72, 8.28, 'Low-energy UI self-test');
+    const lowEnergyUiOk = state.selection && state.selection.alignmentMode === 'low-energy';
+    document.documentElement.dataset.lowEnergyUiSelftest = lowEnergyUiOk ? 'PASS' : 'FAIL';
     el.cutAlignment.value = 'vocal';
     setSelection(1.18, 5.08, 'Vocal snap self-test');
     const vocalSnapOk = state.selection && state.selection.startKind === 'vocal' && state.selection.endKind === 'vocal';
     document.documentElement.dataset.vocalSnapSelftest = vocalSnapOk ? 'PASS' : 'FAIL';
-    document.documentElement.dataset.structureCutterSelftest = ok && vocalSnapOk ? 'PASS' : 'FAIL';
-    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok && vocalSnapOk ? 'PASS' : 'FAIL');
+    document.documentElement.dataset.structureCutterSelftest = ok && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL';
+    el.engineNotice.textContent = 'structure cutter self-test: ' + (ok && vocalSnapOk && lowEnergyUiOk ? 'PASS' : 'FAIL');
   }
 
   el.sampleSelect.addEventListener('change', () => { el.loadSample.disabled = !el.sampleSelect.value; const s = REPO_SAMPLES[el.sampleSelect.value]; if (s) { el.trackName.textContent = s.title; el.trackMeta.textContent = `Repository source · ${s.path}`; } });
@@ -802,6 +820,6 @@ import { analyzeVocalPhrases, nearestPhraseBoundary } from './vocal-core.js';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();

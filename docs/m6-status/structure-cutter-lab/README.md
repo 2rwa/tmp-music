@@ -15,7 +15,7 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 9. vocals stemへadaptive RMS threshold + hysteresisを掛けてVocal Phrase開始/終了を生成
 10. Repetition はDemucs後にstem shareを特徴へ追加して再計算
 11. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
-12. 切断点は Exact / Nearest beat / Estimated bar / Vocal phrase edge / Recommended から選択
+12. 切断点は Exact / Nearest beat / Estimated bar / Vocal phrase edge / Low energy / Recommended から選択
 13. 区間選択 / loop / WAV export
 
 ## 実音源
@@ -72,3 +72,7 @@ Browser self-testでは実モデルdownloadを行わず、fake stem を `install
 ## Vocal phrase regression
 
 `tests/vocal-core-test.mjs` は3つのsynthetic歌唱区間を約±0.2秒以内で回収する。browser self-testではfake HTDemucs vocalsに明示的な無音gapを作り、Vocal Phrase boundary生成と`Vocal phrase edge` alignmentの両方を確認する。
+
+## Low-energy cut regression
+
+`tests/cut-core-test.mjs` は±0.35秒の範囲で局所RMS最小点を探索し、synthetic troughへ約27–30 dB低い切断点を回収する。Recommendedはbeat/bar snapが成立しないedgeだけLow energyをfallbackとして使い、大きな位置移動を避ける。

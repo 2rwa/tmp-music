@@ -35,6 +35,7 @@ jobs:
           node tests/repetition-core-test.mjs
           node tests/beat-core-test.mjs
           node tests/vocal-core-test.mjs
+          node tests/cut-core-test.mjs
 
       - name: Build browser bundle
         working-directory: docs/m6-status/structure-cutter-lab
@@ -71,5 +72,6 @@ jobs:
           grep -q 'data-beat-grid-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-vocal-phrase-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-vocal-snap-selftest="PASS"' /tmp/structure-cutter-browser.html
+          grep -q 'data-low-energy-ui-selftest="PASS"' /tmp/structure-cutter-browser.html
           grep -q 'structure cutter self-test: PASS' /tmp/structure-cutter-browser.html
           echo "Structure Cutter Lab browser regression: PASS"
