@@ -41,6 +41,9 @@ jobs:
       - name: Segment Forest regression
         run: node tests/segment-forest-regression.mjs docs/m6-status/segment-forest/index.html
 
+      - name: Annotation Explorer regression
+        run: node tests/annotation-explorer-regression.mjs docs/m6-status/annotation-explorer/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
