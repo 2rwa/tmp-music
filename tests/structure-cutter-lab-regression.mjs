@@ -23,5 +23,9 @@ for (const token of [
   '.stem-vocal','.stem-drums','.stem-bass','.stem-other','.stem-track','.micro-button'
 ]) if (!css.includes(token)) throw new Error(`missing visual contract: ${token}`);
 
-new Function(js.replace("import { Separator } from 'unblend';", ''));
+new Function(
+  js
+    .replace("import { Separator } from 'unblend';", '')
+    .replace("import { analyzeRepetition } from './repetition-core.js';", '')
+);
 console.log('Structure Cutter Lab regression: PASS');
