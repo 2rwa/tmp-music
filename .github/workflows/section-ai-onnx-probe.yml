@@ -1,0 +1,58 @@
+name: Section AI ONNX probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/section_ai_onnx_probe.py"
+      - ".github/workflows/section-ai-onnx-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install probe dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install             "all-in-one-infer @ git+https://github.com/openmirlab/all-in-one-infer@797f1d21b115955ed81ff9161440334fefea8855"             onnx             onnxruntime             onnxscript
+
+      - name: Export one Harmonix fold
+        env:
+          SECTION_AI_PROBE_OUT: section-ai-probe
+        run: |
+          set -euo pipefail
+          python tools/section_ai_onnx_probe.py
+          cat section-ai-probe/report.json
+
+      - name: Summarize probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("section-ai-probe/report.json").read_text())
+          print("export_ok:", p.get("export_ok"))
+          print("ort_ok:", p.get("ort_ok"))
+          print("exporter:", p.get("exporter"))
+          print("onnx_bytes:", p.get("onnx_bytes"))
+          for a in p.get("attempts", []):
+              print(a)
+          PY
+
+      - name: Upload probe artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: section-ai-onnx-probe
+          path: section-ai-probe/
+          retention-days: 7
