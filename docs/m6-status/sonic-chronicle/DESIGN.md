@@ -115,3 +115,26 @@ The chronicle should feel like an annotated score or research notebook. Large bo
 - current position is the strongest accent;
 - metric cards wrap 3→2→1 columns without horizontal page scrolling;
 - transport remains visually distinct as warm recording-equipment furniture.
+
+
+## Multi-interval playback and selected-audio export
+
+The transport uses one shared range model for looping, navigation, highlighting and download:
+
+- **Volume:** 0–100% slider with percentage readout.
+- **Loop length:** choose 1–10 consecutive chronicle intervals.
+- **Loop step:** choose 1–10 intervals; “次へ” shifts the loop window by that many intervals and seeks to the new start.
+- **Selected-range download:** the decoded source PCM stays browser-local in memory. Only the active loop range is encoded as 16-bit PCM WAV and downloaded.
+- **Selection visibility:** all intervals in the active loop range are marked in the chronicle.
+
+The model is `loopStartIndex + loopSpan`; there is no separate playback range and export range. This prevents the highlighted range, loop boundary and downloaded audio from drifting apart.
+
+### Regression contract
+
+- changing volume updates both `audio.volume` and the visible percentage;
+- selecting 1–10 intervals produces a consecutive range;
+- playback wraps from the end of the final selected interval to the first selected interval;
+- stepping 1–10 intervals moves the range and playback cursor together;
+- selected WAV output contains a valid RIFF/WAVE header and PCM payload;
+- download filename records the selected interval numbers;
+- mobile layout keeps loop controls available instead of hiding them.

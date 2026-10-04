@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<meta name="theme-color" content="#f2eee5">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2eee5">
 <title>Sonic Chronicle — tmp-music</title>
 <link rel="stylesheet" href="./style.css">
 </head>
@@ -46,6 +47,10 @@
       <button id="back-5" type="button" disabled>−5s</button>
       <button id="forward-5" type="button" disabled>+5s</button>
       <span class="transport-clock"><b id="current-time">00:00.00</b><span>/</span><span id="duration-time">00:00.00</span></span>
+      <label class="volume-control">音量
+        <input id="volume" type="range" min="0" max="100" step="1" value="100" disabled aria-label="音量">
+        <output id="volume-value">100%</output>
+      </label>
       <label class="speed-label">速度
         <select id="speed" disabled><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select>
       </label>
@@ -54,7 +59,13 @@
     <div class="transport-sub">
       <button id="follow-toggle" type="button" disabled>追従 ON</button>
       <button id="return-now" class="return-now" type="button" hidden>▶ 現在位置へ戻る</button>
-      <button id="loop-current" type="button" disabled>↻ この区間をループ</button>
+      <div class="loop-tools" aria-label="区間ループ操作">
+        <button id="loop-current" type="button" disabled>↻ ここからループ</button>
+        <label>長さ <select id="loop-span" disabled><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select> 区間</label>
+        <button id="loop-next" type="button" disabled>次へ</button>
+        <label>送る <select id="loop-step" disabled><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select> 区間</label>
+        <button id="download-loop" type="button" disabled>↓ 選択範囲 WAV</button>
+      </div>
       <span id="mode-note" class="mode-note">FOLLOW</span>
     </div>
   </section>

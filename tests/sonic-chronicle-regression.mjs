@@ -16,7 +16,7 @@ class ElementStub {
   constructor(id=''){
     this.id=id;this.style={};this.dataset={};this.disabled=false;this.hidden=false;this.checked=true;this.value='';this.files=[];
     this.textContent='';this._innerHTML='';this.listeners=new Map();this.classList=new ClassList();this.children=[];this.parentElement=this;
-    this.currentTime=0;this.duration=6;this.paused=true;this.ended=false;this.playbackRate=1;this.tagName='DIV';
+    this.currentTime=0;this.duration=6;this.paused=true;this.ended=false;this.playbackRate=1;this.volume=1;this.tagName='DIV';
   }
   set innerHTML(v){this._innerHTML=String(v);this._entryNodes=new Map();for(const m of this._innerHTML.matchAll(/data-entry-id="([^"]+)"/g)){const n=new ElementStub('entry');n.dataset.entryId=m[1];this._entryNodes.set(m[1],n)}this._metricCards=[];for(const m of this._innerHTML.matchAll(/class="metric-card" data-filter="([^"]+)"/g)){const n=new ElementStub('metric');n.dataset.filter=m[1];this._metricCards.push(n)}this._eventLists=[...this._innerHTML.matchAll(/class="event-list"/g)].map(()=>new ElementStub('events'))}
   get innerHTML(){return this._innerHTML}
@@ -34,7 +34,7 @@ class ElementStub {
   getBoundingClientRect(){return{left:0,top:0,width:100,height:600,right:100,bottom:600}}
 }
 
-const ids=['loader-panel','drop-zone','choose-file','file-input','audio','status','progress','cancel-analysis','export-json','synthetic-test','file-chip','play-toggle','back-5','forward-5','current-time','duration-time','seek','speed','follow-toggle','return-now','loop-current','mode-note','chronicle-scroll','chronicle','entry-count','minimap','minimap-playhead','comparison','comparison-body','clear-comparison','provenance'];
+const ids=['loader-panel','drop-zone','choose-file','file-input','audio','status','progress','cancel-analysis','export-json','synthetic-test','file-chip','play-toggle','back-5','forward-5','current-time','duration-time','seek','speed','volume','volume-value','follow-toggle','return-now','loop-current','loop-span','loop-step','loop-next','download-loop','mode-note','chronicle-scroll','chronicle','entry-count','minimap','minimap-playhead','comparison','comparison-body','clear-comparison','provenance'];
 const elements=new Map(ids.map(id=>['#'+id,new ElementStub(id)]));
 const density=['read','detail','raw'].map(x=>{const e=new ElementStub('density-'+x);e.dataset.density=x;return e});
 const filters=['pitch','periodicity','spectrum','modulation','events'].map(x=>{const e=new ElementStub('filter-'+x);e.dataset.filter=x;e.checked=true;return e});
@@ -82,6 +82,36 @@ if(Math.abs(audio.currentTime-4.2)>.001) throw new Error(`seek did not update au
 if(Math.abs(api.state.playhead-4.2)>.001) throw new Error('seek did not redraw playhead state');
 console.log('seek: PASS');
 
+const volume=elements.get('#volume');volume.value='35';volume.dispatch('input');
+if(Math.abs(audio.volume-.35)>.001||elements.get('#volume-value').textContent!=='35%') throw new Error('volume control did not update audio volume and readout');
+if(documentElement.dataset.volume!=='35') throw new Error('volume state was not exposed');
+console.log('volume: PASS');
+
+audio.currentTime=0;api.syncPlayhead(0,true);
+const loopSpan=elements.get('#loop-span');loopSpan.value='3';loopSpan.dispatch('change');
+elements.get('#loop-current').dispatch('click');
+let range=api.loopRange();
+if(!range||range.count!==Math.min(3,entryCount)||range.startIndex!==0) throw new Error('3-interval loop range was not selected from current position');
+if(documentElement.dataset.loopSpan!=='3'||documentElement.dataset.loopRange!==`${range.startIndex}:${range.endIndex}`) throw new Error('loop selection UI state did not redraw');
+
+const loopStep=elements.get('#loop-step');loopStep.value='2';loopStep.dispatch('change');
+elements.get('#loop-next').dispatch('click');
+range=api.loopRange();
+const expectedStart=Math.min(2,Math.max(0,entryCount-range.count));
+if(!range||range.startIndex!==expectedStart) throw new Error(`loop-next did not advance by selected interval count: ${range?.startIndex} != ${expectedStart}`);
+if(Math.abs(audio.currentTime-range.s)>.001) throw new Error('loop-next did not seek to the new loop start');
+
+audio.paused=false;audio.currentTime=range.e+.05;api.syncPlayhead(audio.currentTime,true);
+if(Math.abs(audio.currentTime-range.s)>.001||Math.abs(api.state.playhead-range.s)>.001) throw new Error('multi-interval loop did not wrap at selected range end');
+audio.paused=true;
+
+const wav=api.buildWavBlob(range),wavBytes=new Uint8Array(await wav.arrayBuffer());
+if(wav.type!=='audio/wav'||wavBytes.length<=44) throw new Error('selected WAV was not generated');
+if(String.fromCharCode(...wavBytes.slice(0,4))!=='RIFF'||String.fromCharCode(...wavBytes.slice(8,12))!=='WAVE') throw new Error('selected download is not a WAV container');
+elements.get('#download-loop').dispatch('click');
+if(!documentElement.dataset.loopDownload?.endsWith('.wav')) throw new Error('selected WAV download action did not run');
+console.log('multi-interval loop/download: PASS');
+
 density.find(x=>x.dataset.density==='detail').dispatch('click');
 if(documentElement.dataset.density!=='detail'||body.dataset.density!=='detail') throw new Error('density change did not update UI state');
 const pitchFilter=filters.find(x=>x.dataset.filter==='pitch');pitchFilter.checked=false;pitchFilter.dispatch('change');
@@ -95,7 +125,7 @@ if(elements.get('#minimap').children.length<entryCount) throw new Error('minimap
 console.log('minimap: PASS');
 
 const html=fs.readFileSync(htmlPath,'utf8'),css=fs.readFileSync(cssPath,'utf8');
-for(const required of ['Sonic Chronicle','解析クロニクル','現在位置へ戻る','何を読みたい？','20ms']) if(!html.includes(required)) throw new Error(`HTML missing ${required}`);
+for(const required of ['Sonic Chronicle','解析クロニクル','現在位置へ戻る','何を読みたい？','20ms','音量','loop-span','loop-step','選択範囲 WAV']) if(!html.includes(required)) throw new Error(`HTML missing ${required}`);
 if(!/\.transport\{[^}]*position:sticky/s.test(css)) throw new Error('desktop sticky transport regression');
 if(!/@media\(max-width:560px\)[\s\S]*?\.transport\{[^}]*position:fixed/s.test(css)) throw new Error('mobile fixed transport regression');
 if(!/body\{[^}]*overflow-x:hidden/s.test(css)) throw new Error('page horizontal overflow guard missing');
