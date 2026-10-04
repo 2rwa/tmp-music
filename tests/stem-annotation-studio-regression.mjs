@@ -6,5 +6,5 @@ if(!html.includes("const LAYERS=['structure','vocal','performance','acoustic','s
 if(!/type="module"[\s\S]*import \{ Separator \} from 'unblend'/.test(html))throw new Error('unblend module import missing');
 const scripts=[...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map(m=>m[1]);if(scripts.length!==1)throw new Error('expected one module script');
 new Function(scripts[0].replace("import { Separator } from 'unblend';",""));
-for(const pattern of [/separatorLoader\(DEMUCS_MODEL,/,/separator\.separate\(crop,/,/state\.annotations\.stem=buildStemAnnotations/,/applyFilter\('stem:vocals',true\)/,/dataset\.stemStudioSelftest=ok\?'PASS':'FAIL'/])if(!pattern.test(scripts[0]))throw new Error('behavior wiring missing: '+pattern);
+for(const pattern of [/separatorLoader\(DEMUCS_MODEL,/,/separator\.separate\(crop,/,/state\.annotations\.stem=buildStemAnnotations/,/clearDemucsResults\('',false,false\)/,/state\.annotations=buildAnnotations\(data\);setDemucsBusy\(false\)/,/buttonEnabled=!el\.demucsRun\.disabled/,/runStable=state\.demucs\.runId===runBefore/,/applyFilter\('stem:vocals',true\)/,/dataset\.stemStudioSelftest=ok\?'PASS':'FAIL'/])if(!pattern.test(scripts[0]))throw new Error('behavior wiring missing: '+pattern);
 console.log('Stem Annotation Studio regression: PASS');
