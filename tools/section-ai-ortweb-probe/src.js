@@ -20,7 +20,7 @@ async function withTimeout(promise, ms, label) {
 
 async function run(provider) {
   if (provider === 'wasm') {
-    ort.env.wasm.wasmPaths = './ort-wasm/';
+    ort.env.wasm.wasmPaths = new URL('./ort-wasm/', window.location.href).href;
     ort.env.wasm.numThreads = 1;
   }
   const createStart = performance.now();

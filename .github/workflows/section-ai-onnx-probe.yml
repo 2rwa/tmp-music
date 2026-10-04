@@ -73,6 +73,7 @@ jobs:
           cp ../../section-ai-probe/harmonix-fold0-section-function.onnx dist/model.onnx
           mkdir -p dist/ort-wasm
           cp node_modules/onnxruntime-web/dist/*.wasm dist/ort-wasm/
+          cp node_modules/onnxruntime-web/dist/ort-wasm*.mjs dist/ort-wasm/
           test -s dist/model.onnx
 
       - name: Browser ORT Web probe
