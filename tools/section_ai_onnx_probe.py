@@ -29,6 +29,7 @@ report = {
     "export_ok": False,
     "ort_ok": False,
     "dynamic": {"export_ok": False, "cases": []},
+    "fixed_scaling": [],
 }
 
 def save():
@@ -252,6 +253,65 @@ try:
             with TRACE.open("a", encoding="utf-8") as fh:
                 fh.write("\n== dynamic export ==\n")
                 fh.write(traceback.format_exc())
+
+        # Fixed-length scaling probe. Dynamic axes are not trustworthy because
+        # shape-dependent padding is traced as constants. Measure practical
+        # 60-second and 5-minute fixed graphs instead.
+        for frames in [6000, 30000]:
+            row = {"frames": frames, "seconds_at_100fps": frames / 100, "ok": False}
+            model_path = OUT / f"harmonix-fold0-section-function-{frames}.onnx"
+            try:
+                probe_x = torch.randn(1, 4, frames, 81, dtype=torch.float32)
+                started = time.time()
+                with torch.no_grad():
+                    ref_s, ref_f = wrapper(probe_x)
+                row["pytorch_seconds"] = round(time.time() - started, 3)
+
+                started = time.time()
+                torch.onnx.export(
+                    wrapper,
+                    (probe_x,),
+                    str(model_path),
+                    input_names=["spectrograms"],
+                    output_names=["section_logits", "function_logits"],
+                    opset_version=18,
+                    do_constant_folding=True,
+                    dynamo=False,
+                )
+                row["export_seconds"] = round(time.time() - started, 3)
+                row["bytes"] = model_path.stat().st_size
+                onnx.checker.check_model(onnx.load(str(model_path)))
+
+                started = time.time()
+                fixed_session = ort.InferenceSession(
+                    str(model_path),
+                    providers=["CPUExecutionProvider"],
+                )
+                row["session_seconds"] = round(time.time() - started, 3)
+
+                started = time.time()
+                got_s, got_f = fixed_session.run(
+                    None,
+                    {"spectrograms": probe_x.numpy()},
+                )
+                row["ort_seconds"] = round(time.time() - started, 3)
+                sec = float(np.max(np.abs(got_s - ref_s.numpy())))
+                fun = float(np.max(np.abs(got_f - ref_f.numpy())))
+                row["max_abs_diff"] = {"section": sec, "function": fun}
+                row["ok"] = bool(
+                    got_s.shape[-1] == frames
+                    and got_f.shape[-1] == frames
+                    and sec < 5e-4
+                    and fun < 5e-4
+                )
+                del fixed_session, probe_x, ref_s, ref_f, got_s, got_f
+            except Exception as exc:
+                row["error_type"] = type(exc).__name__
+                row["error"] = str(exc)[:4000]
+                with TRACE.open("a", encoding="utf-8") as fh:
+                    fh.write(f"\n== fixed {frames} ==\n")
+                    fh.write(traceback.format_exc())
+            report["fixed_scaling"].append(row)
 
 except Exception as exc:
     report["fatal_error_type"] = type(exc).__name__

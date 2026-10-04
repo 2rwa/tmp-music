@@ -57,6 +57,7 @@ jobs:
           print("onnx_bytes:", p.get("onnx_bytes"))
           print("config:", p.get("config"))
           print("dynamic:", p.get("dynamic"))
+          print("fixed_scaling:", p.get("fixed_scaling"))
           for a in p.get("attempts", []):
               print(a)
           PY
