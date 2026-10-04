@@ -32,6 +32,7 @@ jobs:
         run: |
           node --check docs/m6-status/structure-cutter-lab/app.js
           node tests/structure-cutter-lab-regression.mjs docs/m6-status/structure-cutter-lab
+          node tests/repetition-core-test.mjs
 
       - name: Build browser bundle
         working-directory: docs/m6-status/structure-cutter-lab
@@ -63,6 +64,7 @@ jobs:
           "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=9000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
           grep -q 'data-structure-cutter-selftest="PASS"' /tmp/structure-cutter-browser.html
           grep -q 'data-demucs-ready="true"' /tmp/structure-cutter-browser.html
-          grep -q 'data-consensus-sources="2"' /tmp/structure-cutter-browser.html
+          grep -q 'data-consensus-sources="3"' /tmp/structure-cutter-browser.html
+          grep -q 'data-repetition-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'structure cutter self-test: PASS' /tmp/structure-cutter-browser.html
           echo "Structure Cutter Lab browser regression: PASS"

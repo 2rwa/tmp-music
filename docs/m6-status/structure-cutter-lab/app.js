@@ -1,4 +1,5 @@
 import { Separator } from 'unblend';
+import { analyzeRepetition } from './repetition-core.js';
 
 (() => {
   'use strict';
@@ -36,7 +37,7 @@ import { Separator } from 'unblend';
     modeTabs: $('mode-tabs'), engineNotice: $('engine-notice'), toggleCompare: $('toggle-compare'), comparePanel: $('compare-panel'), compareGrid: $('compare-grid'),
     ruler: $('timeline-ruler'), sectionTrack: $('section-track'), mixTrack: $('mix-track'), waveform: $('waveform'), selectionOverlay: $('selection-overlay'), playhead: $('playhead'), boundaryLayer: $('boundary-layer'),
     selectionTitle: $('selection-title'), selectionTime: $('selection-time'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
-    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'),
+    inspector: $('boundary-inspector'), closeInspector: $('close-inspector'), boundaryTime: $('boundary-time'), boundaryConfidence: $('boundary-confidence'), evidenceChange: $('evidence-change'), evidenceStem: $('evidence-stem'), evidenceRepetition: $('evidence-repetition'),
     stemCanvases: { vocals: $('stem-vocals'), drums: $('stem-drums'), bass: $('stem-bass'), other: $('stem-other') }
   };
 
@@ -50,10 +51,14 @@ import { Separator } from 'unblend';
     boundaries: [],
     mixBoundaries: [],
     stemBoundaries: [],
+    repetitionBoundaries: [],
+    repetitionPairs: [],
+    repetitionPeriodSec: null,
     consensusBoundaries: [],
     stemProfiles: {},
     stems: {},
     stemFrames: [],
+    mono: null,
     sections: [],
     selection: null,
     dragStart: null,
@@ -187,7 +192,7 @@ import { Separator } from 'unblend';
     state.stemProfiles = {};
     state.stemFrames = [];
     state.stemBoundaries = [];
-    state.consensusBoundaries = state.mixBoundaries.slice();
+    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries);
     stopStemAudition();
     clearStemVisuals();
     document.documentElement.dataset.demucsReady = 'false';
@@ -269,8 +274,12 @@ import { Separator } from 'unblend';
     };
   }
 
-  function buildConsensusBoundaries(mix, stem) {
-    const events = [...mix.map(x => ({ ...x, kind: 'mix' })), ...stem.map(x => ({ ...x, kind: 'stem' }))].sort((a, b) => a.t - b.t);
+  function buildConsensusBoundaries(mix, stem, repetition = []) {
+    const events = [
+      ...mix.map(x => ({ ...x, kind: 'mix' })),
+      ...stem.map(x => ({ ...x, kind: 'stem' })),
+      ...repetition.map(x => ({ ...x, kind: 'repetition' }))
+    ].sort((a, b) => a.t - b.t);
     const clusters = [];
     for (const event of events) {
       const prev = clusters[clusters.length - 1];
@@ -281,19 +290,24 @@ import { Separator } from 'unblend';
       }
     }
     return clusters.map(cluster => {
-      const mixEvents = cluster.events.filter(x => x.kind === 'mix'), stemEvents = cluster.events.filter(x => x.kind === 'stem');
-      const mixConf = mixEvents.length ? Math.max(...mixEvents.map(x => x.confidence)) : 0;
-      const stemConf = stemEvents.length ? Math.max(...stemEvents.map(x => x.confidence)) : 0;
+      const evidence = { mix: 0, stem: 0, repetition: 0 };
+      for (const kind of Object.keys(evidence)) {
+        const matches = cluster.events.filter(x => x.kind === kind);
+        evidence[kind] = matches.length ? Math.max(...matches.map(x => x.confidence)) : 0;
+      }
       const weightSum = cluster.events.reduce((s, x) => s + Math.max(.1, x.confidence), 0);
       const t = cluster.events.reduce((s, x) => s + x.t * Math.max(.1, x.confidence), 0) / weightSum;
-      const confidence = mixConf && stemConf ? clamp(.25 + mixConf * .4 + stemConf * .35, 0, 1) : clamp(Math.max(mixConf, stemConf) * .58, .2, .72);
-      return { t, score: confidence, confidence, source: 'consensus', evidence: { mix: mixConf, stem: stemConf } };
+      const active = Object.values(evidence).filter(x => x > 0);
+      const avg = active.length ? mean(active) : 0;
+      const confidence = clamp(avg * (.58 + .14 * Math.max(0, active.length - 1)) + .08 * Math.max(0, active.length - 1), .18, 1);
+      return { t, score: confidence, confidence, source: 'consensus', evidence };
     }).filter(x => x.t >= 3 && x.t <= state.duration - 3);
   }
 
   function boundariesForMode(mode = state.mode) {
     if (mode === 'change-point') return state.mixBoundaries;
     if (mode === 'stem-activity') return state.stemBoundaries.length ? state.stemBoundaries : state.mixBoundaries;
+    if (mode === 'repetition') return state.repetitionBoundaries.length ? state.repetitionBoundaries : state.mixBoundaries;
     return state.consensusBoundaries.length ? state.consensusBoundaries : state.mixBoundaries;
   }
 
@@ -336,11 +350,17 @@ import { Separator } from 'unblend';
     const activity = analyzeStemActivity(valid);
     state.stemFrames = activity.frames;
     state.stemBoundaries = activity.boundaries;
-    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, state.stemBoundaries);
+    if (state.mono && state.audioBuffer) {
+      const recurrence = analyzeRepetition(state.mono, state.audioBuffer.sampleRate, state.stemFrames);
+      state.repetitionBoundaries = recurrence.boundaries;
+      state.repetitionPairs = recurrence.pairs;
+      state.repetitionPeriodSec = recurrence.selectedPeriodSec;
+    }
+    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, state.stemBoundaries, state.repetitionBoundaries);
     drawAllStemProfiles();
     refreshModeView();
     document.documentElement.dataset.demucsReady = 'true';
-    document.documentElement.dataset.consensusSources = '2';
+    document.documentElement.dataset.consensusSources = '3';
   }
 
   async function runWholeTrackDemucs(buffer) {
@@ -481,7 +501,7 @@ import { Separator } from 'unblend';
     const rows = [
       ['Consensus', state.consensusBoundaries, 'live'],
       ['Section AI', [], 'pending'],
-      ['Repetition', [], 'pending'],
+      ['Repetition', state.repetitionBoundaries, state.repetitionBoundaries.length ? 'live' : 'pending'],
       ['Change Point', state.mixBoundaries, 'live'],
       ['Stem Activity', state.stemBoundaries, state.stems.vocals ? 'live' : 'pending'],
       ['Beat / Downbeat', [], 'pending']
@@ -517,8 +537,10 @@ import { Separator } from 'unblend';
     el.boundaryConfidence.textContent = b.confidence.toFixed(2);
     const mixEvidence = b.evidence && Number.isFinite(b.evidence.mix) ? b.evidence.mix : (b.source === 'mix' ? b.confidence : 0);
     const stemEvidence = b.evidence && Number.isFinite(b.evidence.stem) ? b.evidence.stem : (b.source === 'stem' ? b.confidence : 0);
+    const repetitionEvidence = b.evidence && Number.isFinite(b.evidence.repetition) ? b.evidence.repetition : (b.source === 'repetition' ? b.confidence : 0);
     el.evidenceChange.textContent = mixEvidence ? mixEvidence.toFixed(2) : '—';
     el.evidenceStem.textContent = stemEvidence ? stemEvidence.toFixed(2) : (state.stems.vocals ? '0.00' : 'pending');
+    el.evidenceRepetition.textContent = repetitionEvidence ? repetitionEvidence.toFixed(2) : (state.repetitionBoundaries.length ? '0.00' : 'pending');
     el.inspector.hidden = false;
   }
 
@@ -531,25 +553,35 @@ import { Separator } from 'unblend';
   function setLoadedAudio(buffer, name, url, sourcePath) {
     resetStemState(true);
     state.mixBoundaries = [];
+    state.repetitionBoundaries = [];
+    state.repetitionPairs = [];
+    state.repetitionPeriodSec = null;
     state.consensusBoundaries = [];
     state.boundaries = [];
     if (state.objectUrl && state.objectUrl.startsWith('blob:')) URL.revokeObjectURL(state.objectUrl);
-    state.audioBuffer = buffer; state.name = name; state.objectUrl = url; state.sourcePath = sourcePath || ''; state.duration = buffer.duration;
+    state.audioBuffer = buffer; state.name = name; state.objectUrl = url; state.sourcePath = sourcePath || ''; state.duration = buffer.duration; state.mono = null;
     el.audio.src = url; el.trackName.textContent = name; el.trackMeta.textContent = sourcePath ? 'Repository source · ' + sourcePath : 'Local audio file';
     el.seek.max = String(buffer.duration); el.seek.value = '0'; el.seek.disabled = false; el.play.disabled = false; el.duration.textContent = fmt(buffer.duration); clearSelection();
   }
 
   async function processBytes(bytes, name, audioUrl, sourcePath = '') {
-    for (const step of ['decode', 'waveform', 'change', 'demucs', 'structure']) stepState(step, '');
+    for (const step of ['decode', 'waveform', 'change', 'repetition', 'demucs', 'structure']) stepState(step, '');
     setProgress(.08, 'Decoding audio'); stepState('decode', 'active');
     const buffer = await decodeArrayBuffer(bytes); stepState('decode', 'done'); setLoadedAudio(buffer, name, audioUrl, sourcePath);
     setProgress(.35, 'Building waveform'); stepState('waveform', 'active');
-    const mono = monoFromBuffer(buffer); state.envelope = buildEnvelope(mono); stepState('waveform', 'done'); drawWaveform(); renderRuler();
-    setProgress(.58, 'Finding mix change points'); stepState('change', 'active');
+    const mono = monoFromBuffer(buffer); state.mono = mono; state.envelope = buildEnvelope(mono); stepState('waveform', 'done'); drawWaveform(); renderRuler();
+    setProgress(.50, 'Finding mix change points'); stepState('change', 'active');
     await new Promise(r => setTimeout(r, 0));
     state.mixBoundaries = analyzeChangePoints(mono, buffer.sampleRate);
-    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, []);
     stepState('change', 'done');
+    setProgress(.60, 'Finding repeated structure'); stepState('repetition', 'active');
+    const recurrence = analyzeRepetition(mono, buffer.sampleRate);
+    state.repetitionBoundaries = recurrence.boundaries;
+    state.repetitionPairs = recurrence.pairs;
+    state.repetitionPeriodSec = recurrence.selectedPeriodSec;
+    stepState('repetition', 'done');
+    state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries);
+    document.documentElement.dataset.consensusSources = state.repetitionBoundaries.length ? '2' : '1';
     refreshModeView();
     document.documentElement.dataset.structureCutterReady = 'true';
     await runWholeTrackDemucs(buffer);
@@ -588,21 +620,36 @@ import { Separator } from 'unblend';
   function timeFromPointer(e) { const r = el.mixTrack.getBoundingClientRect(); return clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1) * state.duration; }
 
   async function runSelfTest() {
-    const sr = 8000, seconds = 16, frames = sr * seconds, x = new Float32Array(frames);
+    const sr = 4000, seconds = 32, segmentSec = 8, frames = sr * seconds, x = new Float32Array(frames);
+    const specs = [
+      { freq: 170, amp: .25, pulse: 1.7 },
+      { freq: 330, amp: .12, pulse: 3.1 },
+      { freq: 170, amp: .25, pulse: 1.7 },
+      { freq: 520, amp: .32, pulse: .8 }
+    ];
     for (let i = 0; i < frames; i++) {
-      const t = i / sr, amp = t < 5 ? .12 : t < 10 ? .52 : .22;
-      x[i] = amp * Math.sin(2 * Math.PI * (t < 10 ? 180 : 260) * t);
+      const t = i / sr, region = Math.min(3, Math.floor(t / segmentSec)), local = t - region * segmentSec, spec = specs[region];
+      const trem = 1 + .28 * Math.sin(2 * Math.PI * spec.pulse * local);
+      x[i] = spec.amp * trem * Math.sin(2 * Math.PI * spec.freq * local);
     }
     const buffer = { sampleRate: sr, numberOfChannels: 1, length: frames, duration: seconds, getChannelData: () => x };
-    state.duration = buffer.duration; state.audioBuffer = buffer; state.name = 'selftest.wav'; state.envelope = buildEnvelope(x);
+    state.duration = buffer.duration; state.audioBuffer = buffer; state.name = 'selftest.wav'; state.mono = x; state.envelope = buildEnvelope(x);
     state.mixBoundaries = analyzeChangePoints(x, sr);
-    const stemFrames = Math.floor(seconds * DEMUCS_RATE), fake = {};
+    const recurrence = analyzeRepetition(x, sr, [], { minPeriodSec: 10, maxPeriodSec: 22, blockSec: 5.5 });
+    state.repetitionBoundaries = recurrence.boundaries;
+    state.repetitionPairs = recurrence.pairs;
+    state.repetitionPeriodSec = recurrence.selectedPeriodSec;
+
+    const demucsFrames = Math.floor(seconds * DEMUCS_RATE), fake = {};
     for (const name of STEM_NAMES) {
-      const a = new Float32Array(stemFrames * 2);
-      for (let i = 0; i < stemFrames; i++) {
-        const t = i / DEMUCS_RATE;
-        const region = t < 5 ? 0 : t < 10 ? 1 : 2;
-        const amp = name === 'vocals' ? [0.04, .52, .08][region] : name === 'drums' ? [.24, .32, .62][region] : name === 'bass' ? [.08, .34, .23][region] : [.2, .1, .28][region];
+      const a = new Float32Array(demucsFrames * 2);
+      for (let i = 0; i < demucsFrames; i++) {
+        const t = i / DEMUCS_RATE, region = Math.min(3, Math.floor(t / segmentSec));
+        const pattern = region === 2 ? 0 : region;
+        const amp = name === 'vocals' ? [.08, .48, .08, .12][pattern]
+          : name === 'drums' ? [.34, .18, .34, .64][pattern]
+          : name === 'bass' ? [.28, .12, .28, .2][pattern]
+          : [.18, .42, .18, .24][pattern];
         const v = amp * Math.sin(i * .047);
         a[i * 2] = v; a[i * 2 + 1] = v;
       }
@@ -610,8 +657,17 @@ import { Separator } from 'unblend';
     }
     await installStemResult(fake);
     renderRuler(); drawWaveform(); setSelection(2, 6, 'Self-test selection');
-    const ok = state.sections.length >= 2 && state.mixBoundaries.length >= 1 && state.stemBoundaries.length >= 1 && state.consensusBoundaries.length >= 1 && !el.selectionOverlay.hidden && STEM_NAMES.every(name => state.stemProfiles[name] && state.stemProfiles[name].length);
+    const ok = state.sections.length >= 2 &&
+      state.mixBoundaries.length >= 1 &&
+      state.repetitionBoundaries.length >= 1 &&
+      state.repetitionPairs.length >= 1 &&
+      state.stemBoundaries.length >= 1 &&
+      state.consensusBoundaries.length >= 1 &&
+      document.documentElement.dataset.consensusSources === '3' &&
+      !el.selectionOverlay.hidden &&
+      STEM_NAMES.every(name => state.stemProfiles[name] && state.stemProfiles[name].length);
     document.documentElement.dataset.structureCutterSelftest = ok ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.repetitionReady = state.repetitionBoundaries.length ? 'true' : 'false';
     el.engineNotice.textContent = 'structure cutter self-test: ' + (ok ? 'PASS' : 'FAIL');
   }
 
@@ -633,8 +689,12 @@ import { Separator } from 'unblend';
       el.engineNotice.textContent = 'Showing the live mix energy/ZCR change-point track.';
     } else if (state.mode === 'stem-activity') {
       el.engineNotice.textContent = state.stems.vocals ? 'Showing boundaries from HTDemucs stem energy-share changes.' : 'Stem Activity becomes available after HTDemucs finishes.';
+    } else if (state.mode === 'repetition') {
+      const periodText = state.repetitionPeriodSec ? ' Strongest recurrence lag: ' + state.repetitionPeriodSec.toFixed(1) + ' s.' : '';
+      el.engineNotice.textContent = 'Showing M3-style recurrence boundaries from non-local repeated audio patterns.' + periodText;
     } else {
-      el.engineNotice.textContent = state.stems.vocals ? 'Consensus fuses mix change points with HTDemucs stem-activity boundaries.' : 'Consensus currently uses mix change points while HTDemucs is pending.';
+      const sources = [state.mixBoundaries.length, state.repetitionBoundaries.length, state.stemBoundaries.length].filter(Boolean).length;
+      el.engineNotice.textContent = 'Consensus fuses ' + sources + ' live evidence tracks: mix change point, repetition, and (after HTDemucs) stem activity.';
     }
     refreshModeView();
   });
@@ -656,6 +716,6 @@ import { Separator } from 'unblend';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   el.audio.volume = Number(el.volume.value) / 100;
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeChangePoints, analyzeStemActivity, buildConsensusBoundaries, buildSections, setSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, buildConsensusBoundaries, buildSections, setSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();

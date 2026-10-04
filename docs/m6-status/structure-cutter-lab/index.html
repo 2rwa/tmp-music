@@ -44,6 +44,7 @@
         <li data-step="decode">Audio decode</li>
         <li data-step="waveform">Waveform</li>
         <li data-step="change">Prototype change points</li>
+        <li data-step="repetition">Repetition recurrence</li>
         <li class="pending" data-step="demucs">HTDemucs 4-stem</li>
         <li class="pending" data-step="structure">Stem-aware consensus</li>
       </ol>
@@ -64,9 +65,9 @@
           <div id="mode-tabs" class="mode-tabs" role="tablist">
             <button type="button" class="mode-tab is-active" data-mode="consensus">Consensus</button>
             <button type="button" class="mode-tab" data-mode="section-ai" data-pending="true">Section AI</button>
-            <button type="button" class="mode-tab" data-mode="repetition" data-pending="true">Repetition</button>
+            <button type="button" class="mode-tab" data-mode="repetition">Repetition</button>
             <button type="button" class="mode-tab" data-mode="change-point">Change Point</button>
-            <button type="button" class="mode-tab" data-mode="stem-activity" data-pending="true">Stem Activity</button>
+            <button type="button" class="mode-tab" data-mode="stem-activity">Stem Activity</button>
             <button type="button" class="mode-tab" data-mode="beat-bars" data-pending="true">Beat / Bars</button>
             <button type="button" class="mode-tab" data-mode="vocal-phrase" data-pending="true">Vocal Phrase</button>
           </div>
@@ -100,7 +101,7 @@
       </section>
 
       <section id="compare-panel" class="compare-panel" hidden>
-        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point and Stem Activity are live after HTDemucs; AI/repetition/beat engines remain pending.</span></div>
+        <div class="compare-head"><div><p class="section-label">ALGORITHM COMPARISON</p><h2>Same clock, separate evidence</h2></div><span class="muted">Change Point and Repetition are live immediately; Stem Activity becomes live after HTDemucs. Section AI and beat engines remain pending.</span></div>
         <div id="compare-grid" class="compare-grid"></div>
       </section>
 
@@ -126,7 +127,7 @@
       <div class="evidence-list">
         <div><span>Change point</span><strong id="evidence-change">—</strong></div>
         <div class="pending-evidence"><span>Section AI</span><strong>pending</strong></div>
-        <div class="pending-evidence"><span>Repetition</span><strong>pending</strong></div>
+        <div><span>Repetition</span><strong id="evidence-repetition">—</strong></div>
         <div><span>Stem activity</span><strong id="evidence-stem">—</strong></div>
         <div class="pending-evidence"><span>Downbeat</span><strong>pending</strong></div>
       </div>
@@ -134,7 +135,7 @@
     </aside>
 
     <audio id="audio" preload="metadata"></audio>
-    <footer class="footer">GPU-first prototype: real repository audio + HTDemucs 4-stem + mix/stem boundary fusion. Section AI / repetition / beat engines remain intentionally unsimulated.</footer>
+    <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + HTDemucs 4-stem + three-source boundary fusion. Section AI / beat engines remain intentionally unsimulated.</footer>
   </main>
   <script type="module" src="./app.js"></script>
 </body>

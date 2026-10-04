@@ -7,11 +7,13 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 1. repository sample / local audio を decode
 2. Mix waveform を生成
 3. Mix の RMS + zero-crossing-rate 変化から Change Point 候補を生成
-4. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
-5. `vocals / drums / bass / other` の実データを共通時間軸へ描画
-6. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
-7. Mix Change Point と Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
-8. 区間選択 / loop / WAV export
+4. M3と同じ recurrence / lag-profile の考え方を軽量化し、非局所の反復ペアから Repetition boundary を生成
+5. WebGPU が利用可能なら曲全体を HTDemucs `htdemucs` 4-stem へ分離
+6. `vocals / drums / bass / other` の実データを共通時間軸へ描画
+7. 550 ms 窓の stem energy share 変化から Stem Activity boundary を生成
+8. Repetition はDemucs後にstem shareを特徴へ追加して再計算
+9. Mix Change Point + Repetition + Stem Activity を ±1.5 s で cluster し Consensus boundary を生成
+10. 区間選択 / loop / WAV export
 
 ## 実音源
 
@@ -21,8 +23,9 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 
 ## UIでliveになった解析
 
-- Consensus — Mix Change Point + Stem Activity
+- Consensus — Mix Change Point + Repetition + Stem Activity
 - Change Point — mix RMS/ZCR
+- Repetition — M3-style recurrence / lag similarity / repeated-pair alignment
 - Stem Activity — HTDemucs 4-stem energy share change
 
 ## Pending
@@ -30,7 +33,6 @@ Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-anno
 結果を偽装せず、未接続の解析は pending のまま表示する。
 
 - Section AI
-- Repetition / recurrence
 - Beat / Downbeat
 - Vocal Phrase
 

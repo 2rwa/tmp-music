@@ -8,14 +8,14 @@ const css = fs.readFileSync(`${root}/style.css`, 'utf8');
 for (const token of [
   'Structure Cutter Lab','STRUCTURE VIEW','Consensus','Section AI','Repetition','Change Point',
   'Stem Activity','Beat / Bars','Vocal Phrase','Compare engines','Extract WAV',
-  'stem-vocals','stem-drums','stem-bass','stem-other','Cancel'
+  'stem-vocals','stem-drums','stem-bass','stem-other','evidence-repetition','Cancel'
 ]) if (!html.includes(token)) throw new Error(`missing UI contract: ${token}`);
 
 for (const token of [
   "import { Separator } from 'unblend'","DEMUCS_MODEL = 'htdemucs'","backend: 'webgpu'","precision: 'fp16'",
   'samples/whisper-ao/source/whisper-ao.mp3','samples/jugemu/source/jugemu.mp3',
   'samples/chichinu-fiija/source/chichinu-fiija.mp3','runWholeTrackDemucs','prepareWholeTrackForDemucs',
-  'analyzeStemActivity','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
+  'analyzeRepetition','analyzeStemActivity','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
 ]) if (!js.includes(token)) throw new Error(`missing behavior contract: ${token}`);
 
 for (const token of [
