@@ -49,11 +49,6 @@ jobs:
           node --check docs/test/vocal-separation-lab/app.js
           node tests/vocal-separation-lab-regression.mjs docs/test/vocal-separation-lab/index.html docs/test/vocal-separation-lab/app.js docs/test/vocal-separation-lab/style.css
 
-      - name: Vocal HTDemucs Probe regression
-        run: |
-          node --check docs/test/vocal-htdemucs-probe/app.js
-          node tests/vocal-htdemucs-probe-regression.mjs docs/test/vocal-htdemucs-probe/index.html docs/test/vocal-htdemucs-probe/app.js docs/test/vocal-htdemucs-probe/style.css
-
       - name: Vocal Separation Lab browser regression
         run: |
           set -euo pipefail
@@ -93,36 +88,6 @@ jobs:
             docs/test/vocal-model-comparator/app.js \
             docs/test/vocal-model-comparator/style.css
 
-      - name: Vocal HTDemucs Probe browser regression
-        run: |
-          set -euo pipefail
-          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
-          if [ -z "$CHROME" ]; then
-            echo "Chrome/Chromium not found on runner"
-            exit 1
-          fi
-          python3 -m http.server 4175 --bind 127.0.0.1 --directory docs >/tmp/vocal-htdemucs-probe-server.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:4175/test/vocal-htdemucs-probe/ >/dev/null; then
-              break
-            fi
-            sleep 0.25
-          done
-          "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-dev-shm-usage \
-            --disable-gpu \
-            --virtual-time-budget=10000 \
-            --dump-dom \
-            "http://127.0.0.1:4175/test/vocal-htdemucs-probe/?selftest=1" \
-            > /tmp/vocal-htdemucs-probe-browser.html
-          grep -q 'data-browser-selftest="PASS"' /tmp/vocal-htdemucs-probe-browser.html
-          grep -q 'browser self-test: PASS' /tmp/vocal-htdemucs-probe-browser.html
-          echo "Vocal HTDemucs Probe browser regression: PASS"
-
       - name: Vocal Model Comparator browser regression
         run: |
           set -euo pipefail
@@ -152,6 +117,137 @@ jobs:
           grep -q 'data-comparator-selftest="PASS"' /tmp/vocal-comparator-browser.html
           grep -q 'comparator browser self-test: PASS' /tmp/vocal-comparator-browser.html
           echo "Vocal Model Comparator browser regression: PASS"
+
+      - name: Vocal Isolation Inspector regression
+        run: |
+          node --check docs/test/vocal-isolation-inspector/app.js
+          node tests/vocal-isolation-inspector-regression.mjs \
+            docs/test/vocal-isolation-inspector/index.html \
+            docs/test/vocal-isolation-inspector/app.js \
+            docs/test/vocal-isolation-inspector/style.css
+
+      - name: Vocal Isolation Inspector browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4175 --bind 127.0.0.1 --directory docs >/tmp/vocal-inspector-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4175/test/vocal-isolation-inspector/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --autoplay-policy=no-user-gesture-required \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            "http://127.0.0.1:4175/test/vocal-isolation-inspector/?selftest=1" \
+            > /tmp/vocal-inspector-browser.html
+          grep -q 'data-inspector-selftest="PASS"' /tmp/vocal-inspector-browser.html
+          grep -q 'inspector browser self-test: PASS' /tmp/vocal-inspector-browser.html
+          echo "Vocal Isolation Inspector browser regression: PASS"
+
+      - name: Stem Dominance Map regression
+        run: |
+          node --check docs/test/stem-dominance-map/app.js
+          node tests/stem-dominance-map-regression.mjs \
+            docs/test/stem-dominance-map/index.html \
+            docs/test/stem-dominance-map/app.js \
+            docs/test/stem-dominance-map/style.css
+
+      - name: Stem Dominance Map browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4176 --bind 127.0.0.1 --directory docs >/tmp/stem-map-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4176/test/stem-dominance-map/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            "http://127.0.0.1:4176/test/stem-dominance-map/?selftest=1" \
+            > /tmp/stem-map-browser.html
+          grep -q 'data-stem-map-selftest="PASS"' /tmp/stem-map-browser.html
+          grep -q 'stem map browser self-test: PASS' /tmp/stem-map-browser.html
+          echo "Stem Dominance Map browser regression: PASS"
+
+      - name: Vocal HTDemucs Probe regression
+        run: |
+          node --check docs/test/vocal-htdemucs-probe/app.js
+          node tests/vocal-htdemucs-probe-regression.mjs \
+            docs/test/vocal-htdemucs-probe/index.html \
+            docs/test/vocal-htdemucs-probe/app.js \
+            docs/test/vocal-htdemucs-probe/style.css
+
+      - name: Setup Node for HTDemucs probe
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build Vocal HTDemucs Probe
+        working-directory: docs/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
+
+      - name: Vocal HTDemucs Probe browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4177 --bind 127.0.0.1 --directory docs >/tmp/vocal-htdemucs-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4177/test/vocal-htdemucs-probe/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            "http://127.0.0.1:4177/test/vocal-htdemucs-probe/?selftest=1" \
+            > /tmp/vocal-htdemucs-browser.html
+          grep -q 'data-htdemucs-selftest="PASS"' /tmp/vocal-htdemucs-browser.html
+          grep -q 'htdemucs browser self-test: PASS' /tmp/vocal-htdemucs-browser.html
+          echo "Vocal HTDemucs Probe browser regression: PASS"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -246,25 +342,6 @@ jobs:
           exit 1
 
 
-      - name: Validate live Vocal HTDemucs Probe
-        env:
-          PROBE_URL: https://2rwa.github.io/tmp-music/test/vocal-htdemucs-probe
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 12); do
-            echo "attempt ${attempt}: ${PROBE_URL}"
-            if curl -fsSL --max-time 15 "${PROBE_URL}/" -o /tmp/vocal-htdemucs-probe.html \
-              && curl -fsSL --max-time 15 "${PROBE_URL}/app.js" -o /tmp/vocal-htdemucs-probe-app.js; then
-              grep -q "Vocal HTDemucs Probe" /tmp/vocal-htdemucs-probe.html
-              grep -q "unblend" /tmp/vocal-htdemucs-probe-app.js
-              echo "Vocal HTDemucs Probe is live"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Vocal HTDemucs Probe live validation failed"
-          exit 1
-
       - name: Validate live Vocal Model Comparator
         env:
           COMPARATOR_URL: https://2rwa.github.io/tmp-music/test/vocal-model-comparator
@@ -283,4 +360,68 @@ jobs:
             sleep 5
           done
           echo "Vocal Model Comparator live validation failed"
+          exit 1
+
+
+      - name: Validate live Vocal Isolation Inspector
+        env:
+          INSPECTOR_URL: https://2rwa.github.io/tmp-music/test/vocal-isolation-inspector
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${INSPECTOR_URL}"
+            if curl -fsSL --max-time 15 "${INSPECTOR_URL}/" -o /tmp/vocal-inspector.html \
+              && curl -fsSL --max-time 15 "${INSPECTOR_URL}/app.js" -o /tmp/vocal-inspector-app.js; then
+              grep -q "Vocal Isolation Inspector" /tmp/vocal-inspector.html
+              grep -q "combineBuffers" /tmp/vocal-inspector-app.js
+              grep -q "runBrowserSelfTest" /tmp/vocal-inspector-app.js
+              echo "Vocal Isolation Inspector is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Vocal Isolation Inspector live validation failed"
+          exit 1
+
+
+      - name: Validate live Stem Dominance Map
+        env:
+          STEM_MAP_URL: https://2rwa.github.io/tmp-music/test/stem-dominance-map
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${STEM_MAP_URL}"
+            if curl -fsSL --max-time 15 "${STEM_MAP_URL}/" -o /tmp/stem-map.html \
+              && curl -fsSL --max-time 15 "${STEM_MAP_URL}/app.js" -o /tmp/stem-map-app.js; then
+              grep -q "Stem Dominance Map" /tmp/stem-map.html
+              grep -q "buildMap" /tmp/stem-map-app.js
+              grep -q "runBrowserSelfTest" /tmp/stem-map-app.js
+              echo "Stem Dominance Map is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Stem Dominance Map live validation failed"
+          exit 1
+
+
+      - name: Validate live Vocal HTDemucs Probe
+        env:
+          PROBE_URL: https://2rwa.github.io/tmp-music/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${PROBE_URL}"
+            if curl -fsSL --max-time 15 "${PROBE_URL}/" -o /tmp/vocal-htdemucs.html; then
+              grep -q "Vocal HTDemucs Probe" /tmp/vocal-htdemucs.html
+              ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/vocal-htdemucs.html | head -1 || true)"
+              if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${PROBE_URL}/${ASSET}" -o /tmp/vocal-htdemucs-bundle.js; then
+                grep -q "htdemucs" /tmp/vocal-htdemucs-bundle.js
+                echo "Vocal HTDemucs Probe is live with bundled runtime"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          echo "Vocal HTDemucs Probe live validation failed"
           exit 1

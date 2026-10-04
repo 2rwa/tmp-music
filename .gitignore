@@ -1,4 +1,4 @@
 tests/fixtures/generated/
 __pycache__/
 *.pyc
-node_modules/
+node_modules/\ndocs/test/vocal-htdemucs-probe/dist/\n

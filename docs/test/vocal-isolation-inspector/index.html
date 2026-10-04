@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vocal Isolation Inspector — tmp-music</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+<header class="hero">
+  <div>
+    <p class="eyebrow">tmp-music / test / separate program</p>
+    <h1>Vocal Isolation Inspector</h1>
+    <p class="lede">選択区間を2stem分離し、Original / Vocals / Instrumental / 再構成 / Residual を同じ基準で同期試聴・計測します。</p>
+  </div>
+  <div class="badges"><span id="gpuBadge" class="badge">WebGPU: checking</span><span id="coiBadge" class="badge">COI: checking</span></div>
+</header>
+
+<section class="card">
+  <div class="section-title"><span>01</span><div><h2>音源と区間</h2><p>波形ドラッグまたは数値入力。初期選択は最大12秒。</p></div></div>
+  <label class="dropzone" id="dropzone"><input id="fileInput" type="file" accept="audio/*"><strong>音声ファイルを選択 / ドロップ</strong><span id="fileMeta">未選択</span></label>
+  <canvas id="waveform" width="1200" height="220"></canvas>
+  <div class="selection-grid">
+    <label>開始 <input id="startInput" type="number" min="0" step="0.01" value="0" disabled> 秒</label>
+    <label>終了 <input id="endInput" type="number" min="0" step="0.01" value="0" disabled> 秒</label>
+    <label>長さ <output id="spanOutput">0.00 秒</output></label>
+    <button id="aroundBtn" disabled>再生位置 ±6秒</button>
+  </div>
+  <div class="transport">
+    <button id="playOriginalBtn" disabled>▶ Original</button>
+    <button id="stopBtn" disabled>■ Stop</button>
+    <label>位置 <input id="seekRange" type="range" min="0" max="1" step="0.01" value="0" disabled></label>
+    <output id="timeOutput">0:00.00 / 0:00.00</output>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>02</span><div><h2>AI分離</h2><p>MDXモデル1つを使い、区間単位で品質検査用の素材を作ります。</p></div></div>
+  <div class="controls">
+    <label>Model
+      <select id="modelSelect">
+        <option value="UVR-MDX-NET-Voc_FT" selected>UVR-MDX-NET-Voc_FT</option>
+        <option value="Kim_Vocal_2">Kim_Vocal_2</option>
+        <option value="UVR_MDXNET_Main">UVR_MDXNET_Main</option>
+        <option value="UVR_MDXNET_KARA_2">UVR_MDXNET_KARA_2</option>
+      </select>
+    </label>
+    <button id="separateBtn" class="primary" disabled>選択区間を分離・検査</button>
+    <button id="clearBtn">結果クリア</button>
+  </div>
+  <div class="status"><strong id="statusText">待機中</strong><progress id="progress" max="1" value="0"></progress><span id="timing">—</span></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>03</span><div><h2>同期試聴</h2><p>すべて選択区間のローカル時刻0秒から再生します。Residual = Original − (Stem A + Stem B)。</p></div></div>
+  <div id="listenGrid" class="listen-grid">
+    <button class="listen active" data-track="original" disabled>Original</button>
+    <button class="listen" data-track="vocals" disabled>Vocals</button>
+    <button class="listen" data-track="instrumental" disabled>Instrumental</button>
+    <button class="listen" data-track="reconstructed" disabled>Reconstructed</button>
+    <button class="listen" data-track="residual" disabled>Residual</button>
+  </div>
+  <div class="ab-row">
+    <button id="playInspectBtn" disabled>▶ Inspect</button>
+    <button id="stopInspectBtn" disabled>■ Stop</button>
+    <label>Gain <input id="gainRange" type="range" min="0" max="2" step="0.01" value="1"></label>
+    <label><input id="loopCheck" type="checkbox" checked> Loop</label>
+    <output id="inspectTime">0:00.00 / 0:00.00</output>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>04</span><div><h2>計測</h2><p>品質の断定ではなく、分離出力と再構成の診断値です。</p></div></div>
+  <div id="metrics" class="metrics"><p class="empty">まだ計測結果はありません。</p></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>05</span><div><h2>出力</h2><p>各トラックを個別に保存できます。</p></div></div>
+  <div id="downloads" class="downloads"><span class="muted">分離後に表示</span></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>06</span><div><h2>診断ログ</h2><p>区間・モデル・再構成誤差・状態遷移を記録します。</p></div></div>
+  <pre id="log">ready</pre>
+</section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

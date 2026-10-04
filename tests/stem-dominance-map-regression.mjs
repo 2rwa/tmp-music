@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+const [htmlPath,appPath,cssPath]=process.argv.slice(2);
+if(!htmlPath||!appPath||!cssPath)throw new Error('usage: node stem-dominance-map-regression.mjs <html> <app> <css>');
+const html=fs.readFileSync(htmlPath,'utf8'),src=fs.readFileSync(appPath,'utf8'),css=fs.readFileSync(cssPath,'utf8');
+for(const required of ['Stem Dominance Map','時間 × 周波数 Map','Dominance','Overlap','csvBtn','mapCanvas'])if(!html.includes(required))throw new Error('HTML contract missing: '+required);
+for(const required of ['web-audio-separation@0.3.1/+esm','buildMap','fftMagnitude','stft','summarizeMap','csvText','runBrowserSelfTest'])if(!src.includes(required))throw new Error('JS contract missing: '+required);
+for(const required of ['.view-tabs','.metrics','.dominance-gradient','.map-wrap'])if(!css.includes(required))throw new Error('CSS contract missing: '+required);
+new Function(src);
+function extractFunction(source,name){const start=source.indexOf('function '+name+'(');if(start<0)throw new Error('function not found: '+name);const brace=source.indexOf('{',start);let depth=0;for(let i=brace;i<source.length;i++){if(source[i]==='{')depth++;else if(source[i]==='}'){depth--;if(depth===0)return source.slice(start,i+1)}}throw new Error('unterminated function: '+name);}
+const names=['clamp','hann','fftMagnitude','stft','dbMag'];
+const ctx={Math,Float32Array,Float64Array};vm.createContext(ctx);
+vm.runInContext(names.map(n=>extractFunction(src,n)).join(';')+';this.stft=stft;this.fftMagnitude=fftMagnitude;',ctx);
+const N=1024,rate=8192,signal=new Float32Array(rate);
+for(let n=0;n<signal.length;n++)signal[n]=Math.sin(2*Math.PI*1000*n/rate);
+const spec=ctx.stft(signal,N,256),mid=Math.floor(spec.frames/2),target=Math.round(1000*N/rate);
+let best=1;for(let b=2;b<spec.bins;b++)if(spec.data[mid][b]>spec.data[mid][best])best=b;
+if(Math.abs(best-target)>1)throw new Error(`FFT peak wrong: best=${best}, target=${target}`);
+if(!/state\.resultRangeKey&&state\.resultRangeKey!==key\)clearAnalysis\('selection changed'\)/.test(src))throw new Error('selection invalidation missing');
+if(!/mod\.createSeparator\(model,config\(\)\)/.test(src))throw new Error('fresh separator per analysis missing');
+console.log('FFT peak: PASS');
+console.log('fresh separator + map invalidation: PASS');
+console.log('Stem Dominance Map regression: PASS');

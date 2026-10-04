@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stem Dominance Map — tmp-music</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+<header class="hero">
+  <div>
+    <p class="eyebrow">tmp-music / test / separate program</p>
+    <h1>Stem Dominance Map</h1>
+    <p class="lede">Vocals / Instrumental の時間周波数エネルギー差を可視化し、片側優勢・共有帯域・クロストーク候補を探索します。</p>
+  </div>
+  <div class="badges"><span id="gpuBadge" class="badge">WebGPU: checking</span><span id="coiBadge" class="badge">COI: checking</span></div>
+</header>
+
+<section class="card">
+  <div class="section-title"><span>01</span><div><h2>音源と区間</h2><p>選択区間のみAI分離し、そのstemだけをSTFT解析します。</p></div></div>
+  <label class="dropzone" id="dropzone"><input id="fileInput" type="file" accept="audio/*"><strong>音声ファイルを選択 / ドロップ</strong><span id="fileMeta">未選択</span></label>
+  <canvas id="waveform" width="1200" height="200"></canvas>
+  <div class="selection-grid">
+    <label>開始 <input id="startInput" type="number" min="0" step="0.01" value="0" disabled> 秒</label>
+    <label>終了 <input id="endInput" type="number" min="0" step="0.01" value="0" disabled> 秒</label>
+    <label>長さ <output id="spanOutput">0.00 秒</output></label>
+    <button id="aroundBtn" disabled>再生位置 ±5秒</button>
+  </div>
+  <div class="transport">
+    <button id="playBtn" disabled>▶ Original</button>
+    <button id="stopBtn" disabled>■ Stop</button>
+    <label>位置 <input id="seekRange" type="range" min="0" max="1" step="0.01" value="0" disabled></label>
+    <output id="timeOutput">0:00.00 / 0:00.00</output>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>02</span><div><h2>分離と解析</h2><p>MDX 2stem → mono mixdown → Hann窓STFT。</p></div></div>
+  <div class="controls">
+    <label>Model
+      <select id="modelSelect">
+        <option value="UVR-MDX-NET-Voc_FT" selected>UVR-MDX-NET-Voc_FT</option>
+        <option value="Kim_Vocal_2">Kim_Vocal_2</option>
+        <option value="UVR_MDXNET_Main">UVR_MDXNET_Main</option>
+        <option value="UVR_MDXNET_KARA_2">UVR_MDXNET_KARA_2</option>
+      </select>
+    </label>
+    <label>FFT
+      <select id="fftSelect">
+        <option value="512">512</option>
+        <option value="1024" selected>1024</option>
+        <option value="2048">2048</option>
+      </select>
+    </label>
+    <label>Hop
+      <select id="hopSelect">
+        <option value="128">128</option>
+        <option value="256" selected>256</option>
+        <option value="512">512</option>
+      </select>
+    </label>
+    <button id="analyzeBtn" class="primary" disabled>分離してMap作成</button>
+    <button id="clearBtn">結果クリア</button>
+  </div>
+  <div class="status"><strong id="statusText">待機中</strong><progress id="progress" max="1" value="0"></progress><span id="timing">—</span></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>03</span><div><h2>時間 × 周波数 Map</h2><p>Dominance = Vocals dB − Instrumental dB。Overlapは両stemが同時に強いセルを示します。</p></div></div>
+  <div class="view-tabs">
+    <button class="view active" data-view="dominance" disabled>Dominance</button>
+    <button class="view" data-view="overlap" disabled>Overlap</button>
+    <button class="view" data-view="vocals" disabled>Vocals energy</button>
+    <button class="view" data-view="instrumental" disabled>Instrumental energy</button>
+  </div>
+  <div class="map-wrap">
+    <canvas id="mapCanvas" width="1200" height="520"></canvas>
+    <div id="cursorReadout" class="cursor-readout">—</div>
+  </div>
+  <div class="legend">
+    <span>Dominance: Instrumental ←</span><div class="gradient dominance-gradient"></div><span>→ Vocals</span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>04</span><div><h2>集計</h2><p>絶対的な品質点数ではなく、選択区間内のstem分布です。</p></div></div>
+  <div id="metrics" class="metrics"><p class="empty">まだ解析結果はありません。</p></div>
+  <div class="exports"><button id="csvBtn" disabled>Map CSVを保存</button><button id="pngBtn" disabled>Map PNGを保存</button></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><span>05</span><div><h2>診断ログ</h2><p>区間、モデル、STFTサイズ、分離・解析時間を記録します。</p></div></div>
+  <pre id="log">ready</pre>
+</section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

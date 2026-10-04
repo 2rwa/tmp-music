@@ -1,0 +1,59 @@
+name: HTDemucs Probe Branch CI
+
+on:
+  push:
+    branches:
+      - feat/vocal-htdemucs-probe-9642815210966188773
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Static regression
+        run: |
+          node --check docs/test/vocal-htdemucs-probe/app.js
+          node tests/vocal-htdemucs-probe-regression.mjs \
+            docs/test/vocal-htdemucs-probe/index.html \
+            docs/test/vocal-htdemucs-probe/app.js \
+            docs/test/vocal-htdemucs-probe/style.css
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build with Vite
+        working-directory: docs/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
+
+      - name: Headless Chromium lifecycle regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          python3 -m http.server 4177 --bind 127.0.0.1 --directory docs >/tmp/htdemucs-branch-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4177/test/vocal-htdemucs-probe/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu \
+            --virtual-time-budget=12000 --dump-dom \
+            "http://127.0.0.1:4177/test/vocal-htdemucs-probe/?selftest=1" \
+            > /tmp/htdemucs-branch.html
+          grep -q 'data-htdemucs-selftest="PASS"' /tmp/htdemucs-branch.html
+          grep -q 'htdemucs browser self-test: PASS' /tmp/htdemucs-branch.html
