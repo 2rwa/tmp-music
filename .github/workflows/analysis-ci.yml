@@ -38,6 +38,7 @@ on:
       - "docs/m6-status/timeline/style.css"
       - "docs/m6-status/**"
       - "m6-status/**"
+      - "tests/sonic-chronicle-regression.mjs"
   pull_request:
     paths:
       - "scripts/cli.py"
@@ -74,6 +75,7 @@ on:
       - "docs/m6-status/timeline/style.css"
       - "docs/m6-status/**"
       - "m6-status/**"
+      - "tests/sonic-chronicle-regression.mjs"
   workflow_dispatch:
 
 permissions:
@@ -177,6 +179,15 @@ jobs:
           test -s docs/m6-status/timeline/style.css
           test -s docs/m6-status/timeline-v2/index.html
           test -s docs/m6-status/timeline-v2/style.css
+          test -s docs/m6-status/sonic-chronicle/index.html
+          test -s docs/m6-status/sonic-chronicle/style.css
+          test -s docs/m6-status/sonic-chronicle/app.js
+          test -s docs/m6-status/sonic-chronicle/DESIGN.md
+          node --check docs/m6-status/sonic-chronicle/app.js
+          node tests/sonic-chronicle-regression.mjs \
+            docs/m6-status/sonic-chronicle/app.js \
+            docs/m6-status/sonic-chronicle/index.html \
+            docs/m6-status/sonic-chronicle/style.css
 
       - name: Validate M6 status page
         run: |

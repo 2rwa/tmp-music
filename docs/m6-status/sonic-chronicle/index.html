@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sonic Chronicle — tmp-music</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <nav><a href="../timeline-browser/">← Browser audio analyzer</a> · <a href="../">M6 summary</a></nav>
+    <div class="brand-row">
+      <div>
+        <div class="eyebrow">tmp-music · browser-local</div>
+        <h1>Sonic Chronicle</h1>
+        <p class="tagline">音を、時間順に読む。</p>
+      </div>
+      <div id="file-chip" class="file-chip" hidden></div>
+    </div>
+    <p class="intro">音声をブラウザ内だけで解析し、観測 → 解釈 → 注意 → 根拠を時系列に並べます。音声ファイルはサーバーへ送信しません。</p>
+  </header>
+
+  <section id="loader-panel" class="loader-panel">
+    <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="音声ファイルを選択またはドロップ">
+      <strong>音声ファイルをドロップ</strong>
+      <span>または</span>
+      <button id="choose-file" type="button">ファイルを選択</button>
+      <input id="file-input" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+      <small>MP3 / WAV / AAC / M4A / OGG など、ブラウザが decodeAudioData で読める形式。</small>
+    </div>
+    <div class="loader-actions">
+      <button id="synthetic-test" type="button">Synthetic demo</button>
+      <button id="cancel-analysis" type="button" disabled>Cancel</button>
+      <button id="export-json" type="button" disabled>Export JSON</button>
+      <span id="status" aria-live="polite">音声を選択してください。</span>
+    </div>
+    <div class="progress-wrap"><div id="progress" class="progress"></div></div>
+  </section>
+
+  <audio id="audio" preload="metadata" hidden></audio>
+
+  <section id="transport" class="transport" aria-label="再生コントロール">
+    <div class="transport-main">
+      <button id="play-toggle" class="play-toggle" type="button" disabled aria-label="再生">▶</button>
+      <button id="back-5" type="button" disabled>−5s</button>
+      <button id="forward-5" type="button" disabled>+5s</button>
+      <span class="transport-clock"><b id="current-time">00:00.00</b><span>/</span><span id="duration-time">00:00.00</span></span>
+      <label class="speed-label">速度
+        <select id="speed" disabled><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select>
+      </label>
+    </div>
+    <input id="seek" class="seek" type="range" min="0" max="1" step="0.001" value="0" disabled aria-label="再生位置">
+    <div class="transport-sub">
+      <button id="follow-toggle" type="button" disabled>追従 ON</button>
+      <button id="return-now" class="return-now" type="button" hidden>▶ 現在位置へ戻る</button>
+      <button id="loop-current" type="button" disabled>↻ この区間をループ</button>
+      <span id="mode-note" class="mode-note">FOLLOW</span>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="density-control" role="group" aria-label="表示密度">
+      <span>表示密度</span>
+      <button class="density is-active" data-density="read" type="button">読む</button>
+      <button class="density" data-density="detail" type="button">詳細</button>
+      <button class="density" data-density="raw" type="button">20ms</button>
+    </div>
+    <details class="filter-control">
+      <summary>何を読みたい？</summary>
+      <div class="filters">
+        <label><input type="checkbox" data-filter="pitch" checked> 音高</label>
+        <label><input type="checkbox" data-filter="periodicity" checked> 周期性</label>
+        <label><input type="checkbox" data-filter="spectrum" checked> 音量・音色</label>
+        <label><input type="checkbox" data-filter="modulation" checked> 音高の揺れ</label>
+        <label><input type="checkbox" data-filter="events" checked> 変化イベント</label>
+      </div>
+    </details>
+  </section>
+
+  <main class="workspace">
+    <section id="chronicle-scroll" class="chronicle-scroll" aria-label="解析クロニクル">
+      <div class="chronicle-heading">
+        <div>
+          <div class="eyebrow">ANALYSIS CHRONICLE</div>
+          <h2>解析クロニクル</h2>
+          <p>音の状態と変化を時間順に読む。カードを選ぶとその区間へシークします。</p>
+        </div>
+        <span id="entry-count">0 区間</span>
+      </div>
+      <div id="chronicle" class="chronicle">
+        <div class="empty-state">音声を解析すると、ここに時系列の解析記録を生成します。</div>
+      </div>
+    </section>
+
+    <aside class="minimap-panel" aria-label="全曲ミニマップ">
+      <div class="minimap-title">FULL TRACK</div>
+      <div id="minimap" class="minimap" tabindex="0">
+        <div id="minimap-playhead" class="minimap-playhead" hidden></div>
+      </div>
+      <div class="minimap-legend"><span class="quiet">静</span><span class="periodic">周</span><span class="transient">打</span><span class="mixed">混</span></div>
+    </aside>
+  </main>
+
+  <section id="comparison" class="comparison" hidden>
+    <div class="comparison-head"><div><div class="eyebrow">A / B</div><h2>区間比較</h2></div><button id="clear-comparison" type="button">クリア</button></div>
+    <div id="comparison-body"></div>
+  </section>
+
+  <footer id="provenance">No audio loaded.</footer>
+</div>
+<script src="./app.js"></script>
+</body>
+</html>
