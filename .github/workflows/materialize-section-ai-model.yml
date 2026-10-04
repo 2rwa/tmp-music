@@ -1,0 +1,67 @@
+name: Materialize Section AI model
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/materialize_section_ai_long_model.py"
+      - ".github/workflows/materialize-section-ai-model.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install model export dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.8.0"
+          python -m pip install numpy hydra-core omegaconf onnx onnxruntime onnxscript
+
+      - name: Checkout pinned All-In-One source
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/openmirlab/all-in-one-infer.git upstream-allin1
+          git -C upstream-allin1 checkout 797f1d21b115955ed81ff9161440334fefea8855
+
+      - name: Sync main before generation
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+
+      - name: Generate and validate browser model
+        env:
+          ALLIN1_SOURCE_DIR: upstream-allin1
+          SECTION_AI_MODEL_DIR: docs/m6-status/structure-cutter-lab/models
+        run: |
+          set -euo pipefail
+          python tools/materialize_section_ai_long_model.py
+          test -s docs/m6-status/structure-cutter-lab/models/harmonix-fold0-section-function-long.onnx
+          cat docs/m6-status/structure-cutter-lab/models/harmonix-fold0-section-function-long.json
+
+      - name: Commit generated model
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/m6-status/structure-cutter-lab/models
+          if git diff --cached --quiet; then
+            echo "Section AI model already current"
+            exit 0
+          fi
+          git commit -m "build: materialize Section AI long model"
+          git pull --rebase origin main
+          git push origin HEAD:main
