@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vocal HTDemucs Probe</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <div class="hero">
+      <div>
+        <div class="eyebrow">P3 · 实验</div>
+        <h1>Vocal HTDemucs Probe</h1>
+        <p class="lede">Investigate and prototype browser-side HTDemucs separation using the unblend library.</p>
+      </div>
+      <div class="badges">
+        <span class="badge" id="webgpuBadge">WebGPU: ??</span>
+        <span class="badge" id="wasmBadge">WASM Threads: 4</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <span>1</span>
+        <div>
+          <h2>ソースファイル</h2>
+          <p>44.1kHz以上のステレオまたはモノラル音源を選択（デコードはブラウザ内で行われます）</p>
+        </div>
+      </div>
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="audio/*">
+        <strong>ファイルを選択</strong>
+        <span>またはドラッグ＆ドロップ</span>
+      </label>
+
+      <div class="transport">
+        <button id="playBtn" disabled>▶ 再生</button>
+        <label>
+          <input type="range" id="seekRange" min="0" max="100" step="0.01" value="0" disabled>
+        </label>
+        <output id="timeOutput" class="hint">0:00.00 / 0:00.00</output>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <span>2</span>
+        <div>
+          <h2>分離する区間</h2>
+          <p>全編を処理するとメモリ不足になるため、15秒〜30秒程度の区間を指定してください</p>
+        </div>
+      </div>
+      <div class="selection-grid">
+        <label>Start (s): <input type="number" id="selectionStart" value="0" min="0" step="0.1" disabled></label>
+        <label>End (s): <input type="number" id="selectionEnd" value="30" min="0" step="0.1" disabled></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <span>3</span>
+        <div>
+          <h2>モデル設定</h2>
+          <p>ブラウザ側のWebGPUまたはWASMで推論を実行します</p>
+        </div>
+      </div>
+      <div class="selection-grid">
+        <label>Backend:
+          <select id="backendSelect">
+            <option value="webgpu">WebGPU</option>
+            <option value="wasm">WASM</option>
+          </select>
+        </label>
+        <label>Precision:
+          <select id="precisionSelect">
+            <option value="fp32">FP32</option>
+            <option value="fp16">FP16</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="primary" id="processBtn" disabled>Run Separation</button>
+        <button id="cancelBtn" disabled>Cancel</button>
+      </div>
+      <pre id="log">Ready.</pre>
+    </div>
+
+    <div class="card" id="resultsCard" style="display: none;">
+      <div class="section-title">
+        <span>4</span>
+        <div>
+          <h2>分離結果</h2>
+          <p>ブラウザ上で推論されたHTDemucsの出力結果</p>
+        </div>
+      </div>
+      <div class="stem-grid" id="stemGrid"></div>
+    </div>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

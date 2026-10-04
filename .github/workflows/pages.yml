@@ -49,6 +49,11 @@ jobs:
           node --check docs/test/vocal-separation-lab/app.js
           node tests/vocal-separation-lab-regression.mjs docs/test/vocal-separation-lab/index.html docs/test/vocal-separation-lab/app.js docs/test/vocal-separation-lab/style.css
 
+      - name: Vocal HTDemucs Probe regression
+        run: |
+          node --check docs/test/vocal-htdemucs-probe/app.js
+          node tests/vocal-htdemucs-probe-regression.mjs docs/test/vocal-htdemucs-probe/index.html docs/test/vocal-htdemucs-probe/app.js docs/test/vocal-htdemucs-probe/style.css
+
       - name: Vocal Separation Lab browser regression
         run: |
           set -euo pipefail
@@ -87,6 +92,36 @@ jobs:
             docs/test/vocal-model-comparator/index.html \
             docs/test/vocal-model-comparator/app.js \
             docs/test/vocal-model-comparator/style.css
+
+      - name: Vocal HTDemucs Probe browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4175 --bind 127.0.0.1 --directory docs >/tmp/vocal-htdemucs-probe-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4175/test/vocal-htdemucs-probe/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=10000 \
+            --dump-dom \
+            "http://127.0.0.1:4175/test/vocal-htdemucs-probe/?selftest=1" \
+            > /tmp/vocal-htdemucs-probe-browser.html
+          grep -q 'data-browser-selftest="PASS"' /tmp/vocal-htdemucs-probe-browser.html
+          grep -q 'browser self-test: PASS' /tmp/vocal-htdemucs-probe-browser.html
+          echo "Vocal HTDemucs Probe browser regression: PASS"
 
       - name: Vocal Model Comparator browser regression
         run: |
@@ -210,6 +245,25 @@ jobs:
           echo "Vocal Separation Lab live validation failed"
           exit 1
 
+
+      - name: Validate live Vocal HTDemucs Probe
+        env:
+          PROBE_URL: https://2rwa.github.io/tmp-music/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${PROBE_URL}"
+            if curl -fsSL --max-time 15 "${PROBE_URL}/" -o /tmp/vocal-htdemucs-probe.html \
+              && curl -fsSL --max-time 15 "${PROBE_URL}/app.js" -o /tmp/vocal-htdemucs-probe-app.js; then
+              grep -q "Vocal HTDemucs Probe" /tmp/vocal-htdemucs-probe.html
+              grep -q "unblend" /tmp/vocal-htdemucs-probe-app.js
+              echo "Vocal HTDemucs Probe is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Vocal HTDemucs Probe live validation failed"
+          exit 1
 
       - name: Validate live Vocal Model Comparator
         env:
