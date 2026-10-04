@@ -10,7 +10,10 @@ const peaks = peakPicking(maxima, 2, 2);
 assert.ok(peaks[3] > 0);
 
 const frames = 4500;
-// Use true zero probability away from the two synthetic boundaries. A perfectly\n// flat finite sigmoid baseline is intentionally a local maximum at every frame\n// in the upstream equality-based local-max detector.\nconst section = new Float32Array(frames).fill(-Infinity);
+// Use true zero probability away from the two synthetic boundaries.
+// A perfectly flat finite sigmoid baseline is intentionally a local maximum
+// at every frame in the upstream equality-based local-max detector.
+const section = new Float32Array(frames).fill(-Infinity);
 section[1500] = 9;
 section[3000] = 10;
 
