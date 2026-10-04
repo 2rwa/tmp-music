@@ -195,6 +195,60 @@ jobs:
           grep -q 'stem map browser self-test: PASS' /tmp/stem-map-browser.html
           echo "Stem Dominance Map browser regression: PASS"
 
+      - name: Vocal HTDemucs Probe regression
+        run: |
+          node --check docs/test/vocal-htdemucs-probe/app.js
+          node tests/vocal-htdemucs-probe-regression.mjs \
+            docs/test/vocal-htdemucs-probe/index.html \
+            docs/test/vocal-htdemucs-probe/app.js \
+            docs/test/vocal-htdemucs-probe/style.css
+
+      - name: Setup Node for HTDemucs probe
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build Vocal HTDemucs Probe
+        working-directory: docs/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          cp -a dist/. .
+          rm -rf node_modules dist
+
+      - name: Vocal HTDemucs Probe browser regression
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found on runner"
+            exit 1
+          fi
+          python3 -m http.server 4177 --bind 127.0.0.1 --directory docs >/tmp/vocal-htdemucs-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4177/test/vocal-htdemucs-probe/ >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-gpu \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            "http://127.0.0.1:4177/test/vocal-htdemucs-probe/?selftest=1" \
+            > /tmp/vocal-htdemucs-browser.html
+          grep -q 'data-htdemucs-selftest="PASS"' /tmp/vocal-htdemucs-browser.html
+          grep -q 'htdemucs browser self-test: PASS' /tmp/vocal-htdemucs-browser.html
+          echo "Vocal HTDemucs Probe browser regression: PASS"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -348,4 +402,26 @@ jobs:
             sleep 5
           done
           echo "Stem Dominance Map live validation failed"
+          exit 1
+
+
+      - name: Validate live Vocal HTDemucs Probe
+        env:
+          PROBE_URL: https://2rwa.github.io/tmp-music/test/vocal-htdemucs-probe
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${PROBE_URL}"
+            if curl -fsSL --max-time 15 "${PROBE_URL}/" -o /tmp/vocal-htdemucs.html; then
+              grep -q "Vocal HTDemucs Probe" /tmp/vocal-htdemucs.html
+              ASSET="$(grep -oE 'assets/[^"[:space:]]+\.js' /tmp/vocal-htdemucs.html | head -1 || true)"
+              if [ -n "${ASSET}" ] && curl -fsSL --max-time 20 "${PROBE_URL}/${ASSET}" -o /tmp/vocal-htdemucs-bundle.js; then
+                grep -q "htdemucs" /tmp/vocal-htdemucs-bundle.js
+                echo "Vocal HTDemucs Probe is live with bundled runtime"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          echo "Vocal HTDemucs Probe live validation failed"
           exit 1
