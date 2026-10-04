@@ -44,6 +44,11 @@ jobs:
       - name: Annotation Explorer regression
         run: node tests/annotation-explorer-regression.mjs docs/m6-status/annotation-explorer/index.html
 
+      - name: Vocal Separation Lab regression
+        run: |
+          node --check docs/test/vocal-separation-lab/app.js
+          node tests/vocal-separation-lab-regression.mjs docs/test/vocal-separation-lab/index.html docs/test/vocal-separation-lab/app.js docs/test/vocal-separation-lab/style.css
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -112,4 +117,24 @@ jobs:
             sleep 5
           done
           echo "M6 Pages live validation failed"
+          exit 1
+
+
+      - name: Validate live Vocal Separation Lab
+        env:
+          LAB_URL: https://2rwa.github.io/tmp-music/test/vocal-separation-lab
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            echo "attempt ${attempt}: ${LAB_URL}"
+            if curl -fsSL --max-time 15 "${LAB_URL}/" -o /tmp/vocal-lab.html && curl -fsSL --max-time 15 "${LAB_URL}/app.js" -o /tmp/vocal-lab-app.js; then
+              grep -q "Vocal Separation Lab" /tmp/vocal-lab.html
+              grep -q "UVR_MDXNET_KARA_2" /tmp/vocal-lab-app.js
+              grep -q "web-audio-separation@0.3.1/+esm" /tmp/vocal-lab-app.js
+              echo "Vocal Separation Lab is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Vocal Separation Lab live validation failed"
           exit 1
