@@ -1,5 +1,8 @@
 # Structure Cutter Lab
 
+> **2026-10-05: implementation experiment complete.**  
+> ブラウザ上で構造解析・HTDemucs・Section AI・区間試聴・cut alignment・選択sourceのWAV出力まで十分実用になり得ることを確認した。今後の複数Section選択・複数cut・edit listは、このUIへ継ぎ足さず新規editor UIとして設計する。詳細は `docs/STRUCTURE_CUTTER_LAB_HANDOFF_20261005.md`。
+
 Timeline-first の楽曲構成・切り出し実験アプリ。既存 `stem-annotation-studio` とは別実装。
 
 ## 現在の処理フロー

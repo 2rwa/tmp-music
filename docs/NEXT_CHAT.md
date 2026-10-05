@@ -1,14 +1,15 @@
 # NEXT CHAT — tmp-music handoff
 
-更新日: 2026-10-04  
+更新日: 2026-10-05  
 対象: `2rwa/tmp-music`
 
 ## 最初に読む
 
 1. `2rwa/chatgpt-workspace/docs/build-test-fix.md`
-2. `docs/STATUS_20261003.md`
+2. `docs/STATUS_20261005.md`
 3. `docs/M1_M6_FINAL_20261004.md`
-4. 必要なら `docs/M6_HANDOFF_20261003.md`
+4. Structure / editing関連なら `docs/STRUCTURE_CUTTER_LAB_HANDOFF_20261005.md`
+5. M6詳細が必要なら `docs/M6_HANDOFF_20261003.md`
 
 GitHub操作は GitHub Connector を使い、**gh CLIは使わない**。変更前に current `main` HEAD と最新Actionsを確認する。
 
@@ -21,52 +22,66 @@ GitHub操作は GitHub Connector を使い、**gh CLIは使わない**。変更�
 - M5 Forced alignment — COMPLETE
 - M6 Voice quality — COMPLETE
 - M7 Cultural comparison — HOLD / NOT STARTED
+- Structure Cutter Lab — IMPLEMENTATION EXPERIMENT COMPLETE
 
 **M7を自動開始しない。**
 
+## Structure Cutter Lab
+
+current baseline:
+
+- `docs/m6-status/structure-cutter-lab/`
+- public: https://2rwa.github.io/tmp-music/m6-status/structure-cutter-lab/
+- baseline commit: `af6a85f964cf1baa7ac587ab0f409b84058ea8b2`
+
+実装実験で確認済み:
+
+- Change Point / Repetition / Beat-Bars
+- HTDemucs 4-stem
+- Stem Activity / Vocal Phrase
+- Section AI
+- 4-source Consensus
+- cut alignment
+- MIXまたは1〜3 stemの再生
+- source-selective WAV export
+
+### 重要
+
+現在Labは **1つの連続selectionを扱う解析・試聴実験UI** として十分成立した。
+
+次に欲しい:
+
+- multiple section selection
+- multiple cut points
+- keep/remove
+- clip list
+- reorder
+- assembled preview
+- batch export
+
+は、現在UIへ継ぎ足さない。
+
+**Structure Cutter Labをbaselineとして保持し、新規directory / 新規appとしてnon-destructive editor UIを設計する。**
+
+先にedit data modelを決めてからUIを作る。
+
 ## M6 latest
 
-segment-level confidence-guard snapshot:
+M6の正本:
 
-- Whisper AO: stable 97 / 47.80 s / movement 82 / register 16
-- Jugemu: stable 18 / 5.18 s / movement 45 / register 0
-- Chichinu Fiija: stable 43 / 13.47 s / movement 41 / register 1
+- `docs/M1_M6_FINAL_20261004.md`
+- `docs/M6_HANDOFF_20261003.md`
 
-segment artifacts:
+過去の赤runがActions履歴にあっても現行failureとは限らない。known superseded failuresは上記docs参照。
 
-- `11268226119`
-- `11268640196`
-- `11267579268`
+## Write-back
 
-Level 2 continuous time series:
-
-- successful run `37116225090`
-- snapshot commit `fc96a9e1545d0b8c363789ec26c7dc9127227b61`
-- Pages deploy `37116722140` — success + live validation
-- Level 2 artifacts:
-  - Whisper AO `11272086196`
-  - Jugemu `11271726804`
-  - Chichinu Fiija `11271721474`
-
-Pages:
-
-- `https://2rwa.github.io/tmp-music/m6-status/`
-- `https://2rwa.github.io/tmp-music/m6-status/timeline/`
-- `https://2rwa.github.io/tmp-music/m6-status/timeline-v2/`
-
-## Interpretive guardrails
-
-- pitch movement / register / local modulation はcandidateまたはdescriptor。
-- intentional glissando / vibrato / register changeを自動断定しない。
-- CPPS / HNR / formantを声の優劣や文化分類へ直接変換しない。
-- Praat HNRとautocorrelation HNRを混同しない。
-- Level 1 segment値とLevel 2 continuous値はscopeが違う。
-
-## Known non-current failures
-
-- `37116031516`: Level 2初回解析jobは成功、publishのnon-fast-forwardのみ失敗。後続 `37116225090` が最終success。
-- `37097371836`: MFA model download failure。M5実装回帰ではない。
+workflowからのartifact書き戻しは `scripts/common/github_writeback.py` を使用。raw `git push` をworkflowへ追加しない。
 
 ## 再開時
 
-ユーザーの明示した次目標から着手する。M6の再実装やM7開始を勝手に行わない。
+ユーザーが明示した次目標から着手する。
+
+Structure editingを再開する場合の一行:
+
+`GitHubの 2rwa/tmp-music の docs/STRUCTURE_CUTTER_LAB_HANDOFF_20261005.md を読み、Structure Cutter Labは実装実験baselineとして保持したまま、複数Section選択・複数cut・edit listを扱う新しい編集UIの設計から続けて。`
