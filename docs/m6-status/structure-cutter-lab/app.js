@@ -990,6 +990,10 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     const mixSourceUiOk = state.playback.sourceName === 'mix' &&
       document.querySelector('[data-playback-source="mix"]')?.classList.contains('is-active');
     const playbackSourceUiOk = vocalSourceUiOk && selectionKeepsSource && clearKeepsSource && mixSourceUiOk;
+    document.documentElement.dataset.playbackSourceVocalUi = vocalSourceUiOk ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceSelection = selectionKeepsSource ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceClear = clearKeepsSource ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceMixUi = mixSourceUiOk ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceSelftest = playbackSourceUiOk ? 'PASS' : 'FAIL';
 
     // Section AI browser regression uses deterministic logits rather than

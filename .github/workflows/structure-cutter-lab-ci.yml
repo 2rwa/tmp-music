@@ -72,7 +72,7 @@ jobs:
           done
           "$CHROME"             --headless=new             --no-sandbox             --disable-dev-shm-usage             --disable-gpu             --virtual-time-budget=12000             --dump-dom             "http://127.0.0.1:4181/m6-status/structure-cutter-lab/?selftest=1"             > /tmp/structure-cutter-browser.html
           echo "---- self-test document state ----"
-          grep -oE 'data-(structure-cutter-selftest|demucs-ready|consensus-sources|section-ai-ready|section-ai-selftest|playback-source-selftest|playback-source|repetition-ready|beat-grid-ready|vocal-phrase-ready|vocal-snap-selftest|low-energy-ui-selftest)="[^"]*"' /tmp/structure-cutter-browser.html || true
+          grep -oE 'data-(structure-cutter-selftest|demucs-ready|consensus-sources|section-ai-ready|section-ai-selftest|playback-source-selftest|playback-source-vocal-ui|playback-source-selection|playback-source-clear|playback-source-mix-ui|playback-source|repetition-ready|beat-grid-ready|vocal-phrase-ready|vocal-snap-selftest|low-energy-ui-selftest)="[^"]*"' /tmp/structure-cutter-browser.html || true
           grep -o 'structure cutter self-test: [A-Z]*' /tmp/structure-cutter-browser.html || true
           grep -q 'data-structure-cutter-selftest="PASS"' /tmp/structure-cutter-browser.html
           grep -q 'data-demucs-ready="true"' /tmp/structure-cutter-browser.html
