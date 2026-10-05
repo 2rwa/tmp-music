@@ -7,7 +7,7 @@ const css = fs.readFileSync(`${root}/style.css`, 'utf8');
 
 for (const token of [
   'Structure Cutter Lab','STRUCTURE VIEW','Consensus','Section AI','Repetition','Change Point',
-  'Stem Activity','Beat / Bars','Vocal Phrase','Compare engines','Extract WAV',
+  'Stem Activity','Beat / Bars','Vocal Phrase','Compare engines','Extract WAV','PLAYBACK SOURCE','MIX','VOCALS','DRUMS','BASS','OTHER','stop-playback',
   'stem-vocals','stem-drums','stem-bass','stem-other','evidence-section','evidence-repetition','evidence-vocal','evidence-beat','cut-alignment','Vocal phrase edge','Low energy','Cancel'
 ]) if (!html.includes(token)) throw new Error(`missing UI contract: ${token}`);
 
@@ -15,8 +15,19 @@ for (const token of [
   "import { Separator } from 'unblend'","DEMUCS_MODEL = 'htdemucs'","backend: 'webgpu'","precision: 'fp16'",
   'samples/whisper-ao/source/whisper-ao.mp3','samples/jugemu/source/jugemu.mp3',
   'samples/chichinu-fiija/source/chichinu-fiija.mp3','runWholeTrackDemucs','prepareWholeTrackForDemucs',
-  'computeSectionAISpectrograms','postprocessFunctionalStructure','runSectionAIInference','runSectionAIAnalysis','dataset.sectionAiReady','analyzeBeatGrid','alignCutRange','alignLowEnergyRange','analyzeRepetition','analyzeStemActivity','analyzeVocalPhrases','nearestPhraseBoundary','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
+  'computeSectionAISpectrograms','postprocessFunctionalStructure','runSectionAIInference','runSectionAIAnalysis','dataset.sectionAiReady','currentPlaybackTime','setPlaybackSource','startPlayback','pausePlayback','seekPlayback','state.playback','node.loop = true','dataset.playbackSource','analyzeBeatGrid','alignCutRange','alignLowEnergyRange','analyzeRepetition','analyzeStemActivity','analyzeVocalPhrases','nearestPhraseBoundary','buildConsensusBoundaries','installStemResult','dataset.consensusSources'
 ]) if (!js.includes(token)) throw new Error(`missing behavior contract: ${token}`);
+
+
+if (js.includes('auditionStem') || js.includes('state.audition') || js.includes('el.audio.play') || js.includes('data-stem-audition')) {
+  throw new Error('legacy dual-player stem audition path must be removed');
+}
+if (!js.includes("if (state.loop && state.playback.playing) startPlayback(s)")) {
+  throw new Error('selection changes must restart the active loop source');
+}
+if (!js.includes("const restartWithoutLoop = state.loop && state.playback.playing")) {
+  throw new Error('clearing a selection must clear the loop source');
+}
 
 for (const token of [
   '.timeline-card','.boundary-marker','.selection-overlay','.compare-panel',

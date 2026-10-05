@@ -76,6 +76,8 @@ jobs:
           grep -q 'data-consensus-sources="4"' /tmp/structure-cutter-browser.html
           grep -q 'data-section-ai-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-section-ai-selftest="PASS"' /tmp/structure-cutter-browser.html
+          grep -q 'data-playback-source-selftest="PASS"' /tmp/structure-cutter-browser.html
+          grep -q 'data-playback-source="mix"' /tmp/structure-cutter-browser.html
           grep -q 'data-repetition-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-beat-grid-ready="true"' /tmp/structure-cutter-browser.html
           grep -q 'data-vocal-phrase-ready="true"' /tmp/structure-cutter-browser.html

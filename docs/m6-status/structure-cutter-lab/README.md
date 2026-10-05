@@ -92,3 +92,16 @@ Pinned upstream `openmirlab/all-in-one-infer@797f1d21b115955ed81ff9161440334fefe
 - checkpoint license metadata: CC-BY-NC-SA-4.0。NOTICEとmodel metadataを同梱
 
 Section AIはHTDemucs完了後に実行し、separatorを先にunloadしてGPUモデル2本の同時常駐を避ける。
+
+## Playback
+
+Mix と HTDemucs stems は別プレイヤーとして扱わず、単一の playback controller に統合する。
+
+- playback source: MIX / VOCALS / DRUMS / BASS / OTHER
+- Stem source はHTDemucs完了後に有効化
+- 再生中にsourceを切り替えると同じタイムコードから新sourceへ切り替える
+- Play / Stop / Seek / Volume / Loop は選択中sourceだけを制御する
+- Section loop中に別Sectionを選ぶと旧source nodeを停止し、新しい区間で同一sourceを再起動する
+- Clearはselection/loopを解除し、再生中なら同一sourceの通常再生へ戻す
+- Stemレーン名のクリックも上部PLAYBACK SOURCEと同じsource選択として扱う
+- MixとStemが同時再生される旧 `auditionStem` 経路は廃止

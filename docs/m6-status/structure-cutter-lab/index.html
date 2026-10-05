@@ -24,7 +24,7 @@
     <section class="source-strip" aria-label="Test audio source">
       <div class="source-copy">
         <strong id="track-name">Choose a repository sample</strong>
-        <span id="track-meta">Real audio from 2rwa/tmp-music · Demucs integration follows this UI pass</span>
+        <span id="track-meta">Real audio from 2rwa/tmp-music · HTDemucs stems share one playback transport</span>
       </div>
       <label class="sample-picker">Repository sample
         <select id="sample-select">
@@ -55,10 +55,25 @@
     <section id="workspace" class="workspace" aria-live="polite">
       <div class="transport-bar">
         <button id="play-toggle" type="button" class="transport-button" disabled>▶</button>
+        <button id="stop-playback" type="button" class="transport-button stop-button" disabled>■</button>
         <span id="time-current" class="time-readout">00:00.0</span>
         <input id="seek" type="range" min="0" max="1" value="0" step="0.01" disabled aria-label="Seek">
         <span id="time-duration" class="time-readout muted">00:00.0</span>
         <label class="volume-control">VOL <input id="volume" type="range" min="0" max="100" value="86" step="1"></label>
+      </div>
+      <div class="playback-source-bar">
+        <div class="playback-source-copy">
+          <p class="section-label">PLAYBACK SOURCE</p>
+          <strong id="playback-source-status">MIX · original audio</strong>
+        </div>
+        <div id="playback-source-buttons" class="playback-source-buttons" role="group" aria-label="Playback source">
+          <button type="button" class="playback-source-button is-active" data-playback-source="mix">MIX</button>
+          <button type="button" class="playback-source-button stem-vocal" data-playback-source="vocals" disabled>VOCALS</button>
+          <button type="button" class="playback-source-button stem-drums" data-playback-source="drums" disabled>DRUMS</button>
+          <button type="button" class="playback-source-button stem-bass" data-playback-source="bass" disabled>BASS</button>
+          <button type="button" class="playback-source-button stem-other" data-playback-source="other" disabled>OTHER</button>
+        </div>
+        <span class="playback-source-help">Play / seek / loop always control this one source only.</span>
       </div>
 
       <div class="mode-bar">
@@ -96,10 +111,10 @@
             <div id="boundary-layer" class="boundary-layer"></div>
           </div>
         </div>
-        <div class="lane stem-lane"><button class="lane-label stem-vocal stem-label-button" type="button" data-stem-audition="vocals"><strong>VOCALS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="vocals"><canvas id="stem-vocals"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
-        <div class="lane stem-lane"><button class="lane-label stem-drums stem-label-button" type="button" data-stem-audition="drums"><strong>DRUMS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="drums"><canvas id="stem-drums"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
-        <div class="lane stem-lane"><button class="lane-label stem-bass stem-label-button" type="button" data-stem-audition="bass"><strong>BASS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="bass"><canvas id="stem-bass"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
-        <div class="lane stem-lane"><button class="lane-label stem-other stem-label-button" type="button" data-stem-audition="other"><strong>OTHER</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="other"><canvas id="stem-other"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-vocal stem-label-button" type="button" data-playback-source="vocals"><strong>VOCALS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="vocals"><canvas id="stem-vocals"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-drums stem-label-button" type="button" data-playback-source="drums"><strong>DRUMS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="drums"><canvas id="stem-drums"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-bass stem-label-button" type="button" data-playback-source="bass"><strong>BASS</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="bass"><canvas id="stem-bass"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
+        <div class="lane stem-lane"><button class="lane-label stem-other stem-label-button" type="button" data-playback-source="other"><strong>OTHER</strong><small>Demucs</small></button><div class="lane-track stem-track" data-stem-track="other"><canvas id="stem-other"></canvas><span class="stem-placeholder">waiting for HTDemucs</span></div></div>
       </section>
 
       <section id="compare-panel" class="compare-panel" hidden>
@@ -150,7 +165,6 @@
       <p class="inspector-note">Raw analysis boundary and final edit point remain separate in the data model.</p>
     </aside>
 
-    <audio id="audio" preload="metadata"></audio>
     <footer class="footer">GPU-first prototype: real repository audio + M3-style repetition + estimated beat/bar grid + HTDemucs 4-stem + All-In-One Section AI + vocal phrase edges + multi-engine structural fusion.</footer>
   </main>
   <script type="module" src="./app.js"></script>
