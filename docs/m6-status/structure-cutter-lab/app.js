@@ -239,7 +239,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
 
   function renderPlaybackSourceUi() {
     const name = state.playback.sourceName;
-    document.querySelectorAll('[data-playback-source]').forEach(button => {
+    document.querySelectorAll('button[data-playback-source]').forEach(button => {
       const active = button.dataset.playbackSource === name;
       button.classList.toggle('is-active', active);
       button.classList.toggle('is-playback-source', active);
@@ -980,7 +980,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
 
     await setPlaybackSource('vocals');
     const vocalSourceUiOk = state.playback.sourceName === 'vocals' &&
-      document.querySelector('[data-playback-source="vocals"]')?.classList.contains('is-active') &&
+      document.querySelector('button[data-playback-source="vocals"]')?.classList.contains('is-active') &&
       document.documentElement.dataset.playbackSource === 'vocals';
     setSelection(2, 6, 'Playback source self-test');
     const selectionKeepsSource = state.playback.sourceName === 'vocals';
@@ -988,7 +988,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     const clearKeepsSource = state.playback.sourceName === 'vocals' && !state.loop;
     await setPlaybackSource('mix');
     const mixSourceUiOk = state.playback.sourceName === 'mix' &&
-      document.querySelector('[data-playback-source="mix"]')?.classList.contains('is-active');
+      document.querySelector('button[data-playback-source="mix"]')?.classList.contains('is-active');
     const playbackSourceUiOk = vocalSourceUiOk && selectionKeepsSource && clearKeepsSource && mixSourceUiOk;
     document.documentElement.dataset.playbackSourceVocalUi = vocalSourceUiOk ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceSelection = selectionKeepsSource ? 'PASS' : 'FAIL';
@@ -1129,7 +1129,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
   el.cancelProcessing.addEventListener('click', () => {
     if (state.demucs.controller && !state.demucs.controller.signal.aborted) state.demucs.controller.abort(new DOMException('cancel button', 'AbortError'));
   });
-  document.querySelectorAll('[data-playback-source]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setPlaybackSource(button.dataset.playbackSource).catch(err => console.error('source switch failed', err)); }));
+  document.querySelectorAll('button[data-playback-source]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setPlaybackSource(button.dataset.playbackSource).catch(err => console.error('source switch failed', err)); }));
   window.addEventListener('resize', () => { drawWaveform(); drawAllStemProfiles(); });
 
   state.gpuAvailable = !!navigator.gpu;
