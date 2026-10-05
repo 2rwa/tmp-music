@@ -14,6 +14,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
   const DEMUCS_RATE = 44100;
   const ORT_WASM_PATHS = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/';
   const STEM_NAMES = ['vocals', 'drums', 'bass', 'other'];
+  const MAX_STEM_PLAYBACK = 3;
   const STEM_COLORS = { vocals: '#dc72c8', drums: '#e4a64f', bass: '#69bfc8', other: '#9b87d6' };
   let separatorLoader = (model, options) => Separator.load(model, options);
 
@@ -39,7 +40,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
   const el = {
     gpuBadge: $('gpu-badge'), openFile: $('open-file'), fileInput: $('file-input'), sampleSelect: $('sample-select'), loadSample: $('load-sample'),
     trackName: $('track-name'), trackMeta: $('track-meta'), progressPanel: $('progress-panel'), progressTitle: $('progress-title'), progressPercent: $('progress-percent'), progressFill: $('progress-fill'), cancelProcessing: $('cancel-processing'),
-    play: $('play-toggle'), stop: $('stop-playback'), seek: $('seek'), current: $('time-current'), duration: $('time-duration'), volume: $('volume'), playbackSourceButtons: $('playback-source-buttons'), playbackSourceStatus: $('playback-source-status'),
+    play: $('play-toggle'), stop: $('stop-playback'), seek: $('seek'), current: $('time-current'), duration: $('time-duration'), volume: $('volume'), playbackSourceButtons: $('playback-source-buttons'), playbackSourceStatus: $('playback-source-status'), playbackSourceHelp: $('playback-source-help'),
     modeTabs: $('mode-tabs'), engineNotice: $('engine-notice'), toggleCompare: $('toggle-compare'), comparePanel: $('compare-panel'), compareGrid: $('compare-grid'),
     ruler: $('timeline-ruler'), sectionTrack: $('section-track'), mixTrack: $('mix-track'), waveform: $('waveform'), selectionOverlay: $('selection-overlay'), playhead: $('playhead'), boundaryLayer: $('boundary-layer'),
     selectionTitle: $('selection-title'), selectionTime: $('selection-time'), cutAlignment: $('cut-alignment'), alignmentNote: $('alignment-note'), loop: $('loop-toggle'), clearSelection: $('clear-selection'), extract: $('extract-selection'),
@@ -77,7 +78,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     mode: 'consensus',
     gpuAvailable: false,
     demucs: { runId: 0, controller: null, busy: false },
-    playback: { ctx: null, gain: null, node: null, sourceName: 'mix', buffers: {}, startedAtCtx: 0, startedAtOffset: 0, pausedAt: 0, playing: false, token: 0, raf: 0 }
+    playback: { ctx: null, gain: null, node: null, mode: 'mix', stemNames: [], mergedBuffer: null, mergedKey: '', startedAtCtx: 0, startedAtOffset: 0, pausedAt: 0, playing: false, token: 0, raf: 0 }
   };
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -193,6 +194,14 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     return clamp(t, 0, state.duration || 0);
   }
 
+  function selectedPlaybackNames() {
+    return state.playback.mode === 'mix' ? ['mix'] : [...state.playback.stemNames];
+  }
+
+  function playbackSelectionKey() {
+    return state.playback.mode === 'mix' ? 'mix' : state.playback.stemNames.join('+');
+  }
+
   async function ensurePlaybackContext() {
     const p = state.playback;
     if (!p.ctx) {
@@ -205,19 +214,32 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     return p.ctx;
   }
 
-  function playbackBufferFor(name) {
-    if (name === 'mix') return state.audioBuffer;
-    if (state.playback.buffers[name]) return state.playback.buffers[name];
-    const data = state.stems[name];
-    if (!(data instanceof Float32Array) || !state.playback.ctx) return null;
-    const frames = Math.floor(data.length / 2);
-    const buffer = state.playback.ctx.createBuffer(2, frames, DEMUCS_RATE);
+  function mergedStemSample(names, frame, channel) {
+    let sum = 0;
+    for (const name of names) {
+      const data = state.stems[name];
+      if (data instanceof Float32Array) sum += data[frame * 2 + channel] || 0;
+    }
+    return sum;
+  }
+
+  function playbackBufferForSelection() {
+    const p = state.playback;
+    if (p.mode === 'mix') return state.audioBuffer;
+    if (!p.ctx || !p.stemNames.length) return null;
+    const key = p.stemNames.join('+');
+    if (p.mergedBuffer && p.mergedKey === key) return p.mergedBuffer;
+    const names = p.stemNames.filter(name => state.stems[name] instanceof Float32Array);
+    if (!names.length) return null;
+    const frames = Math.min(...names.map(name => Math.floor(state.stems[name].length / 2)));
+    const buffer = p.ctx.createBuffer(2, frames, DEMUCS_RATE);
     const left = buffer.getChannelData(0), right = buffer.getChannelData(1);
     for (let i = 0; i < frames; i++) {
-      left[i] = data[i * 2] || 0;
-      right[i] = data[i * 2 + 1] || 0;
+      left[i] = mergedStemSample(names, i, 0);
+      right[i] = mergedStemSample(names, i, 1);
     }
-    state.playback.buffers[name] = buffer;
+    p.mergedBuffer = buffer;
+    p.mergedKey = key;
     return buffer;
   }
 
@@ -237,17 +259,37 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     el.play.textContent = '▶';
   }
 
-  function renderPlaybackSourceUi() {
-    const name = state.playback.sourceName;
+  function renderPlaybackSourceUi(message = '') {
+    const p = state.playback;
+    const selected = new Set(p.stemNames);
+    const atLimit = p.mode === 'stems' && selected.size >= MAX_STEM_PLAYBACK;
     document.querySelectorAll('button[data-playback-source]').forEach(button => {
-      const active = button.dataset.playbackSource === name;
+      const name = button.dataset.playbackSource;
+      const active = name === 'mix' ? p.mode === 'mix' : p.mode === 'stems' && selected.has(name);
       button.classList.toggle('is-active', active);
       button.classList.toggle('is-playback-source', active);
-      if (button.dataset.playbackSource !== 'mix') button.disabled = !(state.stems[button.dataset.playbackSource] instanceof Float32Array);
+      if (name !== 'mix') {
+        const ready = state.stems[name] instanceof Float32Array;
+        button.disabled = !ready || (atLimit && !selected.has(name));
+      }
     });
-    const label = name === 'mix' ? 'MIX · original audio' : name.toUpperCase() + ' · HTDemucs stem';
+    let label;
+    if (p.mode === 'mix') {
+      label = 'MIX · original audio';
+    } else {
+      label = p.stemNames.map(name => name.toUpperCase()).join(' + ') + ` · merged HTDemucs stems (${p.stemNames.length}/${MAX_STEM_PLAYBACK})`;
+    }
     if (el.playbackSourceStatus) el.playbackSourceStatus.textContent = label;
-    document.documentElement.dataset.playbackSource = name;
+    if (el.playbackSourceHelp) el.playbackSourceHelp.textContent = message || (p.mode === 'mix'
+      ? 'Choose MIX, or merge 1–3 HTDemucs stems for playback and WAV export.'
+      : 'Selected stems are summed sample-for-sample for playback and WAV export.');
+    if (el.extract) {
+      const suffix = p.mode === 'mix' ? 'MIX' : p.stemNames.map(name => name.toUpperCase()).join('+');
+      el.extract.textContent = `Extract ${suffix} WAV`;
+    }
+    const key = playbackSelectionKey();
+    document.documentElement.dataset.playbackSource = key;
+    document.documentElement.dataset.playbackSourceCount = String(p.mode === 'mix' ? 1 : p.stemNames.length);
   }
 
   async function startPlayback(offset = state.playback.pausedAt) {
@@ -255,7 +297,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     const p = state.playback;
     await ensurePlaybackContext();
     stopPlayback({ preservePosition: true });
-    const buffer = playbackBufferFor(p.sourceName);
+    const buffer = playbackBufferForSelection();
     if (!buffer) return false;
     let start = clamp(Number(offset) || 0, 0, Math.max(0, buffer.duration - .005));
     if (state.loop && state.selection && (start < state.selection.s || start >= state.selection.e)) start = state.selection.s;
@@ -305,11 +347,40 @@ import { runSectionAIInference } from './section-ai-runtime.js';
   async function setPlaybackSource(name) {
     if (!['mix', ...STEM_NAMES].includes(name)) return false;
     if (name !== 'mix' && !(state.stems[name] instanceof Float32Array)) return false;
+    const p = state.playback;
     const t = currentPlaybackTime();
-    const wasPlaying = state.playback.playing;
+    const wasPlaying = p.playing;
+    let nextMode = p.mode;
+    let nextNames = [...p.stemNames];
+
+    if (name === 'mix') {
+      nextMode = 'mix';
+      nextNames = [];
+    } else if (p.mode === 'mix') {
+      nextMode = 'stems';
+      nextNames = [name];
+    } else if (nextNames.includes(name)) {
+      if (nextNames.length === 1) {
+        nextMode = 'mix';
+        nextNames = [];
+      } else {
+        nextNames = nextNames.filter(x => x !== name);
+      }
+    } else {
+      if (nextNames.length >= MAX_STEM_PLAYBACK) {
+        renderPlaybackSourceUi('Maximum 3 stems. Deselect one before adding another.');
+        return false;
+      }
+      nextNames.push(name);
+      nextNames.sort((a, b) => STEM_NAMES.indexOf(a) - STEM_NAMES.indexOf(b));
+    }
+
     stopPlayback({ preservePosition: true });
-    state.playback.sourceName = name;
-    state.playback.pausedAt = t;
+    p.mode = nextMode;
+    p.stemNames = nextNames;
+    p.mergedBuffer = null;
+    p.mergedKey = '';
+    p.pausedAt = t;
     renderPlaybackSourceUi();
     if (wasPlaying) await startPlayback(t);
     else updatePlayhead();
@@ -318,8 +389,10 @@ import { runSectionAIInference } from './section-ai-runtime.js';
 
   function resetPlaybackState() {
     stopPlayback({ preservePosition: false });
-    state.playback.sourceName = 'mix';
-    state.playback.buffers = {};
+    state.playback.mode = 'mix';
+    state.playback.stemNames = [];
+    state.playback.mergedBuffer = null;
+    state.playback.mergedKey = '';
     state.playback.pausedAt = 0;
     renderPlaybackSourceUi();
     updatePlayhead();
@@ -341,8 +414,10 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     state.sectionAI = { status: 'idle', provider: '', error: '', segments: [], boundaries: [], inferenceMs: 0, frames: 0 };
     state.consensusBoundaries = buildConsensusBoundaries(state.mixBoundaries, [], state.repetitionBoundaries, []);
     stopPlayback({ preservePosition: false });
-    state.playback.sourceName = 'mix';
-    state.playback.buffers = {};
+    state.playback.mode = 'mix';
+    state.playback.stemNames = [];
+    state.playback.mergedBuffer = null;
+    state.playback.mergedKey = '';
     renderPlaybackSourceUi();
     clearStemVisuals();
     document.documentElement.dataset.demucsReady = 'false';
@@ -864,7 +939,7 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     state.boundaries = [];
     if (state.objectUrl && state.objectUrl.startsWith('blob:')) URL.revokeObjectURL(state.objectUrl);
     state.audioBuffer = buffer; state.name = name; state.objectUrl = url; state.sourcePath = sourcePath || ''; state.duration = buffer.duration; state.mono = null;
-    state.playback.sourceName = 'mix'; state.playback.buffers = {}; state.playback.pausedAt = 0;
+    state.playback.mode = 'mix'; state.playback.stemNames = []; state.playback.mergedBuffer = null; state.playback.mergedKey = ''; state.playback.pausedAt = 0;
     el.trackName.textContent = name; el.trackMeta.textContent = sourcePath ? 'Repository source · ' + sourcePath : 'Local audio file';
     el.seek.max = String(buffer.duration); el.seek.value = '0'; el.seek.disabled = false; el.play.disabled = false; el.stop.disabled = false; el.duration.textContent = fmt(buffer.duration); clearSelection(); renderPlaybackSourceUi(); updatePlayhead();
   }
@@ -910,19 +985,50 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     } finally { el.loadSample.disabled = !el.sampleSelect.value; }
   }
 
-  function wavBlob(buffer, s, e) {
-    const rate = buffer.sampleRate, channels = buffer.numberOfChannels, start = Math.floor(s * rate), end = Math.min(buffer.length, Math.ceil(e * rate)), frames = Math.max(0, end - start), bytes = 44 + frames * channels * 2;
+  function pcm16WavBlob(rate, channels, startFrame, endFrame, sampleAt) {
+    const frames = Math.max(0, endFrame - startFrame), bytes = 44 + frames * channels * 2;
     const ab = new ArrayBuffer(bytes), v = new DataView(ab); let p = 0;
     const str = x => { for (let i = 0; i < x.length; i++) v.setUint8(p++, x.charCodeAt(i)); };
-    str('RIFF'); v.setUint32(p, bytes - 8, true); p += 4; str('WAVEfmt '); v.setUint32(p, 16, true); p += 4; v.setUint16(p, 1, true); p += 2; v.setUint16(p, channels, true); p += 2; v.setUint32(p, rate, true); p += 4; v.setUint32(p, rate * channels * 2, true); p += 4; v.setUint16(p, channels * 2, true); p += 2; v.setUint16(p, 16, true); p += 2; str('data'); v.setUint32(p, frames * channels * 2, true); p += 4;
-    for (let i = start; i < end; i++) for (let c = 0; c < channels; c++) { const x = clamp(buffer.getChannelData(c)[i] || 0, -1, 1); v.setInt16(p, x < 0 ? x * 32768 : x * 32767, true); p += 2; }
+    str('RIFF'); v.setUint32(p, bytes - 8, true); p += 4; str('WAVEfmt '); v.setUint32(p, 16, true); p += 4;
+    v.setUint16(p, 1, true); p += 2; v.setUint16(p, channels, true); p += 2; v.setUint32(p, rate, true); p += 4;
+    v.setUint32(p, rate * channels * 2, true); p += 4; v.setUint16(p, channels * 2, true); p += 2; v.setUint16(p, 16, true); p += 2;
+    str('data'); v.setUint32(p, frames * channels * 2, true); p += 4;
+    for (let i = startFrame; i < endFrame; i++) {
+      for (let channel = 0; channel < channels; channel++) {
+        const x = clamp(sampleAt(i, channel) || 0, -1, 1);
+        v.setInt16(p, x < 0 ? x * 32768 : x * 32767, true); p += 2;
+      }
+    }
     return new Blob([ab], { type: 'audio/wav' });
+  }
+
+  function wavBlob(buffer, s, e) {
+    const rate = buffer.sampleRate, channels = buffer.numberOfChannels;
+    const start = Math.floor(s * rate), end = Math.min(buffer.length, Math.ceil(e * rate));
+    return pcm16WavBlob(rate, channels, start, end, (frame, channel) => buffer.getChannelData(channel)[frame] || 0);
+  }
+
+  function stemMergeWavBlob(names, s, e) {
+    const valid = names.filter(name => state.stems[name] instanceof Float32Array);
+    if (!valid.length || valid.length > MAX_STEM_PLAYBACK) throw new Error('WAV export requires 1–3 valid stems');
+    const totalFrames = Math.min(...valid.map(name => Math.floor(state.stems[name].length / 2)));
+    const start = Math.floor(s * DEMUCS_RATE), end = Math.min(totalFrames, Math.ceil(e * DEMUCS_RATE));
+    return pcm16WavBlob(DEMUCS_RATE, 2, start, end, (frame, channel) => mergedStemSample(valid, frame, channel));
   }
 
   function extractSelection() {
     if (!state.audioBuffer || !state.selection) return;
-    const blob = wavBlob(state.audioBuffer, state.selection.s, state.selection.e), a = document.createElement('a'), safe = (state.name || 'audio').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_');
-    a.href = URL.createObjectURL(blob); a.download = `${safe}_${state.selection.s.toFixed(2)}-${state.selection.e.toFixed(2)}.wav`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    const p = state.playback;
+    const names = selectedPlaybackNames();
+    const blob = p.mode === 'mix'
+      ? wavBlob(state.audioBuffer, state.selection.s, state.selection.e)
+      : stemMergeWavBlob(names, state.selection.s, state.selection.e);
+    const a = document.createElement('a');
+    const safe = (state.name || 'audio').replace(/.[^.]+$/, '').replace(/[^\w.-]+/g, '_');
+    const sourceSuffix = p.mode === 'mix' ? 'mix' : names.join('-');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${safe}_${sourceSuffix}_${state.selection.s.toFixed(2)}-${state.selection.e.toFixed(2)}.wav`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500);
   }
 
   async function loadLocal(file) {
@@ -979,21 +1085,50 @@ import { runSectionAIInference } from './section-ai-runtime.js';
     await installStemResult(fake);
 
     await setPlaybackSource('vocals');
-    const vocalSourceUiOk = state.playback.sourceName === 'vocals' &&
+    const vocalSourceUiOk = state.playback.mode === 'stems' &&
+      state.playback.stemNames.join('+') === 'vocals' &&
       document.querySelector('button[data-playback-source="vocals"]')?.classList.contains('is-active') &&
       document.documentElement.dataset.playbackSource === 'vocals';
+
+    await setPlaybackSource('bass');
+    const twoStemOk = state.playback.stemNames.join('+') === 'vocals+bass' &&
+      document.querySelector('button[data-playback-source="vocals"]')?.classList.contains('is-active') &&
+      document.querySelector('button[data-playback-source="bass"]')?.classList.contains('is-active');
+
+    await setPlaybackSource('drums');
+    const threeStemOk = state.playback.stemNames.join('+') === 'vocals+drums+bass' &&
+      document.querySelector('button[data-playback-source="other"]')?.disabled === true;
+    const fourthRejected = (await setPlaybackSource('other')) === false &&
+      state.playback.stemNames.join('+') === 'vocals+drums+bass';
+
+    await setPlaybackSource('bass');
+    const twoStemAfterToggleOk = state.playback.stemNames.join('+') === 'vocals+drums';
+
+    const frame = 50000;
+    const expectedMerged = (fake.vocals[frame * 2] || 0) + (fake.drums[frame * 2] || 0);
+    const mergeSampleOk = Math.abs(mergedStemSample(['vocals', 'drums'], frame, 0) - expectedMerged) < 1e-7;
+    const mergeBlob = stemMergeWavBlob(['vocals', 'drums'], 2, 2.1);
+    const mergeFrames = Math.ceil(2.1 * DEMUCS_RATE) - Math.floor(2 * DEMUCS_RATE);
+    const mergeWavOk = mergeBlob.size === 44 + mergeFrames * 2 * 2 && el.extract.textContent.includes('VOCALS+DRUMS');
+
     setSelection(2, 6, 'Playback source self-test');
-    const selectionKeepsSource = state.playback.sourceName === 'vocals';
+    const selectionKeepsSource = state.playback.stemNames.join('+') === 'vocals+drums';
     clearSelection();
-    const clearKeepsSource = state.playback.sourceName === 'vocals' && !state.loop;
+    const clearKeepsSource = state.playback.stemNames.join('+') === 'vocals+drums' && !state.loop;
     await setPlaybackSource('mix');
-    const mixSourceUiOk = state.playback.sourceName === 'mix' &&
+    const mixSourceUiOk = state.playback.mode === 'mix' &&
+      state.playback.stemNames.length === 0 &&
       document.querySelector('button[data-playback-source="mix"]')?.classList.contains('is-active');
-    const playbackSourceUiOk = vocalSourceUiOk && selectionKeepsSource && clearKeepsSource && mixSourceUiOk;
+
+    const playbackSourceUiOk = vocalSourceUiOk && twoStemOk && threeStemOk && fourthRejected &&
+      twoStemAfterToggleOk && mergeSampleOk && mergeWavOk && selectionKeepsSource && clearKeepsSource && mixSourceUiOk;
     document.documentElement.dataset.playbackSourceVocalUi = vocalSourceUiOk ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceMultistem = twoStemOk && threeStemOk && twoStemAfterToggleOk ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceLimit = fourthRejected ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceSelection = selectionKeepsSource ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceClear = clearKeepsSource ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceMixUi = mixSourceUiOk ? 'PASS' : 'FAIL';
+    document.documentElement.dataset.playbackSourceWavMerge = mergeSampleOk && mergeWavOk ? 'PASS' : 'FAIL';
     document.documentElement.dataset.playbackSourceSelftest = playbackSourceUiOk ? 'PASS' : 'FAIL';
 
     // Section AI browser regression uses deterministic logits rather than
@@ -1137,6 +1272,6 @@ import { runSectionAIInference } from './section-ai-runtime.js';
   el.gpuBadge.classList.add(state.gpuAvailable ? 'good' : 'warn');
   renderPlaybackSourceUi();
   drawWaveform();
-  window.__structureCutterLab = { state, REPO_SAMPLES, computeSectionAISpectrograms, postprocessFunctionalStructure, runSectionAIAnalysis, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, currentPlaybackTime, setPlaybackSource, startPlayback, pausePlayback, seekPlayback, setSelection, clearSelection, installStemResult, runSelfTest };
+  window.__structureCutterLab = { state, REPO_SAMPLES, computeSectionAISpectrograms, postprocessFunctionalStructure, runSectionAIAnalysis, analyzeBeatGrid, analyzeChangePoints, analyzeRepetition, analyzeStemActivity, analyzeVocalPhrases, alignCutRange, alignLowEnergyRange, buildConsensusBoundaries, buildSections, nearestPhraseBoundary, currentPlaybackTime, selectedPlaybackNames, playbackSelectionKey, setPlaybackSource, startPlayback, pausePlayback, seekPlayback, mergedStemSample, stemMergeWavBlob, setSelection, clearSelection, installStemResult, runSelfTest };
   if (new URLSearchParams(location.search).get('selftest') === '1') setTimeout(() => runSelfTest(), 0);
 })();

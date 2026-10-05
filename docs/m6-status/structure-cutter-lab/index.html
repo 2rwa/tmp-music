@@ -63,7 +63,7 @@
       </div>
       <div class="playback-source-bar">
         <div class="playback-source-copy">
-          <p class="section-label">PLAYBACK SOURCE</p>
+          <p class="section-label">PLAYBACK SOURCES</p>
           <strong id="playback-source-status">MIX · original audio</strong>
         </div>
         <div id="playback-source-buttons" class="playback-source-buttons" role="group" aria-label="Playback source">
@@ -73,7 +73,7 @@
           <button type="button" class="playback-source-button stem-bass" data-playback-source="bass" disabled>BASS</button>
           <button type="button" class="playback-source-button stem-other" data-playback-source="other" disabled>OTHER</button>
         </div>
-        <span class="playback-source-help">Play / seek / loop always control this one source only.</span>
+        <span id="playback-source-help" class="playback-source-help">Choose MIX, or merge 1–3 HTDemucs stems for playback and WAV export.</span>
       </div>
 
       <div class="mode-bar">
@@ -144,7 +144,7 @@
         <div class="selection-actions">
           <button id="loop-toggle" type="button" class="quiet-button" disabled>Loop</button>
           <button id="clear-selection" type="button" class="quiet-button" disabled>Clear</button>
-          <button id="extract-selection" type="button" class="primary-button" disabled>Extract WAV</button>
+          <button id="extract-selection" type="button" class="primary-button" disabled>Extract MIX WAV</button>
         </div>
       </section>
     </section>

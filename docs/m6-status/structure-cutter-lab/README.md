@@ -95,13 +95,26 @@ Section AIはHTDemucs完了後に実行し、separatorを先にunloadしてGPU�
 
 ## Playback
 
-Mix と HTDemucs stems は別プレイヤーとして扱わず、単一の playback controller に統合する。
+Mix と HTDemucs stems は単一の playback controller で扱う。
 
-- playback source: MIX / VOCALS / DRUMS / BASS / OTHER
-- Stem source はHTDemucs完了後に有効化
-- 再生中にsourceを切り替えると同じタイムコードから新sourceへ切り替える
-- Play / Stop / Seek / Volume / Loop は選択中sourceだけを制御する
-- Section loop中に別Sectionを選ぶと旧source nodeを停止し、新しい区間で同一sourceを再起動する
-- Clearはselection/loopを解除し、再生中なら同一sourceの通常再生へ戻す
-- Stemレーン名のクリックも上部PLAYBACK SOURCEと同じsource選択として扱う
-- MixとStemが同時再生される旧 `auditionStem` 経路は廃止
+- playback source は `MIX` または HTDemucs stems の組み合わせ
+- Stem側は `VOCALS / DRUMS / BASS / OTHER` から **1〜3個**を同時選択可能
+- `MIX` はoriginal audioの単独source。MIX選択時はStem選択を解除
+- 3 Stem選択中は未選択の4個目をdisabledにし、どれか1個外すまで追加不可
+- 最後の1 Stemを外すとMIXへ戻る
+- 再生中に組み合わせを変えると同じタイムコードから新しい組み合わせへ切り替える
+- Play / Stop / Seek / Volume / Loop は現在のsource setだけを制御する
+- Section loop中に別Sectionを選ぶと旧nodeを停止し、新しい区間で同一source setを再起動する
+- Clearはselection/loopを解除し、再生中なら同一source setの通常再生へ戻す
+- Stemレーン名のクリックも上部PLAYBACK SOURCESと同じtoggleとして扱う
+
+### WAV export
+
+`Extract … WAV` は現在のPlayback Sourceに従う。
+
+- MIX: original audioから選択区間をWAV化
+- Stem: 選択した1〜3 Stemをsample-by-sampleで加算してstereo WAV化
+- Stem mergeは平均化しない。Demucsの再合成と同様にsumする
+- 16-bit PCM量子化時に±1を超えたサンプルだけclipする
+- filenameに `vocals-drums` など選択sourceを入れる
+
