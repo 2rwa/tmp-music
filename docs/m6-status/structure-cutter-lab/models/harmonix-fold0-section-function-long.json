@@ -2,7 +2,7 @@
   "model": "harmonix-fold0",
   "file": "harmonix-fold0-section-function-long.onnx",
   "onnx_bytes": 6376948,
-  "onnx_sha256": "1ca1a71eca7d2a40bb22e8f7699099651ebd5a29a801f24e84e7ea13c037fab3",
+  "onnx_sha256": "7e5722dad852fa1f1d4915273f2461267ff4a0b6e1ff193554529d8e47b09e25",
   "opset": 18,
   "input": {
     "name": "spectrograms",
@@ -48,7 +48,7 @@
       "ok": true,
       "max_abs_diff": {
         "section": 1.430511474609375e-06,
-        "function": 6.67572021484375e-06
+        "function": 5.7220458984375e-06
       },
       "output_shapes": [
         [
@@ -66,7 +66,7 @@
       "frames": 12000,
       "ok": true,
       "max_abs_diff": {
-        "section": 1.9073486328125e-06,
+        "section": 1.430511474609375e-06,
         "function": 5.7220458984375e-06
       },
       "output_shapes": [
