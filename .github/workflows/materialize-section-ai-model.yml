@@ -55,13 +55,6 @@ jobs:
       - name: Commit generated model
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/m6-status/structure-cutter-lab/models
-          if git diff --cached --quiet; then
-            echo "Section AI model already current"
-            exit 0
-          fi
-          git commit -m "build: materialize Section AI long model"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          python scripts/common/github_writeback.py \
+            "build: materialize Section AI long model" \
+            docs/m6-status/structure-cutter-lab/models
